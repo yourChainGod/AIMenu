@@ -201,6 +201,7 @@
 "error.remote.sshpass_required" = "Password auth mode requires sshpass";
 "error.remote.build_proxyd_failed" = "Failed to build remote proxyd";
 "error.remote.proxyd_not_found_after_build" = "proxyd binary was not found after build";
+"error.remote.unavailable_missing_proxyd_source" = "Remote deploy is unavailable in this build because src-tauri/proxyd/Cargo.toml was not found.";
 "error.remote.ssh_command_failed_format" = "SSH command failed: %@";
 "error.remote.scp_failed_format" = "SCP failed: %@";
 

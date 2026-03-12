@@ -59,12 +59,14 @@ actor SwiftNativeProxyRuntimeService: ProxyRuntimeService {
     func status() async -> ApiProxyStatus {
         let running = server != nil
         let apiKey = (try? ensurePersistedAPIKey()) ?? nil
+        let availableAccounts = (try? loadCandidates().count) ?? 0
 
         return ApiProxyStatus(
             running: running,
             port: running ? runningPort : nil,
             apiKey: apiKey,
             baseURL: runningPort.map { "http://127.0.0.1:\($0)/v1" },
+            availableAccounts: availableAccounts,
             activeAccountID: activeAccountID,
             activeAccountLabel: activeAccountLabel,
             lastError: lastError

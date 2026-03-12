@@ -192,6 +192,7 @@
 "error.remote.sshpass_required" = "パスワード認証モードには sshpass が必要です";
 "error.remote.build_proxyd_failed" = "リモート用 proxyd のビルドに失敗しました";
 "error.remote.proxyd_not_found_after_build" = "ビルド後に proxyd バイナリが見つかりません";
+"error.remote.unavailable_missing_proxyd_source" = "このビルドでは src-tauri/proxyd/Cargo.toml が見つからないため、リモートデプロイ機能は利用できません。";
 "error.remote.ssh_command_failed_format" = "SSH コマンドに失敗しました: %@";
 "error.remote.scp_failed_format" = "SCP に失敗しました: %@";
 "error.proxy_runtime.invalid_port_format" = "無効なプロキシポートです: %@";

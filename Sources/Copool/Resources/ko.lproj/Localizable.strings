@@ -192,6 +192,7 @@
 "error.remote.sshpass_required" = "비밀번호 인증 모드에는 sshpass가 필요합니다";
 "error.remote.build_proxyd_failed" = "원격 proxyd 빌드에 실패했습니다";
 "error.remote.proxyd_not_found_after_build" = "빌드 후 proxyd 바이너리를 찾을 수 없습니다";
+"error.remote.unavailable_missing_proxyd_source" = "이 빌드에는 src-tauri/proxyd/Cargo.toml이 없어 원격 배포 기능을 사용할 수 없습니다.";
 "error.remote.ssh_command_failed_format" = "SSH 명령 실패: %@";
 "error.remote.scp_failed_format" = "SCP 실패: %@";
 "error.proxy_runtime.invalid_port_format" = "잘못된 프록시 포트입니다: %@";

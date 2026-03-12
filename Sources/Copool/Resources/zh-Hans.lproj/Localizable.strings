@@ -201,6 +201,7 @@
 "error.remote.sshpass_required" = "密码认证模式需要 sshpass";
 "error.remote.build_proxyd_failed" = "构建远程 proxyd 失败";
 "error.remote.proxyd_not_found_after_build" = "构建完成但未找到 proxyd 二进制";
+"error.remote.unavailable_missing_proxyd_source" = "当前构建未包含 src-tauri/proxyd/Cargo.toml，远程部署功能不可用。";
 "error.remote.ssh_command_failed_format" = "SSH 命令失败: %@";
 "error.remote.scp_failed_format" = "SCP 失败: %@";
 

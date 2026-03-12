@@ -193,6 +193,7 @@ struct ApiProxyStatus: Equatable {
     var port: Int?
     var apiKey: String?
     var baseURL: String?
+    var availableAccounts: Int
     var activeAccountID: String?
     var activeAccountLabel: String?
     var lastError: String?
@@ -202,6 +203,7 @@ struct ApiProxyStatus: Equatable {
         port: nil,
         apiKey: nil,
         baseURL: nil,
+        availableAccounts: 0,
         activeAccountID: nil,
         activeAccountLabel: nil,
         lastError: nil

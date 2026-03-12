@@ -39,7 +39,7 @@ struct ProxyPageView: View {
                     }
                     Spacer(minLength: 0)
                     Text(L10n.tr("proxy.port_line_format", model.proxyStatus.port.map(String.init) ?? "--"))
-                    Text(L10n.tr("proxy.available_accounts_format", String(model.remoteServers.count)))
+                    Text(L10n.tr("proxy.available_accounts_format", String(model.proxyStatus.availableAccounts)))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
