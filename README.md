@@ -1,6 +1,6 @@
 # Copool
 
-![Copool Icon](./Copool.png)
+<img src="./Copool.png" alt="Copool Icon" width="160" />
 
 Copool is a macOS SwiftUI app for managing Codex/ChatGPT auth accounts, usage-based smart switching, and local/remote API proxy workflows.
 
@@ -8,9 +8,9 @@ Copool 是一个 macOS SwiftUI 应用，用于管理 Codex/ChatGPT 授权账号�
 
 ## Screenshots / 截图
 
-![Accounts](./Screenshot%202026-03-12%20at%2018.27.00.png)
-![Proxy](./Screenshot%202026-03-12%20at%2018.27.16.png)
-![Settings](./Screenshot%202026-03-12%20at%2018.27.22.png)
+<img src="./Screenshot%202026-03-12%20at%2018.27.00.png" alt="Accounts" width="720" />
+<img src="./Screenshot%202026-03-12%20at%2018.27.16.png" alt="Proxy" width="720" />
+<img src="./Screenshot%202026-03-12%20at%2018.27.22.png" alt="Settings" width="720" />
 
 ## Features / 功能
 
