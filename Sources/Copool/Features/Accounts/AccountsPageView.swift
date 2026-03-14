@@ -148,6 +148,7 @@ private struct AccountCardView: View {
     let onSwitch: () -> Void
     let onDelete: () -> Void
     @Environment(\.locale) private var locale
+    @State private var isHoveringCollapsedSwitch = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: isCollapsed ? 8 : 8) {
@@ -237,6 +238,54 @@ private struct AccountCardView: View {
                 .padding(8)
             }
         }
+        .overlay {
+            if collapsedSwitchOverlayVisible {
+                Button {
+                    onSwitch()
+                } label: {
+                    VStack(spacing: 8) {
+                        if switching {
+                            ProgressView()
+                                .controlSize(.small)
+                                .scaleEffect(1.15)
+                        } else {
+                            Image(systemName: "arrow.left.arrow.right.circle.fill")
+                                .font(.system(size: 28, weight: .semibold))
+                        }
+                        Text(L10n.tr("accounts.card.switch_to_this"))
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(switching)
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .transition(.opacity)
+            }
+        }
+        .onHover { hovering in
+            guard canHoverSwitchOverlay else {
+                isHoveringCollapsedSwitch = false
+                return
+            }
+            withAnimation(.easeInOut(duration: 0.16)) {
+                isHoveringCollapsedSwitch = hovering
+            }
+        }
+    }
+
+    private var canHoverSwitchOverlay: Bool {
+        isCollapsed && !account.isCurrent
+    }
+
+    private var collapsedSwitchOverlayVisible: Bool {
+        canHoverSwitchOverlay && (isHoveringCollapsedSwitch || switching)
     }
 
     private var compactUsageSection: some View {
