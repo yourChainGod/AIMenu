@@ -73,15 +73,14 @@ struct RootScene: View {
         }
         #if os(iOS)
         .animation(.easeInOut(duration: 0.2), value: currentNotice)
-        #else
-        .overlay(alignment: .top) {
+        #endif
+        .safeAreaInset(edge: noticeInsetEdge, spacing: 0) {
             NoticeBanner(notice: currentNotice)
                 .padding(.horizontal, LayoutRules.pagePadding)
-                .padding(.top, 6)
+                .padding(noticeInsetPaddingEdge, 6)
                 .allowsHitTesting(false)
                 .zIndex(10)
         }
-        #endif
         #if os(macOS)
         .background {
             WindowSizeEnforcer(
@@ -101,6 +100,22 @@ struct RootScene: View {
         #else
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(uiColor: .systemBackground))
+        #endif
+    }
+
+    private var noticeInsetEdge: VerticalEdge {
+        #if os(iOS)
+        .bottom
+        #else
+        .top
+        #endif
+    }
+
+    private var noticeInsetPaddingEdge: Edge.Set {
+        #if os(iOS)
+        .bottom
+        #else
+        .top
         #endif
     }
 
