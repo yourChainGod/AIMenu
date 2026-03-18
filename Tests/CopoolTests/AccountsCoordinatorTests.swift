@@ -2,6 +2,145 @@ import XCTest
 @testable import Copool
 
 final class AccountsCoordinatorTests: XCTestCase {
+    func testListAccountsBackfillsWorkspaceNameFromRemoteMetadata() async throws {
+        let now: Int64 = 1_763_216_000
+        let storeRepository = InMemoryAccountsStoreRepository(
+            store: AccountsStore(
+                version: 1,
+                accounts: [
+                    StoredAccount(
+                        id: "acct-1",
+                        label: "Team",
+                        email: "test@example.com",
+                        accountID: "account-1",
+                        planType: "team",
+                        teamName: nil,
+                        teamAlias: nil,
+                        authJSON: .object([:]),
+                        addedAt: now,
+                        updatedAt: now,
+                        usage: nil,
+                        usageError: nil
+                    )
+                ],
+                currentSelection: nil,
+                settings: .defaultValue
+            )
+        )
+        let coordinator = AccountsCoordinator(
+            storeRepository: storeRepository,
+            authRepository: RemoteLookupAuthRepository(),
+            usageService: CountingUsageService(
+                result: UsageSnapshot(
+                    fetchedAt: now,
+                    planType: "team",
+                    fiveHour: nil,
+                    oneWeek: nil,
+                    credits: nil
+                )
+            ),
+            workspaceMetadataService: StubWorkspaceMetadataService(
+                metadata: [WorkspaceMetadata(accountID: "account-1", workspaceName: "remote-space", structure: "workspace")]
+            ),
+            chatGPTOAuthLoginService: StubChatGPTOAuthLoginService(),
+            codexCLIService: StubCodexCLIService(),
+            editorAppService: StubEditorAppService(),
+            opencodeAuthSyncService: StubOpencodeAuthSyncService(),
+            dateProvider: FixedDateProvider(now: now)
+        )
+
+        let accounts = try await coordinator.listAccounts()
+        let savedStore = try storeRepository.loadStore()
+
+        XCTAssertEqual(accounts.first?.teamName, "remote-space")
+        XCTAssertEqual(savedStore.accounts.first?.teamName, "remote-space")
+    }
+
+    func testListAccountsReconcilesStoredWorkspaceMetadataFromAuthJSON() async throws {
+        let now: Int64 = 1_763_216_000
+        let storeRepository = InMemoryAccountsStoreRepository(
+            store: AccountsStore(
+                version: 1,
+                accounts: [
+                    StoredAccount(
+                        id: "acct-1",
+                        label: "Test",
+                        email: nil,
+                        accountID: "account-1",
+                        planType: nil,
+                        teamName: nil,
+                        teamAlias: nil,
+                        authJSON: .object([:]),
+                        addedAt: now,
+                        updatedAt: now,
+                        usage: nil,
+                        usageError: nil
+                    )
+                ],
+                currentSelection: nil,
+                settings: .defaultValue
+            )
+        )
+        let coordinator = AccountsCoordinator(
+            storeRepository: storeRepository,
+            authRepository: StubAuthRepository(),
+            usageService: CountingUsageService(
+                result: UsageSnapshot(
+                    fetchedAt: now,
+                    planType: "team",
+                    fiveHour: nil,
+                    oneWeek: nil,
+                    credits: nil
+                )
+            ),
+            chatGPTOAuthLoginService: StubChatGPTOAuthLoginService(),
+            codexCLIService: StubCodexCLIService(),
+            editorAppService: StubEditorAppService(),
+            opencodeAuthSyncService: StubOpencodeAuthSyncService(),
+            dateProvider: FixedDateProvider(now: now)
+        )
+
+        let accounts = try await coordinator.listAccounts()
+        let savedStore = try storeRepository.loadStore()
+
+        XCTAssertEqual(accounts.first?.email, "test@example.com")
+        XCTAssertEqual(accounts.first?.planType, "pro")
+        XCTAssertEqual(accounts.first?.teamName, "workspace-x")
+        XCTAssertEqual(savedStore.accounts.first?.teamName, "workspace-x")
+    }
+
+    func testImportCurrentAuthPrefersRemoteWorkspaceMetadata() async throws {
+        let now: Int64 = 1_763_216_000
+        let storeRepository = InMemoryAccountsStoreRepository(store: AccountsStore())
+        let coordinator = AccountsCoordinator(
+            storeRepository: storeRepository,
+            authRepository: RemoteLookupAuthRepository(),
+            usageService: CountingUsageService(
+                result: UsageSnapshot(
+                    fetchedAt: now,
+                    planType: "team",
+                    fiveHour: nil,
+                    oneWeek: nil,
+                    credits: nil
+                )
+            ),
+            workspaceMetadataService: StubWorkspaceMetadataService(
+                metadata: [WorkspaceMetadata(accountID: "account-1", workspaceName: "remote-space", structure: "workspace")]
+            ),
+            chatGPTOAuthLoginService: StubChatGPTOAuthLoginService(),
+            codexCLIService: StubCodexCLIService(),
+            editorAppService: StubEditorAppService(),
+            opencodeAuthSyncService: StubOpencodeAuthSyncService(),
+            dateProvider: FixedDateProvider(now: now)
+        )
+
+        let imported = try await coordinator.importCurrentAuthAccount(customLabel: nil)
+        let savedStore = try storeRepository.loadStore()
+
+        XCTAssertEqual(imported.teamName, "remote-space")
+        XCTAssertEqual(savedStore.accounts.first?.teamName, "remote-space")
+    }
+
     func testForcedRefreshBypassesUsageThrottle() async throws {
         let now: Int64 = 1_763_216_000
         let existingUsage = UsageSnapshot(
@@ -199,6 +338,19 @@ private struct FixedDateProvider: DateProviding {
     }
 }
 
+private final class StubWorkspaceMetadataService: WorkspaceMetadataService, @unchecked Sendable {
+    private let metadata: [WorkspaceMetadata]
+
+    init(metadata: [WorkspaceMetadata]) {
+        self.metadata = metadata
+    }
+
+    func fetchWorkspaceMetadata(accessToken: String) async throws -> [WorkspaceMetadata] {
+        _ = accessToken
+        return metadata
+    }
+}
+
 private final class StubAuthRepository: AuthRepository, @unchecked Sendable {
     func readCurrentAuth() throws -> JSONValue { .null }
     func readCurrentAuthOptional() throws -> JSONValue? { nil }
@@ -221,6 +373,34 @@ private final class StubAuthRepository: AuthRepository, @unchecked Sendable {
             accessToken: "token-1",
             email: "test@example.com",
             planType: "pro",
+            teamName: "workspace-x"
+        )
+    }
+    func currentAuthAccountID() -> String? { "account-1" }
+}
+
+private final class RemoteLookupAuthRepository: AuthRepository, @unchecked Sendable {
+    func readCurrentAuth() throws -> JSONValue { .object([:]) }
+    func readCurrentAuthOptional() throws -> JSONValue? { .object([:]) }
+    func readAuth(from url: URL) throws -> JSONValue {
+        _ = url
+        return .object([:])
+    }
+    func writeCurrentAuth(_ auth: JSONValue) throws {
+        _ = auth
+    }
+    func removeCurrentAuth() throws {}
+    func makeChatGPTAuth(from tokens: ChatGPTOAuthTokens) throws -> JSONValue {
+        _ = tokens
+        return .object([:])
+    }
+    func extractAuth(from auth: JSONValue) throws -> ExtractedAuth {
+        _ = auth
+        return ExtractedAuth(
+            accountID: "account-1",
+            accessToken: "token-1",
+            email: "test@example.com",
+            planType: "team",
             teamName: nil
         )
     }
@@ -257,7 +437,7 @@ private final class RecordingAuthRepository: AuthRepository, @unchecked Sendable
             accessToken: "token-1",
             email: "test@example.com",
             planType: "pro",
-            teamName: nil
+            teamName: "workspace-x"
         )
     }
     func currentAuthAccountID() -> String? { currentAccountIDValue }

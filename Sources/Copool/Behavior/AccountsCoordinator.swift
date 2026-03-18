@@ -18,6 +18,7 @@ actor AccountsCoordinator {
     private let storeRepository: AccountsStoreRepository
     private let authRepository: AuthRepository
     private let usageService: UsageService
+    private let workspaceMetadataService: WorkspaceMetadataService?
     private let chatGPTOAuthLoginService: ChatGPTOAuthLoginServiceProtocol
     private let codexCLIService: CodexCLIServiceProtocol
     private let editorAppService: EditorAppServiceProtocol
@@ -29,6 +30,7 @@ actor AccountsCoordinator {
         storeRepository: AccountsStoreRepository,
         authRepository: AuthRepository,
         usageService: UsageService,
+        workspaceMetadataService: WorkspaceMetadataService? = nil,
         chatGPTOAuthLoginService: ChatGPTOAuthLoginServiceProtocol,
         codexCLIService: CodexCLIServiceProtocol,
         editorAppService: EditorAppServiceProtocol,
@@ -39,6 +41,7 @@ actor AccountsCoordinator {
         self.storeRepository = storeRepository
         self.authRepository = authRepository
         self.usageService = usageService
+        self.workspaceMetadataService = workspaceMetadataService
         self.chatGPTOAuthLoginService = chatGPTOAuthLoginService
         self.codexCLIService = codexCLIService
         self.editorAppService = editorAppService
@@ -47,8 +50,13 @@ actor AccountsCoordinator {
         self.runtimePlatform = runtimePlatform
     }
 
-    func listAccounts() throws -> [AccountSummary] {
-        let store = try storeRepository.loadStore()
+    func listAccounts() async throws -> [AccountSummary] {
+        var store = try storeRepository.loadStore()
+        let didReconcile = Self.reconcileStoredAccountMetadata(in: &store, authRepository: authRepository)
+        let didEnrich = await enrichStoredWorkspaceMetadataIfNeeded(in: &store, forceRemoteCheck: false)
+        if didReconcile || didEnrich {
+            try storeRepository.saveStore(store)
+        }
         let currentAccountID = authRepository.currentAuthAccountID()
         return store.accountSummaries(currentAccountID: currentAccountID)
     }
@@ -79,7 +87,10 @@ actor AccountsCoordinator {
 
     @discardableResult
     private func importAccount(authJSON: JSONValue, customLabel: String?) async throws -> AccountSummary {
-        let extracted = try authRepository.extractAuth(from: authJSON)
+        var extracted = try authRepository.extractAuth(from: authJSON)
+        if let remoteWorkspaceName = await resolveRemoteWorkspaceName(for: extracted, forceRemoteCheck: true) {
+            extracted.teamName = remoteWorkspaceName
+        }
 
         var usage: UsageSnapshot?
         var usageError: String?
@@ -176,15 +187,15 @@ actor AccountsCoordinator {
         )
     }
 
-    func smartSwitch() throws -> (AccountSummary, SwitchAccountExecutionResult)? {
-        let sorted = AccountRanking.sortByRemaining(try listAccounts())
+    func smartSwitch() async throws -> (AccountSummary, SwitchAccountExecutionResult)? {
+        let sorted = AccountRanking.sortByRemaining(try await listAccounts())
         guard let best = sorted.first else { return nil }
         let execution = try switchAccountAndApplySettings(id: best.id)
         return (best, execution)
     }
 
-    func autoSmartSwitchIfNeeded() throws -> (AccountSummary, SwitchAccountExecutionResult)? {
-        let accounts = try listAccounts()
+    func autoSmartSwitchIfNeeded() async throws -> (AccountSummary, SwitchAccountExecutionResult)? {
+        let accounts = try await listAccounts()
         guard let target = AccountRanking.pickAutoSwitchTarget(accounts) else {
             return nil
         }
@@ -279,6 +290,7 @@ actor AccountsCoordinator {
             return merged
         }
 
+        _ = await enrichStoredWorkspaceMetadataIfNeeded(in: &latest, forceRemoteCheck: force)
         try storeRepository.saveStore(latest)
 
         return latest.accountSummaries(currentAccountID: authRepository.currentAuthAccountID())
@@ -313,6 +325,146 @@ actor AccountsCoordinator {
 
         account.updatedAt = now
         return account
+    }
+
+    private static func reconcileStoredAccountMetadata(
+        in store: inout AccountsStore,
+        authRepository: AuthRepository
+    ) -> Bool {
+        var didChange = false
+
+        for index in store.accounts.indices {
+            let storedAccount = store.accounts[index]
+            guard let reconciled = try? authRepository.extractAuth(from: storedAccount.authJSON) else {
+                continue
+            }
+
+            if store.accounts[index].email != reconciled.email {
+                store.accounts[index].email = reconciled.email
+                didChange = true
+            }
+
+            if store.accounts[index].planType != reconciled.planType {
+                store.accounts[index].planType = reconciled.planType
+                didChange = true
+            }
+
+            if store.accounts[index].teamName != reconciled.teamName {
+                store.accounts[index].teamName = reconciled.teamName
+                didChange = true
+            }
+        }
+
+        return didChange
+    }
+
+    private func enrichStoredWorkspaceMetadataIfNeeded(
+        in store: inout AccountsStore,
+        forceRemoteCheck: Bool
+    ) async -> Bool {
+        guard let workspaceMetadataService else { return false }
+
+        var didChange = false
+        var cachedDirectories: [String: [WorkspaceMetadata]] = [:]
+
+        for index in store.accounts.indices {
+            let storedAccount = store.accounts[index]
+            guard let extracted = try? authRepository.extractAuth(from: storedAccount.authJSON) else {
+                continue
+            }
+            guard shouldLookupRemoteWorkspaceName(
+                storedTeamName: storedAccount.teamName,
+                extracted: extracted,
+                forceRemoteCheck: forceRemoteCheck
+            ) else {
+                continue
+            }
+
+            let directory: [WorkspaceMetadata]
+            if let cached = cachedDirectories[extracted.accessToken] {
+                directory = cached
+            } else {
+                guard let fetched = try? await workspaceMetadataService.fetchWorkspaceMetadata(
+                    accessToken: extracted.accessToken
+                ) else {
+                    continue
+                }
+                cachedDirectories[extracted.accessToken] = fetched
+                directory = fetched
+            }
+
+            guard let remoteWorkspaceName = Self.remoteWorkspaceName(
+                for: extracted.accountID,
+                in: directory
+            ) else {
+                continue
+            }
+
+            if store.accounts[index].teamName != remoteWorkspaceName {
+                store.accounts[index].teamName = remoteWorkspaceName
+                didChange = true
+            }
+        }
+
+        return didChange
+    }
+
+    private func resolveRemoteWorkspaceName(
+        for extracted: ExtractedAuth,
+        forceRemoteCheck: Bool
+    ) async -> String? {
+        guard let workspaceMetadataService else { return nil }
+        guard shouldLookupRemoteWorkspaceName(
+            storedTeamName: extracted.teamName,
+            extracted: extracted,
+            forceRemoteCheck: forceRemoteCheck
+        ) else {
+            return extracted.teamName
+        }
+        guard let directory = try? await workspaceMetadataService.fetchWorkspaceMetadata(
+            accessToken: extracted.accessToken
+        ) else {
+            return extracted.teamName
+        }
+        return Self.remoteWorkspaceName(for: extracted.accountID, in: directory) ?? extracted.teamName
+    }
+
+    private func shouldLookupRemoteWorkspaceName(
+        storedTeamName: String?,
+        extracted: ExtractedAuth,
+        forceRemoteCheck: Bool
+    ) -> Bool {
+        let normalizedPlan = (extracted.planType ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard normalizedPlan == "team" || normalizedPlan == "business" || normalizedPlan == "enterprise" else {
+            return false
+        }
+        return forceRemoteCheck || normalizedTeamName(storedTeamName) == nil
+    }
+
+    private func normalizedTeamName(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func remoteWorkspaceName(
+        for accountID: String,
+        in metadata: [WorkspaceMetadata]
+    ) -> String? {
+        guard let match = metadata.first(where: { $0.accountID == accountID }) else {
+            return nil
+        }
+
+        let trimmed = match.workspaceName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let trimmed, !trimmed.isEmpty else {
+            return nil
+        }
+
+        if match.structure?.lowercased() == "personal" {
+            return nil
+        }
+
+        return trimmed
     }
 
     private func toSummary(_ account: StoredAccount, currentAccountID: String?) -> AccountSummary {

@@ -149,6 +149,12 @@ struct ExtractedAuth: Equatable {
     var teamName: String?
 }
 
+struct WorkspaceMetadata: Equatable, Sendable {
+    var accountID: String
+    var workspaceName: String?
+    var structure: String?
+}
+
 struct ChatGPTOAuthTokens: Equatable, Sendable {
     var accessToken: String
     var refreshToken: String

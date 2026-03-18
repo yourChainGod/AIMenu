@@ -15,6 +15,7 @@ struct AppContainer {
             let authRepository = AuthFileRepository(paths: paths)
             let initialStore = try storeRepository.loadStore()
             let usageService = DefaultUsageService(configPath: paths.codexConfigPath)
+            let workspaceMetadataService = DefaultWorkspaceMetadataService(configPath: paths.codexConfigPath)
             let proxyService = SwiftNativeProxyRuntimeService(
                 paths: paths,
                 storeRepository: storeRepository,
@@ -47,6 +48,7 @@ struct AppContainer {
                 storeRepository: storeRepository,
                 authRepository: authRepository,
                 usageService: usageService,
+                workspaceMetadataService: workspaceMetadataService,
                 chatGPTOAuthLoginService: chatGPTOAuthLoginService,
                 codexCLIService: codexCLIService,
                 editorAppService: editorAppService,

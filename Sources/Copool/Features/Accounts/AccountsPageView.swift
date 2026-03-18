@@ -326,17 +326,10 @@ private struct AccountCardView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
-                        stamp(text: planLabel, tint: toneColor.opacity(0.18), fg: toneColor)
-                        if account.isCurrent {
-                            stamp(
-                                text: L10n.tr("accounts.card.current"),
-                                tint: toneColor.opacity(0.24),
-                                fg: toneColor
-                            )
+                        stamp(text: planLabel, tint: planTagTint, fg: planTagForeground)
+                        if !isCollapsed, let teamNameTag {
+                            stamp(text: teamNameTag, tint: workspaceTagTint, fg: workspaceTagForeground)
                         }
-                    }
-                    if !isCollapsed, let teamNameTag {
-                        stamp(text: teamNameTag, tint: Color.secondary.opacity(0.16), fg: .secondary, maxWidth: 140)
                     }
                 }
 
@@ -359,7 +352,8 @@ private struct AccountCardView: View {
             Text(displayAccountName)
                 .font(.headline)
                 .foregroundStyle(account.isCurrent ? toneColor : .primary)
-                .lineLimit(1)
+                .lineLimit(isCollapsed ? 1 : 2)
+                .fixedSize(horizontal: false, vertical: true)
                 .truncationMode(.tail)
 
             if isCollapsed {
@@ -372,7 +366,7 @@ private struct AccountCardView: View {
                     Text(L10n.tr("accounts.card.credits_format", creditsText))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .padding(.trailing, account.isCurrent ? 0 : 42)
+                        .padding(.trailing, bottomTrailingOverlayInset)
                     Spacer(minLength: 0)
                 }
 
@@ -386,34 +380,44 @@ private struct AccountCardView: View {
         }
         .padding(isCollapsed ? 8 : 10)
         .cardSurface(
-            cornerRadius: 12
+            cornerRadius: 12,
+            tint: currentCardSurfaceTint
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(account.isCurrent ? toneColor.opacity(0.45) : .clear, lineWidth: 1)
         )
         .overlay(alignment: .bottomTrailing) {
-            if !isCollapsed, !account.isCurrent {
-                Button {
-                    onSwitch()
-                } label: {
-                    if switching {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "arrow.left.arrow.right.circle.fill")
-                            .font(.system(size: 14, weight: .semibold))
+            if !isCollapsed {
+                if account.isCurrent {
+                    stamp(
+                        text: L10n.tr("accounts.card.current"),
+                        tint: toneColor.opacity(0.24),
+                        fg: toneColor
+                    )
+                    .padding(8)
+                } else {
+                    Button {
+                        onSwitch()
+                    } label: {
+                        if switching {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.left.arrow.right.circle.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
                     }
+                    .copoolActionButtonStyle(
+                        prominent: true,
+                        tint: .mint,
+                        density: .compact,
+                        iOSStyle: .liquidGlass
+                    )
+                    .disabled(switching)
+                    .accessibilityLabel(Text(L10n.tr("accounts.card.switch_to_this")))
+                    .padding(8)
                 }
-                .copoolActionButtonStyle(
-                    prominent: true,
-                    tint: .mint,
-                    density: .compact,
-                    iOSStyle: .liquidGlass
-                )
-                .disabled(switching)
-                .accessibilityLabel(Text(L10n.tr("accounts.card.switch_to_this")))
-                .padding(8)
             }
         }
         .overlay {
@@ -567,15 +571,42 @@ private struct AccountCardView: View {
         }
     }
 
+    private var planTagTint: Color {
+        toneColor.opacity(0.18)
+    }
+
+    private var planTagForeground: Color {
+        toneColor
+    }
+
+    private var workspaceTagTint: Color {
+        toneColor.opacity(0.18)
+    }
+
+    private var workspaceTagForeground: Color {
+        toneColor
+    }
+
+    private var currentCardSurfaceTint: Color? {
+        guard account.isCurrent else { return nil }
+        return .teal.opacity(0.14)
+    }
+
     private var creditsText: String {
         guard let credits = account.usage?.credits else { return "--" }
         if credits.unlimited { return L10n.tr("accounts.card.unlimited") }
         return credits.balance ?? "--"
     }
 
+    private var bottomTrailingOverlayInset: CGFloat {
+        isCollapsed ? 0 : 64
+    }
+
     private var displayAccountName: String {
         let raw = (account.email ?? account.accountID).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let atIndex = raw.firstIndex(of: "@"), atIndex > raw.startIndex else {
+        guard isCollapsed,
+              let atIndex = raw.firstIndex(of: "@"),
+              atIndex > raw.startIndex else {
             return raw
         }
         return String(raw[..<atIndex])
@@ -589,7 +620,8 @@ private struct AccountCardView: View {
             .foregroundStyle(fg)
             .lineLimit(1)
             .truncationMode(.tail)
-            .frame(maxWidth: maxWidth)
+            .fixedSize(horizontal: true, vertical: false)
+            .frame(maxWidth: maxWidth, alignment: .leading)
             .background(tint, in: Capsule())
     }
 

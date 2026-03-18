@@ -20,6 +20,10 @@ protocol UsageService: Sendable {
     func fetchUsage(accessToken: String, accountID: String) async throws -> UsageSnapshot
 }
 
+protocol WorkspaceMetadataService: Sendable {
+    func fetchWorkspaceMetadata(accessToken: String) async throws -> [WorkspaceMetadata]
+}
+
 protocol DateProviding: Sendable {
     func unixSecondsNow() -> Int64
     func unixMillisecondsNow() -> Int64

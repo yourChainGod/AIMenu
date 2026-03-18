@@ -25,6 +25,7 @@
 		16AF52DED4DD5AE588B64368 /* usage.rs in Resources */ = {isa = PBXBuildFile; fileRef = 2A597D670A72CDE27C08D586 /* usage.rs */; };
 		17D19163BCCA0B5770E5BDE0 /* LayoutRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE624821FB137E8DB3711AD /* LayoutRules.swift */; };
 		17EFD9B9B9CF5294FD765876 /* RemoteProxyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36D2D735CB5E1753FB0DE639 /* RemoteProxyService.swift */; };
+		1856A9A4C1A74A8AA16A8B01 /* ChatGPTBaseOriginResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1856A9A4C1A74A8AA16A8B11 /* ChatGPTBaseOriginResolver.swift */; };
 		183F30DA3314F21DE014B4DA /* Protocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42479015F84989E486D80B6E /* Protocols.swift */; };
 		18828CB243BB1936642EF79E /* ProxyCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2843DB9CB43284AFB2E5A459 /* ProxyCoordinator.swift */; };
 		1F1C9208D0A5D10C5CDAD667 /* AuthFileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7296C82EB9955D9DB121C940 /* AuthFileRepository.swift */; };
@@ -82,6 +83,7 @@
 		92D4545930140988AE210FB7 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DEC342D5FDC9541EA737668 /* AppContainer.swift */; };
 		92F681D52C5A373D81950C05 /* AuthFileRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1659877DCD8B9150D665ED12 /* AuthFileRepositoryTests.swift */; };
 		93F291DBC9FD57E847EB6519 /* AppLocale.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E2CF5AE0B544874B721FCC /* AppLocale.swift */; };
+		95E85D9244A64A8BB6AB5F21 /* DefaultWorkspaceMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E85D9244A64A8BB6AB5F11 /* DefaultWorkspaceMetadataService.swift */; };
 		98E465C8F8BAA05142221C0D /* ProxyPageModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B56AEDF3689EA6421720B2 /* ProxyPageModelTests.swift */; };
 		9BE1D9951912C722CF37BC67 /* SettingsPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B61BD243C65F84D47C5E07 /* SettingsPageView.swift */; };
 		9D0B3515E30738EDF7632D4C /* CloudflaredService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C139AC44A9986277E75FA765 /* CloudflaredService.swift */; };
@@ -89,6 +91,7 @@
 		9F3B31646881F65BD82BC5C9 /* UpdateCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3340D9F24E63B0B31749E2 /* UpdateCoordinator.swift */; };
 		A238A15D23DD7B2C487395E8 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3692DEACD953D34AF240F6ED /* EmptyStateView.swift */; };
 		A39DE0252B7DE1B089DB14D1 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DEC342D5FDC9541EA737668 /* AppContainer.swift */; };
+		A9BC31EC4BA9427A9F554D41 /* ChatGPTBaseOriginResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1856A9A4C1A74A8AA16A8B11 /* ChatGPTBaseOriginResolver.swift */; };
 		A424BDF59166CC90A66E1440 /* CloudKitProxyControlSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE79C51EC921338AEDF0087 /* CloudKitProxyControlSyncService.swift */; };
 		A51D86224EB1B396D456139F /* Copool.icon in Resources */ = {isa = PBXBuildFile; fileRef = 97D79696C6A34BCD8B3C05C1 /* Copool.icon */; };
 		A7144A42D2FC21D789B3FB49 /* AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8644DF48AF768B1D855A3404 /* AppError.swift */; };
@@ -136,6 +139,7 @@
 		F601B3FC2AA0F91B92B239CF /* CloudKitProxyControlSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE79C51EC921338AEDF0087 /* CloudKitProxyControlSyncService.swift */; };
 		F635C2F6E45001C58269D204 /* UpdateCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3340D9F24E63B0B31749E2 /* UpdateCoordinator.swift */; };
 		FA624CCECA28D7F68B1C0FF8 /* DefaultUsageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD2673A9712C55D302564FA /* DefaultUsageService.swift */; };
+		FA8F4B3E19ED4AA8B7740F31 /* DefaultWorkspaceMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E85D9244A64A8BB6AB5F11 /* DefaultWorkspaceMetadataService.swift */; };
 		FA836AB28B6E7F72C253A49F /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38BD5BE0A332BCE32A46A463 /* AppVersion.swift */; };
 		FAF80D77474CF43421294E86 /* OpenAIChatGPTOAuthLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4F7246044D6E322F548D954 /* OpenAIChatGPTOAuthLoginService.swift */; };
 		FBB66ADD684E1C948FB611E4 /* AccountsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975800F0AD21824941F02AD3 /* AccountsCoordinator.swift */; };
@@ -166,6 +170,7 @@
 		1302CF1943B5AEB08D667C6E /* SwiftNativeProxyRuntimeServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftNativeProxyRuntimeServiceTests.swift; sourceTree = "<group>"; };
 		1659877DCD8B9150D665ED12 /* AuthFileRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFileRepositoryTests.swift; sourceTree = "<group>"; };
 		17E5EFBA0AA212B32AAB6710 /* RepositoryLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryLocator.swift; sourceTree = "<group>"; };
+		1856A9A4C1A74A8AA16A8B11 /* ChatGPTBaseOriginResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatGPTBaseOriginResolver.swift; sourceTree = "<group>"; };
 		1928844F787DAA8E86F1AE1A /* PlatformCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformCapabilities.swift; sourceTree = "<group>"; };
 		1D518BC8C9103B4FD9C16B27 /* FileSystemPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemPaths.swift; sourceTree = "<group>"; };
 		1D7A8A652AC27A5594E0C9A7 /* Cargo.lock */ = {isa = PBXFileReference; lastKnownFileType = text; path = Cargo.lock; sourceTree = "<group>"; };
@@ -173,6 +178,7 @@
 		251BC10FF4D8538941CDC174 /* LocalizationConsistencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationConsistencyTests.swift; sourceTree = "<group>"; };
 		2843DB9CB43284AFB2E5A459 /* ProxyCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyCoordinator.swift; sourceTree = "<group>"; };
 		28E2CF5AE0B544874B721FCC /* AppLocale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocale.swift; sourceTree = "<group>"; };
+		95E85D9244A64A8BB6AB5F11 /* DefaultWorkspaceMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultWorkspaceMetadataService.swift; sourceTree = "<group>"; };
 		2A597D670A72CDE27C08D586 /* usage.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = usage.rs; sourceTree = "<group>"; };
 		2D0007E157CB217C0A6DD1E7 /* StoreFileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreFileRepository.swift; sourceTree = "<group>"; };
 		2DD2673A9712C55D302564FA /* DefaultUsageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultUsageService.swift; sourceTree = "<group>"; };
@@ -266,11 +272,13 @@
 			isa = PBXGroup;
 			children = (
 				7296C82EB9955D9DB121C940 /* AuthFileRepository.swift */,
+				1856A9A4C1A74A8AA16A8B11 /* ChatGPTBaseOriginResolver.swift */,
 				C139AC44A9986277E75FA765 /* CloudflaredService.swift */,
 				C3EDE31E67420C42E3AC9BEA /* CloudKitAccountsSyncService.swift */,
 				3DE79C51EC921338AEDF0087 /* CloudKitProxyControlSyncService.swift */,
 				3EB01EB2A0408FB4CA84CDEE /* CodexCLIService.swift */,
 				2DD2673A9712C55D302564FA /* DefaultUsageService.swift */,
+				95E85D9244A64A8BB6AB5F11 /* DefaultWorkspaceMetadataService.swift */,
 				C5358263820EB410620C79AB /* EditorAppService.swift */,
 				1D518BC8C9103B4FD9C16B27 /* FileSystemPaths.swift */,
 				2E875E904D3ADACBDBF66C1D /* GitHubUpdateService.swift */,
@@ -671,11 +679,13 @@
 				F0B4BA3CE7B4F62FD92B6B34 /* AppVersion.swift in Sources */,
 				1F1C9208D0A5D10C5CDAD667 /* AuthFileRepository.swift in Sources */,
 				1303FD162740AF0E44CECFC8 /* CloudKitAccountsSyncService.swift in Sources */,
+				1856A9A4C1A74A8AA16A8B01 /* ChatGPTBaseOriginResolver.swift in Sources */,
 				A424BDF59166CC90A66E1440 /* CloudKitProxyControlSyncService.swift in Sources */,
 				9D0B3515E30738EDF7632D4C /* CloudflaredService.swift in Sources */,
 				7F7F4D7C5731DDD5BE8A678A /* CodexCLIService.swift in Sources */,
 				7E44D47F24B62A4A64EC484A /* CopoolApp.swift in Sources */,
 				28464FC2C552B7CB68639A06 /* DefaultUsageService.swift in Sources */,
+				95E85D9244A64A8BB6AB5F21 /* DefaultWorkspaceMetadataService.swift in Sources */,
 				267F23472E977B357C72D227 /* EditorAppService.swift in Sources */,
 				A238A15D23DD7B2C487395E8 /* EmptyStateView.swift in Sources */,
 				019AD726EBC45FE0E21B4AAF /* FileSystemPaths.swift in Sources */,
@@ -750,11 +760,13 @@
 				FA836AB28B6E7F72C253A49F /* AppVersion.swift in Sources */,
 				53243CFFBC40F306DCE9ED45 /* AuthFileRepository.swift in Sources */,
 				CB7EB00A1B25949322B736FA /* CloudKitAccountsSyncService.swift in Sources */,
+				A9BC31EC4BA9427A9F554D41 /* ChatGPTBaseOriginResolver.swift in Sources */,
 				F601B3FC2AA0F91B92B239CF /* CloudKitProxyControlSyncService.swift in Sources */,
 				8A97DF56318AACE5DA7A07A7 /* CloudflaredService.swift in Sources */,
 				341FC56FB803E4544D4928E3 /* CodexCLIService.swift in Sources */,
 				39796A30063610AC0A5579C5 /* CopoolApp.swift in Sources */,
 				FA624CCECA28D7F68B1C0FF8 /* DefaultUsageService.swift in Sources */,
+				FA8F4B3E19ED4AA8B7740F31 /* DefaultWorkspaceMetadataService.swift in Sources */,
 				CA37BD95DACA443113BF6EC6 /* EditorAppService.swift in Sources */,
 				C0040E924E495A9B4DCF7EBE /* EmptyStateView.swift in Sources */,
 				D0D721335F066D21AAAD652D /* FileSystemPaths.swift in Sources */,
@@ -835,7 +847,7 @@
 				CODE_SIGN_ENTITLEMENTS = Copool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = KLU8GF65GP;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -856,7 +868,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.alick.copool;
 				PRODUCT_NAME = Copool;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
@@ -877,7 +889,7 @@
 				CODE_SIGN_ENTITLEMENTS = Copool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = KLU8GF65GP;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -898,7 +910,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.alick.copool;
 				PRODUCT_NAME = Copool;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
@@ -938,7 +950,7 @@
 				CODE_SIGN_ENTITLEMENTS = CopooliOS.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = KLU8GF65GP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Copool;
@@ -953,7 +965,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.copool.app.ios;
 				PRODUCT_NAME = Copool;
 				SDKROOT = iphoneos;
@@ -1095,7 +1107,7 @@
 				CODE_SIGN_ENTITLEMENTS = CopooliOS.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = KLU8GF65GP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Copool;
@@ -1110,7 +1122,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.copool.app.ios;
 				PRODUCT_NAME = Copool;
 				SDKROOT = iphoneos;

@@ -1133,6 +1133,7 @@ struct FrostedCapsuleButtonStyle: ButtonStyle {
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
             .frame(minHeight: minimumHeight)
+            .contentShape(Capsule())
             .background(buttonBackground)
             .overlay {
                 Capsule()

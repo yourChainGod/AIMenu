@@ -55,7 +55,7 @@ final class DefaultUsageService: UsageService, @unchecked Sendable {
     }
 
     private func resolveUsageURLs() -> [String] {
-        let baseOrigin = resolveChatGPTBaseOrigin()
+        let baseOrigin = ChatGPTBaseOriginResolver.resolve(configPath: configPath)
         let backendPrefix = "/backend-api"
         let whamPath = "/wham/usage"
         let codexPath = "/api/codex/usage"
@@ -79,26 +79,6 @@ final class DefaultUsageService: UsageService, @unchecked Sendable {
             deduped.append(candidate)
         }
         return deduped
-    }
-
-    private func resolveChatGPTBaseOrigin() -> String {
-        guard let raw = try? String(contentsOf: configPath, encoding: .utf8), !raw.isEmpty else {
-            return "https://chatgpt.com"
-        }
-
-        for line in raw.split(whereSeparator: { $0.isNewline }) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard trimmed.hasPrefix("chatgpt_base_url") else { continue }
-            guard let equalIndex = trimmed.firstIndex(of: "=") else { continue }
-            let value = trimmed[trimmed.index(after: equalIndex)...]
-                .trimmingCharacters(in: .whitespaces)
-                .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
-            if !value.isEmpty {
-                return value.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            }
-        }
-
-        return "https://chatgpt.com"
     }
 
     private func mapPayload(_ payload: UsageAPIResponse) -> UsageSnapshot {
