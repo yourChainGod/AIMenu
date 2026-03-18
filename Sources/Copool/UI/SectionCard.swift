@@ -146,7 +146,7 @@ struct CardSurfaceModifier: ViewModifier {
             .background { backgroundSurface }
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(separatorColor, lineWidth: 1)
+                    .strokeBorder(separatorColor, lineWidth: 1)
             )
     }
 
@@ -216,7 +216,7 @@ private struct FrostedCapsuleSurfaceModifier: ViewModifier {
             .background { backgroundSurface }
             .overlay {
                 Capsule()
-                    .stroke(FrostedChromeTokens.separatorColor.opacity(prominent ? 0.85 : 1), lineWidth: 1)
+                    .strokeBorder(FrostedChromeTokens.separatorColor.opacity(prominent ? 0.85 : 1), lineWidth: 1)
             }
     }
 
@@ -246,7 +246,7 @@ private struct FrostedRoundedSurfaceModifier: ViewModifier {
             .background { backgroundSurface }
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(FrostedChromeTokens.separatorColor.opacity(prominent ? 0.85 : 1), lineWidth: 1)
+                    .strokeBorder(FrostedChromeTokens.separatorColor.opacity(prominent ? 0.85 : 1), lineWidth: 1)
             }
     }
 
@@ -291,7 +291,7 @@ private struct GlassSelectableCardModifier: ViewModifier {
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(
+                    .strokeBorder(
                         selected
                             ? tint.opacity(0.44)
                             : FrostedChromeTokens.separatorColor.opacity(0.7),
@@ -1136,7 +1136,7 @@ struct FrostedCapsuleButtonStyle: ButtonStyle {
             .background(buttonBackground)
             .overlay {
                 Capsule()
-                    .stroke(separatorColor, lineWidth: 1)
+                    .strokeBorder(separatorColor, lineWidth: 1)
             }
             .opacity(isEnabled ? 1 : 0.45)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)

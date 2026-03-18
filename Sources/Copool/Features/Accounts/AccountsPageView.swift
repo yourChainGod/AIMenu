@@ -390,7 +390,7 @@ private struct AccountCardView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(account.isCurrent ? toneColor.opacity(0.45) : .clear, lineWidth: 1)
+                .strokeBorder(account.isCurrent ? toneColor.opacity(0.45) : .clear, lineWidth: 1)
         )
         .overlay(alignment: .bottomTrailing) {
             if !isCollapsed, !account.isCurrent {
@@ -423,7 +423,7 @@ private struct AccountCardView: View {
                         .fill(.regularMaterial)
                         .overlay {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
+                                .strokeBorder(Color.secondary.opacity(0.22), lineWidth: 1)
                         }
                         .onTapGesture {
                             dismissCollapsedSwitchOverlay()
