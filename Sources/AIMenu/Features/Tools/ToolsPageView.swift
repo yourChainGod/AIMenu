@@ -4,19 +4,25 @@ import AppKit
 struct ToolsPageView: View {
     @ObservedObject var model: ToolsPageModel
 
+    @State private var servicesExpanded = true
     @State private var mcpExpanded = true
     @State private var promptsExpanded = true
     @State private var skillsExpanded = true
     @State private var showMCPPresets = false
-    @State private var showAddPrompt = false
-    @State private var newPromptName = ""
-    @State private var newPromptContent = ""
+    @State private var showMCPForm = false
+    @State private var editingMCPServer: MCPServer?
+    @State private var showPromptEditor = false
+    @State private var editingPrompt: Prompt?
+    @State private var showSkillRepoEditor = false
     @State private var hoveredMCPServer: String? = nil
     @State private var hoveredPrompt: String? = nil
+    @State private var hoveredSkill: String? = nil
+    @State private var hoveredDiscoverableSkill: String? = nil
 
     var body: some View {
         ScrollView {
             VStack(spacing: LayoutRules.sectionSpacing) {
+                servicesSection
                 mcpSection
                 promptsSection
                 skillsSection
@@ -25,6 +31,298 @@ struct ToolsPageView: View {
         }
         .scrollIndicators(.hidden)
         .task { await model.load() }
+        .sheet(isPresented: $showMCPForm) {
+            MCPServerEditorSheet(
+                server: editingMCPServer,
+                onSave: { server in
+                    Task { await model.saveMCPServer(server) }
+                    showMCPForm = false
+                    editingMCPServer = nil
+                },
+                onCancel: {
+                    showMCPForm = false
+                    editingMCPServer = nil
+                }
+            )
+            .frame(width: 700, height: 680)
+        }
+        .sheet(isPresented: $showPromptEditor) {
+            PromptEditorSheet(
+                appType: model.selectedPromptApp,
+                prompt: editingPrompt,
+                onSave: { name, content in
+                    Task {
+                        if let editingPrompt {
+                            var updated = editingPrompt
+                            updated.name = name
+                            updated.content = content
+                            await model.updatePrompt(updated)
+                        } else {
+                            await model.addPrompt(name: name, content: content)
+                        }
+                    }
+                    showPromptEditor = false
+                    editingPrompt = nil
+                },
+                onCancel: {
+                    showPromptEditor = false
+                    editingPrompt = nil
+                }
+            )
+            .frame(width: 640, height: 500)
+        }
+        .sheet(isPresented: $showSkillRepoEditor) {
+            SkillRepoEditorSheet(
+                onSave: { owner, name, branch in
+                    Task { await model.addSkillRepo(owner: owner, name: name, branch: branch) }
+                    showSkillRepoEditor = false
+                },
+                onCancel: {
+                    showSkillRepoEditor = false
+                }
+            )
+            .frame(width: 520, height: 320)
+        }
+    }
+
+    // MARK: - Managed Services
+
+    private var servicesSection: some View {
+        SectionCard(
+            title: "本地服务",
+            icon: "switch.2",
+            iconColor: .teal,
+            headerTrailing: {
+                HStack(spacing: 6) {
+                    Button {
+                        Task { await model.refreshManagedToolStatus() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("刷新本地服务状态")
+
+                    CollapseChevronButton(isExpanded: servicesExpanded) {
+                        withAnimation(.easeInOut(duration: 0.2)) { servicesExpanded.toggle() }
+                    }
+                }
+            }
+        ) {
+            if servicesExpanded {
+                VStack(spacing: 12) {
+                    cursor2APIServiceCard
+                    portToolsCard
+                }
+            }
+        }
+    }
+
+    private var cursor2APIServiceCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.blue.opacity(0.12))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: "bolt.horizontal.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.blue)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text("Cursor2API")
+                            .font(.headline)
+                        ToolsStatusBadge(
+                            text: model.cursor2APIStatus.running ? "运行中" : (model.cursor2APIStatus.installed ? "已安装" : "未安装"),
+                            tint: model.cursor2APIStatus.running ? Color.mint : Color.secondary
+                        )
+                    }
+                    Text("按默认配置托管 `cursor2api-go`，并一键切到 Claude Code 本地桥接。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                VStack(alignment: .trailing, spacing: 6) {
+                    if let path = model.cursor2APIStatus.binaryPath {
+                        Text(path)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    Text(model.cursor2APIStatus.baseURL)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack(spacing: 8) {
+                serviceMetric(title: "端口", value: "\(model.cursor2APIStatus.port)", tint: .blue)
+                serviceMetric(title: "API Key", value: maskedSecret(model.cursor2APIStatus.apiKey), tint: .mint)
+                serviceMetric(
+                    title: "模型",
+                    value: model.cursor2APIStatus.models.first ?? "claude-sonnet-4.6",
+                    tint: .secondary
+                )
+            }
+
+            if let error = model.cursor2APIStatus.lastError?.trimmedNonEmpty {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            HStack(spacing: 8) {
+                Button(model.cursor2APIStatus.installed ? "重新安装" : "安装") {
+                    Task { await model.installCursor2API() }
+                }
+                .aimenuActionButtonStyle(density: .compact)
+
+                if model.cursor2APIStatus.running {
+                    Button("停止") {
+                        Task { await model.stopCursor2API() }
+                    }
+                    .aimenuActionButtonStyle(prominent: true, tint: .red, density: .compact)
+                } else {
+                    Button("启动") {
+                        Task { await model.startCursor2API() }
+                    }
+                    .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
+                    .disabled(!model.cursor2APIStatus.installed)
+                }
+
+                Button("应用到 Claude") {
+                    Task { await model.applyCursor2APIToClaude() }
+                }
+                .aimenuActionButtonStyle(prominent: true, tint: .mint, density: .compact)
+                .disabled(!model.cursor2APIStatus.running)
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 8) {
+                    if let logPath = model.cursor2APIStatus.logPath {
+                        Button("日志") {
+                            NSWorkspace.shared.selectFile(logPath, inFileViewerRootedAtPath: "")
+                        }
+                        .aimenuActionButtonStyle(density: .compact)
+                    }
+
+                    if let configPath = model.cursor2APIStatus.configPath {
+                        Button("配置") {
+                            NSWorkspace.shared.selectFile(configPath, inFileViewerRootedAtPath: "")
+                        }
+                        .aimenuActionButtonStyle(density: .compact)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .cardSurface(cornerRadius: 14, tint: Color.blue.opacity(0.05))
+    }
+
+    private var portToolsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("端口工具")
+                        .font(.headline)
+                    Text("常用端口占用、一键释放、临时关注。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 8) {
+                TextField("添加端口", text: $model.customPortText)
+                    .textFieldStyle(.plain)
+                    .font(.caption.monospaced())
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.primary.opacity(0.05))
+                    )
+                    .frame(width: 110)
+
+                Button("关注") {
+                    Task { await model.addTrackedPort() }
+                }
+                .aimenuActionButtonStyle(density: .compact)
+
+                Spacer(minLength: 0)
+            }
+
+            VStack(spacing: 6) {
+                ForEach(model.trackedPorts) { status in
+                    portStatusRow(status)
+                }
+            }
+        }
+        .padding(14)
+        .cardSurface(cornerRadius: 14, tint: Color.orange.opacity(0.05))
+    }
+
+    private func portStatusRow(_ status: ManagedPortStatus) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(status.occupied ? Color.orange : Color.mint)
+                .frame(width: 8, height: 8)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(portTitle(for: status.port))
+                    .font(.subheadline.weight(.medium))
+                Text(status.occupied
+                     ? "\(status.command ?? "未知进程") · PID \(status.processID.map(String.init) ?? "—")"
+                     : "当前空闲")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            if status.occupied {
+                Button("释放端口") {
+                    Task { await model.killPort(status.port) }
+                }
+                .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
+
+                if !isDefaultTrackedPort(status.port) {
+                    Button {
+                        Task { await model.removeTrackedPort(status.port) }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2.weight(.bold))
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("移除此端口")
+                }
+            } else {
+                Text("空闲")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.mint)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.mint.opacity(0.12), in: Capsule())
+
+                if !isDefaultTrackedPort(status.port) {
+                    Button {
+                        Task { await model.removeTrackedPort(status.port) }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2.weight(.bold))
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("移除此端口")
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     // MARK: - MCP Servers
@@ -39,10 +337,27 @@ struct ToolsPageView: View {
                     Button {
                         withAnimation(.spring(duration: 0.25)) { showMCPPresets.toggle() }
                     } label: {
-                        Image(systemName: showMCPPresets ? "xmark" : "plus")
+                        Image(systemName: showMCPPresets ? "square.grid.2x2.fill" : "square.grid.2x2")
                     }
                     .liquidGlassActionButtonStyle(density: .compact)
-                    .help(showMCPPresets ? "收起预设" : "添加 MCP 服务器")
+                    .help(showMCPPresets ? "预设已展开" : "显示 MCP 预设")
+
+                    Button {
+                        Task { await model.importLiveMCPServers() }
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("从 Claude / Codex / Gemini 导入 MCP")
+
+                    Button {
+                        editingMCPServer = nil
+                        showMCPForm = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("添加自定义 MCP 服务器")
 
                     CollapseChevronButton(isExpanded: mcpExpanded) {
                         withAnimation(.easeInOut(duration: 0.2)) { mcpExpanded.toggle() }
@@ -81,10 +396,23 @@ struct ToolsPageView: View {
             Text("暂未配置 MCP 服务器")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Button("从预设添加") {
-                withAnimation(.spring(duration: 0.25)) { showMCPPresets = true }
+            HStack(spacing: 8) {
+                Button("从预设添加") {
+                    withAnimation(.spring(duration: 0.25)) { showMCPPresets = true }
+                }
+                .liquidGlassActionButtonStyle(density: .compact)
+
+                Button("导入本地") {
+                    Task { await model.importLiveMCPServers() }
+                }
+                .liquidGlassActionButtonStyle(density: .compact)
+
+                Button("新建自定义") {
+                    editingMCPServer = nil
+                    showMCPForm = true
+                }
+                .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
             }
-            .liquidGlassActionButtonStyle(density: .compact)
         }
         .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
     }
@@ -118,6 +446,20 @@ struct ToolsPageView: View {
                     .disabled(alreadyAdded)
                     .opacity(alreadyAdded ? 0.5 : 1)
                 }
+
+                Button {
+                    editingMCPServer = nil
+                    showMCPForm = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.caption2)
+                        Text("自定义")
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+                }
+                .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
             }
 
             Divider()
@@ -198,6 +540,15 @@ struct ToolsPageView: View {
                     }
                     .liquidGlassActionButtonStyle(density: .compact)
 
+                    Button {
+                        editingMCPServer = server
+                        showMCPForm = true
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+
                     // 删除（hover 才显示）
                     Button(role: .destructive) {
                         Task { await model.deleteMCPServer(id: server.id) }
@@ -207,7 +558,7 @@ struct ToolsPageView: View {
                     }
                     .liquidGlassActionButtonStyle(density: .compact)
                     .accessibilityLabel("删除 \(server.name)")
-                    .opacity(hoveredMCPServer == server.id ? 1 : 0)
+                    .opacity(hoveredMCPServer == server.id ? 1 : 0.28)
                 }
                 .animation(.easeInOut(duration: 0.15), value: hoveredMCPServer)
             }
@@ -346,9 +697,16 @@ struct ToolsPageView: View {
                         .help("从 \(model.selectedPromptApp.fileName) 导入")
 
                         Button {
-                            newPromptName = ""
-                            newPromptContent = ""
-                            showAddPrompt = true
+                            NSWorkspace.shared.selectFile(model.selectedPromptApp.filePath.path, inFileViewerRootedAtPath: "")
+                        } label: {
+                            Image(systemName: "doc.text")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("打开 \(model.selectedPromptApp.fileName)")
+
+                        Button {
+                            editingPrompt = nil
+                            showPromptEditor = true
                         } label: {
                             Image(systemName: "plus")
                         }
@@ -365,13 +723,12 @@ struct ToolsPageView: View {
                 promptsContent
             }
         }
-        .sheet(isPresented: $showAddPrompt) {
-            addPromptSheet
-        }
     }
 
     @ViewBuilder
     private var promptsContent: some View {
+        promptLiveFileBar
+
         if model.prompts.isEmpty {
             VStack(spacing: 8) {
                 Image(systemName: "text.bubble")
@@ -392,6 +749,22 @@ struct ToolsPageView: View {
                 }
             }
         }
+    }
+
+    private var promptLiveFileBar: some View {
+        HStack(spacing: 8) {
+            Label(model.selectedPromptApp.fileName, systemImage: "doc.text")
+                .font(.caption.weight(.medium))
+            Text(model.selectedPromptApp.filePath.path)
+                .font(.caption2.monospaced())
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private func promptRow(_ prompt: Prompt) -> some View {
@@ -440,6 +813,14 @@ struct ToolsPageView: View {
                 .liquidGlassActionButtonStyle(density: .compact)
                 .help(prompt.isActive ? "已写入" : "写入 \(model.selectedPromptApp.fileName)")
 
+                Button {
+                    editingPrompt = prompt
+                    showPromptEditor = true
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .liquidGlassActionButtonStyle(density: .compact)
+
                 Button(role: .destructive) {
                     Task { await model.deletePrompt(id: prompt.id) }
                 } label: {
@@ -447,7 +828,7 @@ struct ToolsPageView: View {
                         .foregroundStyle(.red.opacity(0.8))
                 }
                 .liquidGlassActionButtonStyle(density: .compact)
-                .opacity(hoveredPrompt == prompt.id ? 1 : 0)
+                .opacity(hoveredPrompt == prompt.id ? 1 : 0.28)
                 .accessibilityLabel("删除提示词 \(prompt.name)")
             }
             .animation(.easeInOut(duration: 0.15), value: hoveredPrompt)
@@ -464,65 +845,6 @@ struct ToolsPageView: View {
         .onHover { isHovered in hoveredPrompt = isHovered ? prompt.id : nil }
     }
 
-    private var addPromptSheet: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button("取消") { showAddPrompt = false }
-                    .keyboardShortcut(.escape)
-                Spacer()
-                Text("新建提示词")
-                    .font(.headline)
-                Spacer()
-                Button("添加") {
-                    Task {
-                        await model.addPrompt(name: newPromptName, content: newPromptContent)
-                        showAddPrompt = false
-                    }
-                }
-                .disabled(newPromptName.trimmingCharacters(in: .whitespaces).isEmpty)
-                .keyboardShortcut(.return, modifiers: .command)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("名称")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    TextField("输入提示词名称", text: $newPromptName)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("内容")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    ZStack(alignment: .topLeading) {
-                        if newPromptContent.isEmpty {
-                            Text("在此输入提示词内容（可选）")
-                                .foregroundStyle(.tertiary)
-                                .font(.body)
-                                .padding(6)
-                                .allowsHitTesting(false)
-                        }
-                        TextEditor(text: $newPromptContent)
-                            .font(.body)
-                            .frame(minHeight: 120)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .strokeBorder(Color.secondary.opacity(0.3))
-                            )
-                    }
-                }
-            }
-            .padding(20)
-        }
-        .frame(minWidth: 400, minHeight: 320)
-    }
-
     // MARK: - Skills
 
     private var skillsSection: some View {
@@ -531,8 +853,50 @@ struct ToolsPageView: View {
             icon: "wand.and.stars",
             iconColor: .orange,
             headerTrailing: {
-                CollapseChevronButton(isExpanded: skillsExpanded) {
-                    withAnimation(.easeInOut(duration: 0.2)) { skillsExpanded.toggle() }
+                HStack(spacing: 6) {
+                    Button {
+                        Task { await model.discoverSkills() }
+                    } label: {
+                        if model.skillDiscoveryLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "sparkles")
+                        }
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("发现可安装技能")
+
+                    Button {
+                        showSkillRepoEditor = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("添加技能仓库")
+
+                    Button {
+                        Task { await model.refreshSkillsFromDisk() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("扫描 ~/.claude/skills")
+
+                    Button {
+                        NSWorkspace.shared.selectFile(
+                            NSHomeDirectory() + "/.claude/skills",
+                            inFileViewerRootedAtPath: ""
+                        )
+                    } label: {
+                        Image(systemName: "folder")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("打开技能目录")
+
+                    CollapseChevronButton(isExpanded: skillsExpanded) {
+                        withAnimation(.easeInOut(duration: 0.2)) { skillsExpanded.toggle() }
+                    }
                 }
             }
         ) {
@@ -545,23 +909,165 @@ struct ToolsPageView: View {
     @ViewBuilder
     private var skillsContent: some View {
         let installed = model.skills.installedSkills
-        if installed.isEmpty {
-            VStack(spacing: 8) {
-                Image(systemName: "wand.and.stars")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.secondary.opacity(0.4))
-                Text("暂未安装技能")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            skillReposRow
+
+            if model.skillDiscoveryLoading || !model.discoverableSkills.isEmpty {
+                discoverableSkillsPanel
             }
-            .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
-        } else {
-            VStack(spacing: 2) {
-                ForEach(installed) { skill in
-                    skillRow(skill)
+
+            if installed.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.secondary.opacity(0.4))
+                    Text("暂未安装技能")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+            } else {
+                VStack(spacing: 2) {
+                    ForEach(installed) { skill in
+                        skillRow(skill)
+                    }
                 }
             }
         }
+    }
+
+    private var skillReposRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(model.skills.repos) { repo in
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(repo.isEnabled ? Color.mint : Color.secondary.opacity(0.3))
+                            .frame(width: 6, height: 6)
+                        Text("\(repo.owner)/\(repo.name)")
+                            .font(.caption.weight(.medium))
+                        Text(repo.branch)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                        if !repo.isDefault {
+                            Button(role: .destructive) {
+                                Task { await model.removeSkillRepo(repo) }
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.red.opacity(0.85))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color.primary.opacity(0.05), in: Capsule())
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var discoverableSkillsPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("可安装")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+
+            if model.skillDiscoveryLoading {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("正在读取技能仓库…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            } else if model.discoverableSkills.isEmpty {
+                EmptyView()
+            } else {
+                VStack(spacing: 2) {
+                    ForEach(model.discoverableSkills) { skill in
+                        discoverableSkillRow(skill)
+                    }
+                }
+            }
+        }
+    }
+
+    private func discoverableSkillRow(_ skill: DiscoverableSkill) -> some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.12))
+                    .frame(width: 32, height: 32)
+                Image(systemName: skill.isInstalled ? "checkmark.seal.fill" : "sparkles")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(skill.isInstalled ? .mint : .blue)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(skill.name)
+                    .font(.subheadline.weight(.medium))
+                if let description = skill.description?.trimmedNonEmpty {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Text("\(skill.repoOwner)/\(skill.repoName) · \(skill.directory)")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 4) {
+                if let urlString = skill.readmeUrl, let url = URL(string: urlString) {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Image(systemName: "arrow.up.right.square")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("打开仓库")
+                }
+
+                if skill.isInstalled {
+                    Text("已安装")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.mint)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.mint.opacity(0.12), in: Capsule())
+                } else {
+                    Button("安装") {
+                        Task { await model.installSkill(skill) }
+                    }
+                    .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
+                }
+            }
+            .opacity(hoveredDiscoverableSkill == skill.id ? 1 : 0.92)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(hoveredDiscoverableSkill == skill.id ? Color.primary.opacity(0.05) : Color.clear)
+        }
+        .onHover { hoveredDiscoverableSkill = $0 ? skill.id : nil }
+    }
+
+    private func isDefaultTrackedPort(_ port: Int) -> Bool {
+        [8002, 8787].contains(port)
     }
 
     private func skillRow(_ skill: InstalledSkill) -> some View {
@@ -584,17 +1090,516 @@ struct ToolsPageView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                Text("~/.claude/skills/\(skill.directory)")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
 
             Spacer(minLength: 0)
 
-            Text("\(skill.repoOwner)/\(skill.repoName)")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            if let repoLabel = skillRepoLabel(skill) {
+                Text(repoLabel)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            HStack(spacing: 4) {
+                Button {
+                    let path = NSHomeDirectory() + "/.claude/skills/\(skill.directory)"
+                    NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
+                } label: {
+                    Image(systemName: "folder")
+                }
+                .liquidGlassActionButtonStyle(density: .compact)
+
+                Button(role: .destructive) {
+                    Task { await model.uninstallSkill(directory: skill.directory) }
+                } label: {
+                    Image(systemName: "trash")
+                        .foregroundStyle(.red.opacity(0.8))
+                }
+                .liquidGlassActionButtonStyle(density: .compact)
+                .opacity(hoveredSkill == skill.id ? 1 : 0.28)
+            }
+            .animation(.easeInOut(duration: 0.15), value: hoveredSkill)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(hoveredSkill == skill.id ? Color.primary.opacity(0.05) : Color.clear)
+        }
+        .onHover { hoveredSkill = $0 ? skill.id : nil }
+    }
+
+    private func skillRepoLabel(_ skill: InstalledSkill) -> String? {
+        let owner = skill.repoOwner.trimmingCharacters(in: .whitespacesAndNewlines)
+        let repo = skill.repoName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !owner.isEmpty, !repo.isEmpty {
+            return "\(owner)/\(repo)"
+        }
+        return "本地技能"
+    }
+
+    private func serviceMetric(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(tint == .secondary ? .primary : tint)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill((tint == .secondary ? Color.primary : tint).opacity(0.08))
+        )
+    }
+
+    private func maskedSecret(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > 8 else { return trimmed }
+        return "\(trimmed.prefix(4))•••\(trimmed.suffix(4))"
+    }
+
+    private func portTitle(for port: Int) -> String {
+        switch port {
+        case 8002:
+            return "Cursor2API 默认端口"
+        case 8787:
+            return "AIMenu 集中代理端口"
+        default:
+            return "端口 \(port)"
+        }
+    }
+}
+
+private struct ToolsStatusBadge: View {
+    let text: String
+    let tint: Color
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(tint == Color.secondary ? AnyShapeStyle(.secondary) : AnyShapeStyle(tint))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill((tint == Color.secondary ? Color.primary : tint).opacity(0.1))
+            )
+    }
+}
+
+private struct PromptEditorSheet: View {
+    let appType: PromptAppType
+    let prompt: Prompt?
+    let onSave: (String, String) -> Void
+    let onCancel: () -> Void
+
+    @State private var name: String
+    @State private var content: String
+
+    init(
+        appType: PromptAppType,
+        prompt: Prompt?,
+        onSave: @escaping (String, String) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.appType = appType
+        self.prompt = prompt
+        self.onSave = onSave
+        self.onCancel = onCancel
+        _name = State(initialValue: prompt?.name ?? "")
+        _content = State(initialValue: prompt?.content ?? "")
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(prompt == nil ? "新建提示词" : "编辑提示词")
+                        .font(.headline)
+                    Text("写入 \(appType.fileName)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("取消") { onCancel() }
+                    .keyboardShortcut(.escape)
+                Button(prompt == nil ? "添加" : "保存") {
+                    onSave(name, content)
+                }
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .keyboardShortcut(.return, modifiers: .command)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("名称")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("输入提示词名称", text: $name)
+                        .frostedRoundedInput(cornerRadius: 10)
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("内容")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextEditor(text: $content)
+                        .font(.body)
+                        .padding(8)
+                        .frame(minHeight: 320)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color.primary.opacity(0.05))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                                )
+                        )
+                }
+            }
+            .padding(20)
+        }
+    }
+}
+
+private struct MCPServerEditorSheet: View {
+    let server: MCPServer?
+    let onSave: (MCPServer) -> Void
+    let onCancel: () -> Void
+
+    @State private var name: String
+    @State private var transport: MCPTransportType
+    @State private var command: String
+    @State private var argsText: String
+    @State private var urlText: String
+    @State private var envText: String
+    @State private var headersText: String
+    @State private var cwd: String
+    @State private var description: String
+    @State private var homepage: String
+    @State private var tags: String
+    @State private var enabled = true
+    @State private var enableClaude = true
+    @State private var enableCodex = true
+    @State private var enableGemini = true
+
+    init(
+        server: MCPServer?,
+        onSave: @escaping (MCPServer) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.server = server
+        self.onSave = onSave
+        self.onCancel = onCancel
+        _name = State(initialValue: server?.name ?? "")
+        _transport = State(initialValue: server?.server.type ?? .stdio)
+        _command = State(initialValue: server?.server.command ?? "")
+        _argsText = State(initialValue: (server?.server.args ?? []).joined(separator: "\n"))
+        _urlText = State(initialValue: server?.server.url ?? "")
+        _envText = State(initialValue: Self.dictToMultiline(server?.server.env ?? [:]))
+        _headersText = State(initialValue: Self.dictToMultiline(server?.server.headers ?? [:]))
+        _cwd = State(initialValue: server?.server.cwd ?? "")
+        _description = State(initialValue: server?.description ?? "")
+        _homepage = State(initialValue: server?.homepage ?? "")
+        _tags = State(initialValue: (server?.tags ?? []).joined(separator: ", "))
+        _enabled = State(initialValue: server?.isEnabled ?? true)
+        _enableClaude = State(initialValue: server?.apps.claude ?? true)
+        _enableCodex = State(initialValue: server?.apps.codex ?? true)
+        _enableGemini = State(initialValue: server?.apps.gemini ?? true)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(server == nil ? "新建 MCP 服务器" : "编辑 MCP 服务器")
+                        .font(.headline)
+                    Text("支持 STDIO / HTTP / SSE 三种接入方式。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("取消") { onCancel() }
+                    .keyboardShortcut(.escape)
+                Button(server == nil ? "添加" : "保存") {
+                    onSave(buildServer())
+                }
+                .disabled(name.trimmedNonEmpty == nil)
+                .keyboardShortcut(.return, modifiers: .command)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    fieldGroup(title: "基本信息") {
+                        HStack(alignment: .top, spacing: 12) {
+                            labeledField("名称") {
+                                TextField("例如：filesystem", text: $name)
+                                    .frostedRoundedInput(cornerRadius: 10)
+                            }
+                            labeledField("Transport") {
+                                Picker("", selection: $transport) {
+                                    ForEach(MCPTransportType.allCases, id: \.self) { type in
+                                        Text(type.displayName).tag(type)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                            }
+                        }
+                        Toggle("启用此服务器", isOn: $enabled)
+                            .toggleStyle(.checkbox)
+                        HStack(spacing: 8) {
+                            toggleChip("Claude", isOn: $enableClaude)
+                            toggleChip("Codex", isOn: $enableCodex)
+                            toggleChip("Gemini", isOn: $enableGemini)
+                        }
+                    }
+
+                    fieldGroup(title: transport == .stdio ? "进程配置" : "远程地址") {
+                        if transport == .stdio {
+                            labeledField("命令") {
+                                TextField("例如：npx", text: $command)
+                                    .frostedRoundedInput(cornerRadius: 10)
+                            }
+                            labeledField("参数（每行一个）") {
+                                TextEditor(text: $argsText)
+                                    .frame(minHeight: 92)
+                                    .padding(8)
+                                    .background(editorBackground)
+                            }
+                            labeledField("工作目录") {
+                                TextField("可选", text: $cwd)
+                                    .frostedRoundedInput(cornerRadius: 10)
+                            }
+                        } else {
+                            labeledField("URL") {
+                                TextField("https://example.com/mcp", text: $urlText)
+                                    .frostedRoundedInput(cornerRadius: 10)
+                            }
+                        }
+                    }
+
+                    fieldGroup(title: "环境与元数据") {
+                        labeledField("环境变量（KEY=VALUE）") {
+                            TextEditor(text: $envText)
+                                .frame(minHeight: 92)
+                                .padding(8)
+                                .background(editorBackground)
+                        }
+                        labeledField("请求头（KEY=VALUE）") {
+                            TextEditor(text: $headersText)
+                                .frame(minHeight: 92)
+                                .padding(8)
+                                .background(editorBackground)
+                        }
+                        labeledField("描述") {
+                            TextField("可选描述", text: $description)
+                                .frostedRoundedInput(cornerRadius: 10)
+                        }
+                        HStack(alignment: .top, spacing: 12) {
+                            labeledField("主页") {
+                                TextField("https://", text: $homepage)
+                                    .frostedRoundedInput(cornerRadius: 10)
+                            }
+                            labeledField("标签（逗号分隔）") {
+                                TextField("web, tools", text: $tags)
+                                    .frostedRoundedInput(cornerRadius: 10)
+                            }
+                        }
+                    }
+                }
+                .padding(20)
+            }
+        }
+    }
+
+    private var editorBackground: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(Color.primary.opacity(0.05))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+    }
+
+    private func fieldGroup<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+            content()
+        }
+        .padding(14)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func labeledField<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func toggleChip(_ title: String, isOn: Binding<Bool>) -> some View {
+        Button {
+            isOn.wrappedValue.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(isOn.wrappedValue ? Color.mint : Color.secondary.opacity(0.3))
+                    .frame(width: 6, height: 6)
+                Text(title)
+                    .font(.caption.weight(.medium))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(isOn.wrappedValue ? Color.mint.opacity(0.12) : Color.primary.opacity(0.05))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func buildServer() -> MCPServer {
+        let now = Int64(Date().timeIntervalSince1970)
+        return MCPServer(
+            id: server?.id ?? UUID().uuidString,
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            server: MCPServerSpec(
+                type: transport,
+                command: transport == .stdio ? command.trimmedNonEmpty : nil,
+                args: transport == .stdio ? lines(from: argsText) : nil,
+                env: dictionary(from: envText),
+                cwd: transport == .stdio ? cwd.trimmedNonEmpty : nil,
+                url: transport == .stdio ? nil : urlText.trimmedNonEmpty,
+                headers: dictionary(from: headersText)
+            ),
+            apps: MCPAppToggles(
+                claude: enableClaude,
+                codex: enableCodex,
+                gemini: enableGemini
+            ),
+            description: description.trimmedNonEmpty,
+            tags: csvItems(from: tags),
+            homepage: homepage.trimmedNonEmpty,
+            createdAt: server?.createdAt ?? now,
+            updatedAt: now,
+            isEnabled: enabled
+        )
+    }
+
+    private func lines(from text: String) -> [String] {
+        text.components(separatedBy: .newlines)
+            .compactMap { $0.trimmedNonEmpty }
+    }
+
+    private func csvItems(from text: String) -> [String]? {
+        let values = text.split(separator: ",").map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+        }.filter { !$0.isEmpty }
+        return values.isEmpty ? nil : values
+    }
+
+    private func dictionary(from text: String) -> [String: String]? {
+        var result: [String: String] = [:]
+        for rawLine in text.components(separatedBy: .newlines) {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !line.isEmpty, let separator = line.firstIndex(of: "=") else { continue }
+            let key = String(line[..<separator]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let value = String(line[line.index(after: separator)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !key.isEmpty else { continue }
+            result[key] = value
+        }
+        return result.isEmpty ? nil : result
+    }
+
+    private static func dictToMultiline(_ value: [String: String]) -> String {
+        value.keys.sorted().map { "\($0)=\(value[$0] ?? "")" }.joined(separator: "\n")
+    }
+}
+
+private struct SkillRepoEditorSheet: View {
+    let onSave: (String, String, String) -> Void
+    let onCancel: () -> Void
+
+    @State private var owner = ""
+    @State private var name = ""
+    @State private var branch = "main"
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("添加技能仓库")
+                        .font(.headline)
+                    Text("使用 GitHub 仓库中的 `SKILL.md` 目录作为发现来源。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("取消") { onCancel() }
+                    .keyboardShortcut(.escape)
+                Button("保存") {
+                    onSave(owner, name, branch)
+                }
+                .disabled(owner.trimmedNonEmpty == nil || name.trimmedNonEmpty == nil || branch.trimmedNonEmpty == nil)
+                .keyboardShortcut(.return, modifiers: .command)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Owner")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("例如：anthropics", text: $owner)
+                        .frostedRoundedInput(cornerRadius: 10)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("仓库名")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("例如：skills", text: $name)
+                        .frostedRoundedInput(cornerRadius: 10)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("分支")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("main", text: $branch)
+                        .frostedRoundedInput(cornerRadius: 10)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+        }
     }
 }

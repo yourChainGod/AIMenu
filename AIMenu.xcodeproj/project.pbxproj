@@ -61,6 +61,7 @@
 		9D08A700556999940540E4DE /* ChatGPTBaseOriginResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E9D74FD76E0A76EF4AF68AC /* ChatGPTBaseOriginResolver.swift */; };
 		9ED52999272DAB575FAD8157 /* auth.rs in Resources */ = {isa = PBXBuildFile; fileRef = D16220C69646464B343B782F /* auth.rs */; };
 		9F3B31646881F65BD82BC5C9 /* UpdateCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3340D9F24E63B0B31749E2 /* UpdateCoordinator.swift */; };
+		A1C2D3E4F5A60718293A4B5C /* Cursor2APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C2D3E4F5A60718293A4B5C /* Cursor2APIService.swift */; };
 		A39DE0252B7DE1B089DB14D1 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DEC342D5FDC9541EA737668 /* AppContainer.swift */; };
 		A7144A42D2FC21D789B3FB49 /* AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8644DF48AF768B1D855A3404 /* AppError.swift */; };
 		A89EE3D38EE2A5065FB15201 /* ProviderPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0024622AE4124A8AAF8786F9 /* ProviderPageView.swift */; };
@@ -75,6 +76,7 @@
 		BB02DFA1719016AB591B43B5 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E6E562A9376AB6D34B744 /* L10n.swift */; };
 		BCC005ABF70C814EF0159CAD /* proxy_service.rs in Resources */ = {isa = PBXBuildFile; fileRef = FEB8F849524A5B828F5C0F7F /* proxy_service.rs */; };
 		BDEFAC6E557915562EA5D5A2 /* main.rs in Resources */ = {isa = PBXBuildFile; fileRef = E2700A142EED2C109BC86E25 /* main.rs */; };
+		B1C2D3E4F5A60718293A4B5C /* PortManagementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1C2D3E4F5A60718293A4B5C /* PortManagementService.swift */; };
 		C0040E924E495A9B4DCF7EBE /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3692DEACD953D34AF240F6ED /* EmptyStateView.swift */; };
 		C1689CF8BC0D6EBC84B515ED /* AccountsCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85BEA62E5EB96361AD117627 /* AccountsCoordinatorTests.swift */; };
 		CA37BD95DACA443113BF6EC6 /* EditorAppService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5358263820EB410620C79AB /* EditorAppService.swift */; };
@@ -171,6 +173,7 @@
 		A1DA670CD43B2B655D3DEE57 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A4646C4F038F28A5B638A6FB /* AIMenu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIMenu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A98891331D331EAF492A366E /* ProviderPageModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderPageModel.swift; sourceTree = "<group>"; };
+		C1C2D3E4F5A60718293A4B5C /* Cursor2APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cursor2APIService.swift; sourceTree = "<group>"; };
 		AB56BDF9685A258D5CD4C18A /* OpencodeAuthSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpencodeAuthSyncService.swift; sourceTree = "<group>"; };
 		ABA9BFA372D06F0D79462C15 /* ProviderConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderConfigService.swift; sourceTree = "<group>"; };
 		AEFA55BDFB126AF96635B8E7 /* ToolsPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsPageView.swift; sourceTree = "<group>"; };
@@ -189,6 +192,7 @@
 		D593B8E21B1B66A64179E605 /* Notice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Notice.swift; sourceTree = "<group>"; };
 		D97DE818E2B47EBF28DFEA3D /* figure.pool.swim.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = figure.pool.swim.png; sourceTree = "<group>"; };
 		DBF9C8262357FD7DC9AA4855 /* SettingsPageModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPageModel.swift; sourceTree = "<group>"; };
+		D1C2D3E4F5A60718293A4B5C /* PortManagementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortManagementService.swift; sourceTree = "<group>"; };
 		DF11B93A2C05CC3B851D671A /* StoreFileRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreFileRepositoryTests.swift; sourceTree = "<group>"; };
 		E072B2DEE9973F725135D145 /* SwiftNativeProxyRuntimeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftNativeProxyRuntimeService.swift; sourceTree = "<group>"; };
 		E2700A142EED2C109BC86E25 /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
@@ -225,6 +229,7 @@
 				3E9D74FD76E0A76EF4AF68AC /* ChatGPTBaseOriginResolver.swift */,
 				C139AC44A9986277E75FA765 /* CloudflaredService.swift */,
 				3EB01EB2A0408FB4CA84CDEE /* CodexCLIService.swift */,
+				C1C2D3E4F5A60718293A4B5C /* Cursor2APIService.swift */,
 				2DD2673A9712C55D302564FA /* DefaultUsageService.swift */,
 				7330DEB6FA1EF79E17366359 /* DefaultWorkspaceMetadataService.swift */,
 				C5358263820EB410620C79AB /* EditorAppService.swift */,
@@ -233,6 +238,7 @@
 				BCFDDF034C6446339DDFAF9B /* LaunchAtStartupService.swift */,
 				C4F7246044D6E322F548D954 /* OpenAIChatGPTOAuthLoginService.swift */,
 				AB56BDF9685A258D5CD4C18A /* OpencodeAuthSyncService.swift */,
+				D1C2D3E4F5A60718293A4B5C /* PortManagementService.swift */,
 				ABA9BFA372D06F0D79462C15 /* ProviderConfigService.swift */,
 				17E5EFBA0AA212B32AAB6710 /* RepositoryLocator.swift */,
 				00E0EE08E1645AD783C2DED1 /* ShellCommandRunner.swift */,
@@ -621,6 +627,7 @@
 				9D08A700556999940540E4DE /* ChatGPTBaseOriginResolver.swift in Sources */,
 				8A97DF56318AACE5DA7A07A7 /* CloudflaredService.swift in Sources */,
 				341FC56FB803E4544D4928E3 /* CodexCLIService.swift in Sources */,
+				A1C2D3E4F5A60718293A4B5C /* Cursor2APIService.swift in Sources */,
 				39796A30063610AC0A5579C5 /* AIMenuApp.swift in Sources */,
 				FA624CCECA28D7F68B1C0FF8 /* DefaultUsageService.swift in Sources */,
 				32609F6B746B4F4CC1867CEB /* DefaultWorkspaceMetadataService.swift in Sources */,
@@ -637,6 +644,7 @@
 				BAA8370E04EE38AD6F28F62E /* NoticeBanner.swift in Sources */,
 				63EF6C5310182A8B5DB70D66 /* OpenAIChatGPTOAuthLoginService.swift in Sources */,
 				683DA0BB33E165DCFEFE8633 /* OpencodeAuthSyncService.swift in Sources */,
+				B1C2D3E4F5A60718293A4B5C /* PortManagementService.swift in Sources */,
 				BA5B276B09B95CA7284CDFA2 /* PlatformCapabilities.swift in Sources */,
 				7F539ED7076B2EA02CB6788C /* Protocols.swift in Sources */,
 				AF82A89745158717E2962E1F /* ProviderConfigService.swift in Sources */,

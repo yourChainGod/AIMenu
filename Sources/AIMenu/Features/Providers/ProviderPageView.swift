@@ -7,106 +7,78 @@ struct ProviderPageView: View {
     @State private var hoveredProvider: String? = nil
     @State private var showingAddPresetPicker = false
     @State private var addingPreset: ProviderPreset?
-
-    private var isShowingOverlay: Bool {
-        (model.isAddingProvider && addingPreset != nil) || model.editingProvider != nil
-    }
+    @State private var pendingAddPreset: ProviderPreset?
 
     var body: some View {
-        ZStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: LayoutRules.sectionSpacing) {
-                    toolBar
-                        .padding(.horizontal, LayoutRules.pagePadding)
+        ScrollView {
+            VStack(alignment: .leading, spacing: LayoutRules.sectionSpacing) {
+                toolBar
+                    .padding(.horizontal, LayoutRules.pagePadding)
 
-                    providerSummaryCard
-                        .padding(.horizontal, LayoutRules.pagePadding)
+                providerSummaryCard
+                    .padding(.horizontal, LayoutRules.pagePadding)
 
-                    if model.loading && model.providers.isEmpty {
-                        ProgressView("加载中...")
-                            .frame(maxWidth: .infinity, minHeight: 120)
-                        .padding(.horizontal, LayoutRules.pagePadding)
-                    } else if model.providers.isEmpty {
-                        EmptyStateView(
-                            title: "暂无提供商",
-                            message: "添加提供商以开始使用 \(model.selectedApp.displayName)。"
-                        )
-                        .padding(.horizontal, LayoutRules.pagePadding)
-                    } else {
-                        LazyVStack(spacing: 2) {
-                            ForEach(model.providers) { provider in
-                                providerRow(provider)
-                            }
+                if model.loading && model.providers.isEmpty {
+                    ProgressView("加载中...")
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                    .padding(.horizontal, LayoutRules.pagePadding)
+                } else if model.providers.isEmpty {
+                    EmptyStateView(
+                        title: "暂无提供商",
+                        message: "添加提供商以开始使用 \(model.selectedApp.displayName)。"
+                    )
+                    .padding(.horizontal, LayoutRules.pagePadding)
+                } else {
+                    LazyVStack(spacing: 2) {
+                        ForEach(model.providers) { provider in
+                            providerRow(provider)
                         }
-                        .padding(.horizontal, LayoutRules.pagePadding)
                     }
+                    .padding(.horizontal, LayoutRules.pagePadding)
                 }
-                .padding(.top, LayoutRules.pagePadding)
-                .padding(.bottom, 12)
-            }
-            .scrollIndicators(.hidden)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .task {
-                await model.load()
-            }
-            .blur(radius: isShowingOverlay ? 2 : 0)
-            .allowsHitTesting(!isShowingOverlay)
-
-            if let addingPreset, model.isAddingProvider {
-                // 半透明背景——不响应点击，强制用 X 按钮关闭
-                Color.black.opacity(0.18)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-
-                AddProviderSheet(
-                    appType: model.selectedApp,
-                    initialPreset: addingPreset,
-                    onAdd: { draft in
-                        Task { await model.addProvider(draft: draft) }
-                    },
-                    onCancel: closeAddProviderSheet,
-                    onChangePreset: reopenAddPresetPicker
-                )
-                .frame(maxWidth: 720)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: .black.opacity(0.3), radius: 24, x: 0, y: 10)
-                .transition(.scale(scale: 0.96).combined(with: .opacity))
-                .animation(.spring(response: 0.28, dampingFraction: 0.82), value: model.isAddingProvider)
-                .zIndex(10)
-            }
-
-            if let editing = model.editingProvider {
-                Color.black.opacity(0.18)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-
-                EditProviderSheet(
-                    provider: editing,
-                    onSave: { updated in
-                        Task { await model.updateProvider(updated) }
-                    },
-                    onCancel: { model.editingProvider = nil }
-                )
-                .frame(maxWidth: 720)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: .black.opacity(0.3), radius: 24, x: 0, y: 10)
-                .transition(.scale(scale: 0.96).combined(with: .opacity))
-                .animation(.spring(response: 0.28, dampingFraction: 0.82), value: model.editingProvider != nil)
-                .zIndex(10)
             }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: model.isAddingProvider)
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: model.editingProvider != nil)
-        .onChange(of: model.isAddingProvider) { _, isAddingProvider in
-            if !isAddingProvider {
-                addingPreset = nil
-            }
+        .padding(.top, LayoutRules.pagePadding)
+        .padding(.bottom, 12)
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .task {
+            await model.load()
         }
         .onChange(of: model.selectedApp) { _, _ in
             showingAddPresetPicker = false
-            if !model.isAddingProvider {
-                addingPreset = nil
+            pendingAddPreset = nil
+            if !model.isAddingProvider { addingPreset = nil }
+        }
+        .onChange(of: showingAddPresetPicker) { _, isPresented in
+            guard !isPresented, let pendingAddPreset else { return }
+            DispatchQueue.main.async {
+                self.addingPreset = pendingAddPreset
+                self.pendingAddPreset = nil
+                model.isAddingProvider = true
             }
+        }
+        .sheet(item: $addingPreset, onDismiss: closeAddProviderSheet) { addingPreset in
+            AddProviderSheet(
+                appType: model.selectedApp,
+                initialPreset: addingPreset,
+                onAdd: { draft in
+                    Task { await model.addProvider(draft: draft) }
+                },
+                onCancel: closeAddProviderSheet,
+                onChangePreset: reopenAddPresetPicker
+            )
+            .frame(width: 760, height: 820)
+        }
+        .sheet(item: $model.editingProvider) { editing in
+            EditProviderSheet(
+                provider: editing,
+                onSave: { updated in
+                    Task { await model.updateProvider(updated) }
+                },
+                onCancel: { model.editingProvider = nil }
+            )
+            .frame(width: 760, height: 820)
         }
     }
 
@@ -422,14 +394,14 @@ struct ProviderPageView: View {
     }
 
     private func beginAddingProvider(with preset: ProviderPreset) {
-        addingPreset = preset
+        pendingAddPreset = preset
         showingAddPresetPicker = false
-        model.isAddingProvider = true
     }
 
     private func closeAddProviderSheet() {
         model.isAddingProvider = false
         addingPreset = nil
+        pendingAddPreset = nil
     }
 
     private func reopenAddPresetPicker() {

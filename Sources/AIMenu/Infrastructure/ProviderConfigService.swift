@@ -12,7 +12,23 @@ actor ProviderConfigService {
     // MARK: - Provider Store Persistence
 
     private var appSupportDirectory: URL {
-        homeDirectory.appendingPathComponent("Library/Application Support/CodexToolsSwift", isDirectory: true)
+        let baseDirectory = homeDirectory.appendingPathComponent("Library/Application Support", isDirectory: true)
+        let current = baseDirectory.appendingPathComponent(FileSystemPaths.appSupportDirectoryName, isDirectory: true)
+        let legacy = baseDirectory.appendingPathComponent(FileSystemPaths.legacyAppSupportDirectoryName, isDirectory: true)
+
+        if fileManager.fileExists(atPath: legacy.path), !fileManager.fileExists(atPath: current.path) {
+            try? fileManager.moveItem(at: legacy, to: current)
+        }
+
+        if fileManager.fileExists(atPath: current.path) {
+            return current
+        }
+
+        if fileManager.fileExists(atPath: legacy.path) {
+            return legacy
+        }
+
+        return current
     }
 
     private var providerStorePath: URL {
@@ -336,6 +352,27 @@ actor ProviderConfigService {
         try data.write(to: path, options: .atomic)
     }
 
+    func importLiveMCPServers() throws -> [MCPServer] {
+        var merged: [String: MCPServer] = [:]
+        let now = Int64(Date().timeIntervalSince1970)
+
+        try importJSONMCPServers(
+            from: homeDirectory.appendingPathComponent(".claude.json"),
+            app: .claude,
+            now: now,
+            into: &merged
+        )
+        try importCodexMCPServers(now: now, into: &merged)
+        try importJSONMCPServers(
+            from: homeDirectory.appendingPathComponent(".gemini/settings.json"),
+            app: .gemini,
+            now: now,
+            into: &merged
+        )
+
+        return merged.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
     // MARK: - MCP Sync to Live Configs
 
     func syncMCPServer(_ server: MCPServer) throws {
@@ -348,6 +385,286 @@ actor ProviderConfigService {
         if server.apps.claude { try removeMCPFromClaude(server.id) }
         if server.apps.codex { try removeMCPFromCodex(server.id) }
         if server.apps.gemini { try removeMCPFromGemini(server.id) }
+    }
+
+    private func importJSONMCPServers(
+        from path: URL,
+        app: ProviderAppType,
+        now: Int64,
+        into merged: inout [String: MCPServer]
+    ) throws {
+        let json = loadJSONObject(from: path)
+        guard let mcpServers = json["mcpServers"] as? [String: Any] else { return }
+
+        for (id, value) in mcpServers {
+            guard let dictionary = value as? [String: Any],
+                  let spec = parseMCPDictionary(dictionary) else { continue }
+            mergeImportedServer(
+                id: id,
+                name: prettifiedImportedName(from: id),
+                spec: spec,
+                app: app,
+                now: now,
+                into: &merged
+            )
+        }
+    }
+
+    private func importCodexMCPServers(now: Int64, into merged: inout [String: MCPServer]) throws {
+        let content = readTOML(at: codexConfigPath)
+        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        for (id, spec) in parseCodexMCPServers(from: content) {
+            mergeImportedServer(
+                id: id,
+                name: prettifiedImportedName(from: id),
+                spec: spec,
+                app: .codex,
+                now: now,
+                into: &merged
+            )
+        }
+    }
+
+    private func mergeImportedServer(
+        id: String,
+        name: String,
+        spec: MCPServerSpec,
+        app: ProviderAppType,
+        now: Int64,
+        into merged: inout [String: MCPServer]
+    ) {
+        if var existing = merged[id] {
+            existing.server = spec
+            existing.updatedAt = now
+            switch app {
+            case .claude: existing.apps.claude = true
+            case .codex: existing.apps.codex = true
+            case .gemini: existing.apps.gemini = true
+            }
+            merged[id] = existing
+            return
+        }
+
+        var apps = MCPAppToggles(claude: false, codex: false, gemini: false)
+        switch app {
+        case .claude: apps.claude = true
+        case .codex: apps.codex = true
+        case .gemini: apps.gemini = true
+        }
+
+        merged[id] = MCPServer(
+            id: id,
+            name: name,
+            server: spec,
+            apps: apps,
+            description: nil,
+            tags: nil,
+            homepage: nil,
+            createdAt: now,
+            updatedAt: now,
+            isEnabled: true
+        )
+    }
+
+    private func parseMCPDictionary(_ value: [String: Any]) -> MCPServerSpec? {
+        let type = (value["type"] as? String).flatMap(MCPTransportType.init(rawValue:))
+            ?? ((value["url"] as? String) != nil ? .http : .stdio)
+
+        let args = (value["args"] as? [Any])?.compactMap { item -> String? in
+            if let string = item as? String {
+                return string
+            }
+            return nil
+        }
+
+        let env = (value["env"] as? [String: Any])?.reduce(into: [String: String]()) { partialResult, item in
+            if let string = item.value as? String {
+                partialResult[item.key] = string
+            }
+        }
+
+        let headers = (value["headers"] as? [String: Any])?.reduce(into: [String: String]()) { partialResult, item in
+            if let string = item.value as? String {
+                partialResult[item.key] = string
+            }
+        }
+
+        return MCPServerSpec(
+            type: type,
+            command: value["command"] as? String,
+            args: args,
+            env: env,
+            cwd: value["cwd"] as? String,
+            url: value["url"] as? String,
+            headers: headers
+        )
+    }
+
+    private func parseCodexMCPServers(from content: String) -> [String: MCPServerSpec] {
+        let lines = content.normalizedNewlines.components(separatedBy: "\n")
+        var result: [String: MCPServerSpec] = [:]
+        var currentID: String?
+        var currentLines: [String] = []
+
+        func flushCurrentSection() {
+            guard let currentID,
+                  let spec = parseCodexMCPSection(currentLines) else { return }
+            result[currentID] = spec
+        }
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("[mcp_servers."), trimmed.hasSuffix("]") {
+                flushCurrentSection()
+                currentID = String(trimmed.dropFirst("[mcp_servers.".count).dropLast())
+                currentLines = []
+                continue
+            }
+
+            if trimmed.hasPrefix("[") {
+                flushCurrentSection()
+                currentID = nil
+                currentLines = []
+                continue
+            }
+
+            if currentID != nil {
+                currentLines.append(line)
+            }
+        }
+
+        flushCurrentSection()
+        return result
+    }
+
+    private func parseCodexMCPSection(_ lines: [String]) -> MCPServerSpec? {
+        var type: MCPTransportType = .stdio
+        var command: String?
+        var args: [String]?
+        var env: [String: String]?
+        var cwd: String?
+        var url: String?
+        var headers: [String: String]?
+
+        for rawLine in lines {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !line.isEmpty,
+                  !line.hasPrefix("#"),
+                  let assignment = splitTomlAssignment(line) else { continue }
+
+            switch assignment.key {
+            case "type":
+                type = MCPTransportType(rawValue: parseTomlStringScalar(assignment.value)) ?? type
+            case "command":
+                command = parseTomlStringScalar(assignment.value)
+            case "args":
+                args = parseTomlStringArray(assignment.value)
+            case "env":
+                env = parseTomlInlineTable(assignment.value)
+            case "cwd":
+                cwd = parseTomlStringScalar(assignment.value)
+            case "url":
+                url = parseTomlStringScalar(assignment.value)
+            case "headers":
+                headers = parseTomlInlineTable(assignment.value)
+            default:
+                continue
+            }
+        }
+
+        return MCPServerSpec(
+            type: type,
+            command: command,
+            args: args,
+            env: env,
+            cwd: cwd,
+            url: url,
+            headers: headers
+        )
+    }
+
+    private func splitTomlAssignment(_ line: String) -> (key: String, value: String)? {
+        guard let equalsIndex = line.firstIndex(of: "=") else { return nil }
+        let key = line[..<equalsIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = line[line.index(after: equalsIndex)...].trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return nil }
+        return (key, value)
+    }
+
+    private func parseTomlStringScalar(_ rawValue: String) -> String {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("\""), trimmed.hasSuffix("\""), trimmed.count >= 2 else {
+            return trimmed
+        }
+
+        let inner = String(trimmed.dropFirst().dropLast())
+        return inner
+            .replacingOccurrences(of: "\\\"", with: "\"")
+            .replacingOccurrences(of: "\\\\", with: "\\")
+    }
+
+    private func parseTomlStringArray(_ rawValue: String) -> [String]? {
+        matches(
+            in: rawValue,
+            pattern: #""((?:\\.|[^"])*)""#
+        ).map {
+            $0
+                .replacingOccurrences(of: "\\\"", with: "\"")
+                .replacingOccurrences(of: "\\\\", with: "\\")
+        }
+    }
+
+    private func parseTomlInlineTable(_ rawValue: String) -> [String: String]? {
+        let matches = regexMatches(
+            in: rawValue,
+            pattern: #""((?:\\.|[^"])*)"\s*=\s*"((?:\\.|[^"])*)""#
+        )
+
+        guard !matches.isEmpty else { return nil }
+
+        var result: [String: String] = [:]
+        for match in matches where match.count == 3 {
+            let key = match[1]
+                .replacingOccurrences(of: "\\\"", with: "\"")
+                .replacingOccurrences(of: "\\\\", with: "\\")
+            let value = match[2]
+                .replacingOccurrences(of: "\\\"", with: "\"")
+                .replacingOccurrences(of: "\\\\", with: "\\")
+            result[key] = value
+        }
+        return result.isEmpty ? nil : result
+    }
+
+    private func matches(in rawValue: String, pattern: String) -> [String] {
+        regexMatches(in: rawValue, pattern: pattern).compactMap { match in
+            guard match.count > 1 else { return nil }
+            return match[1]
+        }
+    }
+
+    private func regexMatches(in rawValue: String, pattern: String) -> [[String]] {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let range = NSRange(rawValue.startIndex..<rawValue.endIndex, in: rawValue)
+        return regex.matches(in: rawValue, range: range).map { match in
+            (0..<match.numberOfRanges).compactMap { index in
+                let range = match.range(at: index)
+                guard let swiftRange = Range(range, in: rawValue) else { return nil }
+                return String(rawValue[swiftRange])
+            }
+        }
+    }
+
+    private func prettifiedImportedName(from id: String) -> String {
+        id
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .split(separator: " ")
+            .map { component in
+                guard let first = component.first else { return "" }
+                return String(first).uppercased() + String(component.dropFirst())
+            }
+            .joined(separator: " ")
     }
 
     private func syncMCPToClaude(_ server: MCPServer) throws {

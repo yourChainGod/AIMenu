@@ -179,6 +179,7 @@ struct DiscoverableSkill: Equatable, Identifiable {
     var readmeUrl: String?
     var repoOwner: String
     var repoName: String
+    var repoBranch: String
     var directory: String
     var isInstalled: Bool
 }
@@ -204,5 +205,52 @@ struct SkillStore: Codable, Equatable {
             SkillRepo(owner: "anthropics", name: "skills", branch: "main", isEnabled: true, isDefault: true),
             SkillRepo(owner: "ComposioHQ", name: "awesome-claude-skills", branch: "master", isEnabled: true, isDefault: true),
         ]
+    }
+}
+
+// MARK: - Managed Local Services
+
+struct Cursor2APIStatus: Equatable {
+    var installed: Bool
+    var running: Bool
+    var port: Int
+    var apiKey: String
+    var baseURL: String
+    var binaryPath: String?
+    var configPath: String?
+    var logPath: String?
+    var models: [String]
+    var lastError: String?
+
+    static let idle = Cursor2APIStatus(
+        installed: false,
+        running: false,
+        port: 8002,
+        apiKey: "0000",
+        baseURL: "http://127.0.0.1:8002",
+        binaryPath: nil,
+        configPath: nil,
+        logPath: nil,
+        models: [],
+        lastError: nil
+    )
+}
+
+struct ManagedPortStatus: Equatable, Identifiable {
+    var id: Int { port }
+    var port: Int
+    var occupied: Bool
+    var processID: Int?
+    var command: String?
+    var endpoint: String?
+
+    static func idle(port: Int) -> ManagedPortStatus {
+        ManagedPortStatus(
+            port: port,
+            occupied: false,
+            processID: nil,
+            command: nil,
+            endpoint: nil
+        )
     }
 }

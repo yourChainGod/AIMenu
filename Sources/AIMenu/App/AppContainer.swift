@@ -22,7 +22,12 @@ struct AppContainer {
                 storeRepository: storeRepository,
                 authRepository: authRepository
             )
+            let portManagementService = PortManagementService()
             let cloudflaredService = CloudflaredService(paths: paths)
+            let cursor2APIService = Cursor2APIService(
+                paths: paths,
+                portService: portManagementService
+            )
             let chatGPTOAuthLoginService = OpenAIChatGPTOAuthLoginService(configPath: paths.codexConfigPath)
             let codexCLIService = CodexCLIService()
             let editorAppService = EditorAppService()
@@ -93,7 +98,9 @@ struct AppContainer {
                     settingsCoordinator: settingsCoordinator
                 ),
                 toolsModel: ToolsPageModel(
-                    coordinator: providerCoordinator
+                    coordinator: providerCoordinator,
+                    cursor2APIService: cursor2APIService,
+                    portService: portManagementService
                 ),
                 settingsModel: settingsModel,
                 trayModel: trayModel

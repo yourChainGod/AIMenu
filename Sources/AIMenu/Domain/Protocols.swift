@@ -50,6 +50,18 @@ protocol CloudflaredServiceProtocol: Sendable {
     func stop() async -> CloudflaredStatus
 }
 
+protocol Cursor2APIServiceProtocol: Sendable {
+    func status() async -> Cursor2APIStatus
+    func install() async throws -> Cursor2APIStatus
+    func start(port: Int?, apiKey: String?, models: [String]) async throws -> Cursor2APIStatus
+    func stop() async -> Cursor2APIStatus
+}
+
+protocol PortManagementServiceProtocol: Sendable {
+    func status(for port: Int) async -> ManagedPortStatus
+    func kill(port: Int) async throws -> ManagedPortStatus
+}
+
 protocol UpdateCheckingService: Sendable {
     func checkForUpdates(currentVersion: String) async throws -> PendingUpdateInfo?
 }
