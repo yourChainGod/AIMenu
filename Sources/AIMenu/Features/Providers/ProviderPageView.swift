@@ -5,6 +5,12 @@ struct ProviderPageView: View {
     @ObservedObject var model: ProviderPageModel
 
     @State private var hoveredProvider: String? = nil
+    @State private var showingAddPresetPicker = false
+    @State private var addingPreset: ProviderPreset?
+
+    private var isShowingOverlay: Bool {
+        (model.isAddingProvider && addingPreset != nil) || model.editingProvider != nil
+    }
 
     var body: some View {
         ZStack {
@@ -43,10 +49,10 @@ struct ProviderPageView: View {
             .task {
                 await model.load()
             }
-            .blur(radius: (model.isAddingProvider || model.editingProvider != nil) ? 2 : 0)
-            .allowsHitTesting(!(model.isAddingProvider || model.editingProvider != nil))
+            .blur(radius: isShowingOverlay ? 2 : 0)
+            .allowsHitTesting(!isShowingOverlay)
 
-            if model.isAddingProvider {
+            if let addingPreset, model.isAddingProvider {
                 // 半透明背景——不响应点击，强制用 X 按钮关闭
                 Color.black.opacity(0.18)
                     .ignoresSafeArea()
@@ -54,10 +60,12 @@ struct ProviderPageView: View {
 
                 AddProviderSheet(
                     appType: model.selectedApp,
+                    initialPreset: addingPreset,
                     onAdd: { draft in
                         Task { await model.addProvider(draft: draft) }
                     },
-                    onCancel: { model.isAddingProvider = false }
+                    onCancel: closeAddProviderSheet,
+                    onChangePreset: reopenAddPresetPicker
                 )
                 .frame(maxWidth: 720)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -89,6 +97,17 @@ struct ProviderPageView: View {
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: model.isAddingProvider)
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: model.editingProvider != nil)
+        .onChange(of: model.isAddingProvider) { _, isAddingProvider in
+            if !isAddingProvider {
+                addingPreset = nil
+            }
+        }
+        .onChange(of: model.selectedApp) { _, _ in
+            showingAddPresetPicker = false
+            if !model.isAddingProvider {
+                addingPreset = nil
+            }
+        }
     }
 
     // MARK: - Toolbar (App Picker + Actions)
@@ -377,12 +396,17 @@ struct ProviderPageView: View {
 
             // Actions
             Button {
-                model.isAddingProvider = true
+                showingAddPresetPicker.toggle()
             } label: {
                 Label("添加", systemImage: "plus")
                     .lineLimit(1)
             }
             .aimenuActionButtonStyle(prominent: true, density: .compact)
+            .popover(isPresented: $showingAddPresetPicker, arrowEdge: .top) {
+                AddProviderPresetPopover(appType: model.selectedApp) { preset in
+                    beginAddingProvider(with: preset)
+                }
+            }
 
             Button {
                 Task { await model.speedTestAll() }
@@ -396,18 +420,209 @@ struct ProviderPageView: View {
             Spacer(minLength: 0)
         }
     }
+
+    private func beginAddingProvider(with preset: ProviderPreset) {
+        addingPreset = preset
+        showingAddPresetPicker = false
+        model.isAddingProvider = true
+    }
+
+    private func closeAddProviderSheet() {
+        model.isAddingProvider = false
+        addingPreset = nil
+    }
+
+    private func reopenAddPresetPicker() {
+        closeAddProviderSheet()
+        DispatchQueue.main.async {
+            showingAddPresetPicker = true
+        }
+    }
+}
+
+// MARK: - Add Provider Preset Popover
+
+private struct AddProviderPresetPopover: View {
+    let appType: ProviderAppType
+    let onSelect: (ProviderPreset) -> Void
+
+    @State private var searchText = ""
+    @State private var showAllPresets = false
+
+    private var accentTint: Color { appType.formAccent }
+
+    private var allPresets: [ProviderPreset] {
+        ProviderPresets.presets(for: appType)
+    }
+
+    private var featuredPresetIDs: Set<String> {
+        switch appType {
+        case .claude:
+            return [
+                "claude-official",
+                "claude-deepseek",
+                "claude-zhipu",
+                "claude-kimi",
+                "claude-siliconflow",
+                "claude-openrouter",
+                "claude-custom"
+            ]
+        case .codex:
+            return [
+                "codex-official",
+                "codex-azure",
+                "codex-openrouter",
+                "codex-custom"
+            ]
+        case .gemini:
+            return [
+                "gemini-official",
+                "gemini-openrouter",
+                "gemini-custom"
+            ]
+        }
+    }
+
+    private var filteredPresets: [ProviderPreset] {
+        guard let query = searchText.trimmedNonEmpty else { return allPresets }
+        return allPresets.filter {
+            $0.name.localizedCaseInsensitiveContains(query)
+                || ($0.baseUrl?.localizedCaseInsensitiveContains(query) ?? false)
+                || $0.category.displayName.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    private var displayedPresets: [ProviderPreset] {
+        guard searchText.isEmpty, !showAllPresets else { return filteredPresets }
+        let featured = filteredPresets.filter { featuredPresetIDs.contains($0.id) }
+        return featured.isEmpty ? filteredPresets : featured
+    }
+
+    private var hiddenPresetCount: Int {
+        max(filteredPresets.count - displayedPresets.count, 0)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("添加 \(appType.displayName) 提供商")
+                        .font(.headline)
+                    Text("先选一个常用预设，再进入详细配置。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: appType.iconName)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(accentTint)
+                    .frame(width: 34, height: 34)
+                    .background(accentTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(accentTint.opacity(0.9))
+
+                TextField("搜索提供商或域名", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.subheadline)
+
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(accentTint.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(accentTint.opacity(0.18), lineWidth: 1)
+                    )
+            )
+
+            HStack(spacing: 8) {
+                Text(searchText.isEmpty ? (showAllPresets ? "全部预设" : "常用预设") : "搜索结果")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text("\(displayedPresets.count)")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.tertiary)
+
+                Spacer(minLength: 0)
+
+                if searchText.isEmpty, hiddenPresetCount > 0 {
+                    Button(showAllPresets ? "收起" : "更多 \(hiddenPresetCount) 个") {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showAllPresets.toggle()
+                        }
+                    }
+                    .aimenuActionButtonStyle(
+                        prominent: showAllPresets,
+                        tint: showAllPresets ? accentTint : nil,
+                        density: .compact
+                    )
+                }
+            }
+
+            ScrollView {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 10)],
+                    spacing: 10
+                ) {
+                    ForEach(displayedPresets) { preset in
+                        Button {
+                            onSelect(preset)
+                        } label: {
+                            PresetRow(
+                                preset: preset,
+                                isSelected: false,
+                                accent: accentTint
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .frame(width: 500)
+            .frame(minHeight: 220, maxHeight: 320)
+
+            Text("预设只负责填充常用地址和模型，详细参数仍可在下一步继续修改。")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(16)
+        .frame(width: 532)
+        .background(.regularMaterial)
+    }
 }
 
 // MARK: - Add Provider Sheet
 
 private struct AddProviderSheet: View {
     let appType: ProviderAppType
+    let initialPreset: ProviderPreset
     let onAdd: (ProviderDraft) -> Void
     let onCancel: () -> Void
+    let onChangePreset: () -> Void
 
     @State private var selectedPreset: ProviderPreset?
     @State private var searchText = ""
-    @State private var step: SheetStep = .selectPreset
+    @State private var step: SheetStep = .configure
+    @State private var didBootstrap = false
 
     @State private var providerName = ""
     @State private var websiteUrl = ""
@@ -527,49 +742,33 @@ private struct AddProviderSheet: View {
 
             Divider()
 
-            if step == .selectPreset {
-                presetPickerStep
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .leading).combined(with: .opacity),
-                        removal: .move(edge: .leading).combined(with: .opacity)
-                    ))
-            } else {
-                configureStep
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .trailing).combined(with: .opacity),
-                        removal: .move(edge: .trailing).combined(with: .opacity)
-                    ))
-            }
+            configureStep
         }
         .frame(width: 700)
         .background(.regularMaterial)
-        .animation(.easeInOut(duration: 0.22), value: step)
+        .onAppear {
+            guard !didBootstrap else { return }
+            didBootstrap = true
+            applyPreset(initialPreset)
+        }
     }
 
     private var sheetHeader: some View {
         HStack(spacing: 10) {
-            if step == .configure {
-                Button {
-                    withAnimation { step = .selectPreset }
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 9))
-                }
-                .buttonStyle(.plain)
-            }
-
             VStack(alignment: .leading, spacing: 3) {
-                Text(step == .selectPreset ? "选择提供商" : (selectedPreset?.name ?? "配置详情"))
+                Text(selectedPreset?.name ?? "配置详情")
                     .font(.headline)
-                Text(step == .selectPreset ? appType.displayName : appType.liveConfigPathsText)
+                Text(appType.liveConfigPathsText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Spacer(minLength: 0)
+
+            Button("更换预设") {
+                onChangePreset()
+            }
+            .aimenuActionButtonStyle(density: .compact)
 
             CloseGlassButton { onCancel() }
         }

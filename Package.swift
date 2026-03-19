@@ -14,6 +14,9 @@ let package = Package(
         .executableTarget(
             name: "AIMenu",
             path: "Sources/AIMenu",
+            exclude: [
+                "AIMenu.icon"
+            ],
             resources: [
                 .process("Resources")
             ]

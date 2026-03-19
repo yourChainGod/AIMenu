@@ -1,5 +1,6 @@
 .DS_Store
 .build/
+.swiftpm/
 build/
 dist/
 DerivedData/
@@ -13,4 +14,5 @@ SDKStatCaches.noindex/
 *.sha256
 *.xcuserstate
 xcuserdata/
-Copool.xcodeproj/project.xcworkspace/xcuserdata/
+AIMenu.xcodeproj/project.xcworkspace/xcuserdata/
+Copool.xcodeproj/
