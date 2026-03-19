@@ -184,6 +184,13 @@ struct DiscoverableSkill: Equatable, Identifiable {
     var isInstalled: Bool
 }
 
+struct DiscoverableSkillPreviewDocument: Equatable, Identifiable {
+    var id: String { skill.id }
+    var skill: DiscoverableSkill
+    var sourcePath: String
+    var content: String
+}
+
 struct InstalledSkill: Codable, Equatable, Identifiable {
     var id: String { directory }
     var key: String

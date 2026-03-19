@@ -334,6 +334,49 @@ final class ProviderIntegrationTests: XCTestCase {
         XCTAssertTrue(document.content.contains("# Demo Skill"))
     }
 
+    func testReadDiscoverableSkillDocumentLoadsRemoteSkillMarkdown() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(
+            configService: service,
+            gitHubFileLoader: { owner, repo, branch, path in
+                guard owner == "demo",
+                      repo == "skill-repo",
+                      branch == "main",
+                      path == "examples/helper/SKILL.md" else {
+                    throw NSError(domain: "ProviderIntegrationTests", code: 1)
+                }
+
+                return """
+                # Remote Skill
+
+                Remote description.
+                """
+            }
+        )
+
+        let skill = DiscoverableSkill(
+            key: "demo/skill-repo:examples/helper",
+            name: "Helper",
+            description: nil,
+            readmeUrl: "https://github.com/demo/skill-repo/tree/main/examples/helper",
+            repoOwner: "demo",
+            repoName: "skill-repo",
+            repoBranch: "main",
+            directory: "examples/helper",
+            isInstalled: false
+        )
+
+        let document = try await coordinator.readDiscoverableSkillDocument(skill)
+
+        XCTAssertEqual(document.skill.key, skill.key)
+        XCTAssertEqual(document.sourcePath, "demo/skill-repo @ main / examples/helper/SKILL.md")
+        XCTAssertTrue(document.content.contains("# Remote Skill"))
+        XCTAssertTrue(document.content.contains("Remote description."))
+    }
+
     func testUpdateInstalledSkillContentRewritesSkillMarkdownAndRefreshesMetadata() async throws {
         let tempHome = try makeTemporaryHome()
         defer { try? FileManager.default.removeItem(at: tempHome) }

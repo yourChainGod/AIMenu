@@ -19,6 +19,8 @@ final class ToolsPageModel: ObservableObject {
     @Published var claudeHooks: [ClaudeHook] = []
     @Published var skills: SkillStore = SkillStore(repos: SkillStore.defaultRepos)
     @Published var discoverableSkills: [DiscoverableSkill] = []
+    @Published var previewingDiscoverableSkillDocument: DiscoverableSkillPreviewDocument?
+    @Published var previewingDiscoverableSkillKey: String?
     @Published var editingInstalledSkillDocument: InstalledSkillDocument?
     @Published var skillDiscoveryLoading = false
     @Published var cursor2APIStatus: Cursor2APIStatus = .idle
@@ -237,6 +239,7 @@ final class ToolsPageModel: ObservableObject {
         defer { skillDiscoveryLoading = false }
         do {
             discoverableSkills = try await coordinator.discoverAvailableSkills()
+            refreshDiscoverableSkillPreviewIfNeeded()
             notice = NoticeMessage(style: .success, text: "已获取可安装技能列表")
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -252,6 +255,7 @@ final class ToolsPageModel: ObservableObject {
             skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
             skills = skillStore
             discoverableSkills = try await coordinator.discoverAvailableSkills()
+            refreshDiscoverableSkillPreviewIfNeeded()
             notice = NoticeMessage(style: .success, text: "已安装技能：\(skill.name)")
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -306,8 +310,20 @@ final class ToolsPageModel: ObservableObject {
             skills = skillStore
             if !discoverableSkills.isEmpty {
                 discoverableSkills = try await coordinator.discoverAvailableSkills()
+                refreshDiscoverableSkillPreviewIfNeeded()
             }
             notice = NoticeMessage(style: .info, text: "技能已移除")
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    func previewDiscoverableSkill(_ skill: DiscoverableSkill) async {
+        previewingDiscoverableSkillKey = skill.key
+        defer { previewingDiscoverableSkillKey = nil }
+
+        do {
+            previewingDiscoverableSkillDocument = try await coordinator.readDiscoverableSkillDocument(skill)
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -432,5 +448,12 @@ final class ToolsPageModel: ObservableObject {
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
+    }
+
+    private func refreshDiscoverableSkillPreviewIfNeeded() {
+        guard var document = previewingDiscoverableSkillDocument else { return }
+        guard let updatedSkill = discoverableSkills.first(where: { $0.key == document.skill.key }) else { return }
+        document.skill = updatedSkill
+        previewingDiscoverableSkillDocument = document
     }
 }

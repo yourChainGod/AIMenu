@@ -1,6 +1,8 @@
 import Foundation
 
 actor ProviderCoordinator {
+    typealias GitHubFileLoader = @Sendable (String, String, String, String) async throws -> String
+
     private struct GitHubTreeResponse: Decodable {
         struct Entry: Decodable {
             let path: String
@@ -17,9 +19,14 @@ actor ProviderCoordinator {
     static let managedClaudeCursor2APIName = "Cursor2API 本地桥接"
 
     private let configService: ProviderConfigService
+    private let gitHubFileLoader: GitHubFileLoader?
 
-    init(configService: ProviderConfigService) {
+    init(
+        configService: ProviderConfigService,
+        gitHubFileLoader: GitHubFileLoader? = nil
+    ) {
         self.configService = configService
+        self.gitHubFileLoader = gitHubFileLoader
     }
 
     // MARK: - Provider CRUD
@@ -681,6 +688,22 @@ actor ProviderCoordinator {
         return try await readInstalledSkillDocument(directory: directory)
     }
 
+    func readDiscoverableSkillDocument(_ skill: DiscoverableSkill) async throws -> DiscoverableSkillPreviewDocument {
+        let remotePath = "\(skill.directory)/SKILL.md"
+        let content = try await fetchGitHubFile(
+            owner: skill.repoOwner,
+            repo: skill.repoName,
+            branch: skill.repoBranch,
+            path: remotePath
+        )
+
+        return DiscoverableSkillPreviewDocument(
+            skill: skill,
+            sourcePath: "\(skill.repoOwner)/\(skill.repoName) @ \(skill.repoBranch) / \(remotePath)",
+            content: content
+        )
+    }
+
     private func parseSkillMetadata(at url: URL) -> (name: String, description: String?) {
         guard let content = try? String(contentsOf: url, encoding: .utf8) else {
             return (url.deletingLastPathComponent().lastPathComponent, nil)
@@ -764,6 +787,10 @@ actor ProviderCoordinator {
     }
 
     private func fetchGitHubFile(owner: String, repo: String, branch: String, path: String) async throws -> String {
+        if let gitHubFileLoader {
+            return try await gitHubFileLoader(owner, repo, branch, path)
+        }
+
         guard let url = URL(string: "https://raw.githubusercontent.com/\(owner)/\(repo)/\(branch)/\(path)") else {
             throw AppError.invalidData("技能文件地址无效")
         }
