@@ -162,10 +162,188 @@ struct ToolsPageView: View {
             servicesSection
             configsSection
         case .workbench:
-            mcpSection
-            promptsSection
-            hooksSection
-            skillsSection
+            workbenchSwitcherRow
+            workbenchContent
+        }
+    }
+
+    private var workbenchSections: [ToolsPageModel.ToolsSection] {
+        [.mcp, .prompts, .hooks, .skills]
+    }
+
+    private var activeWorkbenchSection: ToolsPageModel.ToolsSection {
+        workbenchSections.contains(model.activeSection) ? model.activeSection : .mcp
+    }
+
+    private var workbenchSwitcherRow: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(workbenchSectionTint(for: activeWorkbenchSection).opacity(0.12))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: workbenchSectionIcon(for: activeWorkbenchSection))
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(workbenchSectionTint(for: activeWorkbenchSection))
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(workbenchSectionTitle(for: activeWorkbenchSection))
+                        .font(.headline)
+                    Text(workbenchSectionSubtitle(for: activeWorkbenchSection))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                ToolsStatusBadge(
+                    text: workbenchSectionBadge(for: activeWorkbenchSection),
+                    tint: workbenchSectionTint(for: activeWorkbenchSection)
+                )
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(workbenchSections, id: \.self) { section in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                model.activeSection = section
+                            }
+                        } label: {
+                            HStack(spacing: 7) {
+                                Image(systemName: workbenchSectionIcon(for: section))
+                                    .font(.caption.weight(.semibold))
+
+                                Text(workbenchSectionTitle(for: section))
+                                    .font(.caption.weight(.semibold))
+
+                                Text("\(workbenchSectionCount(for: section))")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(
+                                        activeWorkbenchSection == section
+                                            ? Color.white.opacity(0.88)
+                                            : Color.secondary
+                                    )
+                            }
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                        .background {
+                            Capsule()
+                                .fill(
+                                    activeWorkbenchSection == section
+                                        ? workbenchSectionTint(for: section).opacity(0.92)
+                                        : Color.primary.opacity(0.05)
+                                )
+                        }
+                        .foregroundStyle(activeWorkbenchSection == section ? Color.white : Color.primary)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .cardSurface(
+            cornerRadius: LayoutRules.cardRadius,
+            tint: workbenchSectionTint(for: activeWorkbenchSection).opacity(0.05)
+        )
+    }
+
+    @ViewBuilder
+    private var workbenchContent: some View {
+        Group {
+            switch activeWorkbenchSection {
+            case .configs, .mcp:
+                mcpSection
+            case .prompts:
+                promptsSection
+            case .hooks:
+                hooksSection
+            case .skills:
+                skillsSection
+            }
+        }
+        .id(activeWorkbenchSection.rawValue)
+    }
+
+    private func workbenchSectionTitle(for section: ToolsPageModel.ToolsSection) -> String {
+        switch section {
+        case .configs, .mcp:
+            return "MCP"
+        case .prompts:
+            return "Prompts"
+        case .hooks:
+            return "Hooks"
+        case .skills:
+            return "Skills"
+        }
+    }
+
+    private func workbenchSectionSubtitle(for section: ToolsPageModel.ToolsSection) -> String {
+        switch section {
+        case .configs, .mcp:
+            return "导入、启停、挂载应用"
+        case .prompts:
+            return "切换应用、导入、写入"
+        case .hooks:
+            return "扫描事件分组与来源"
+        case .skills:
+            return "发现、安装、编辑技能"
+        }
+    }
+
+    private func workbenchSectionIcon(for section: ToolsPageModel.ToolsSection) -> String {
+        switch section {
+        case .configs, .mcp:
+            return "server.rack"
+        case .prompts:
+            return "text.bubble"
+        case .hooks:
+            return "point.3.connected.trianglepath.dotted"
+        case .skills:
+            return "wand.and.stars"
+        }
+    }
+
+    private func workbenchSectionTint(for section: ToolsPageModel.ToolsSection) -> Color {
+        switch section {
+        case .configs, .mcp:
+            return .blue
+        case .prompts:
+            return .purple
+        case .hooks:
+            return .indigo
+        case .skills:
+            return .orange
+        }
+    }
+
+    private func workbenchSectionCount(for section: ToolsPageModel.ToolsSection) -> Int {
+        switch section {
+        case .configs, .mcp:
+            return model.mcpServers.count
+        case .prompts:
+            return model.prompts.count
+        case .hooks:
+            return model.claudeHooks.count
+        case .skills:
+            return model.skills.installedSkills.count
+        }
+    }
+
+    private func workbenchSectionBadge(for section: ToolsPageModel.ToolsSection) -> String {
+        switch section {
+        case .configs, .mcp:
+            let enabled = model.mcpServers.filter(\.isEnabled).count
+            return "\(enabled)/\(model.mcpServers.count) 已启用"
+        case .prompts:
+            let active = model.prompts.filter(\.isActive).count
+            return active > 0 ? "\(active) 已写入" : "\(model.prompts.count) 条"
+        case .hooks:
+            return "\(groupedClaudeHooks.count) 组 / \(model.claudeHooks.count) 条"
+        case .skills:
+            return "\(model.skills.installedSkills.count) 已装"
         }
     }
 
