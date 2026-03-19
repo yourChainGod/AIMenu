@@ -19,6 +19,7 @@ final class ToolsPageModel: ObservableObject {
     @Published var claudeHooks: [ClaudeHook] = []
     @Published var skills: SkillStore = SkillStore(repos: SkillStore.defaultRepos)
     @Published var discoverableSkills: [DiscoverableSkill] = []
+    @Published var editingInstalledSkillDocument: InstalledSkillDocument?
     @Published var skillDiscoveryLoading = false
     @Published var cursor2APIStatus: Cursor2APIStatus = .idle
     @Published var trackedPortNumbers: [Int] = [8002, 8787]
@@ -307,6 +308,26 @@ final class ToolsPageModel: ObservableObject {
                 discoverableSkills = try await coordinator.discoverAvailableSkills()
             }
             notice = NoticeMessage(style: .info, text: "技能已移除")
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    func openInstalledSkill(directory: String) async {
+        do {
+            editingInstalledSkillDocument = try await coordinator.readInstalledSkillDocument(directory: directory)
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    func saveInstalledSkill(directory: String, content: String) async {
+        do {
+            editingInstalledSkillDocument = try await coordinator.updateInstalledSkillContent(directory: directory, content: content)
+            var skillStore = try await coordinator.loadSkillStore()
+            skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
+            skills = skillStore
+            notice = NoticeMessage(style: .success, text: "技能内容已保存")
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }

@@ -309,6 +309,66 @@ final class ProviderIntegrationTests: XCTestCase {
         XCTAssertEqual(geminiBundle.files.first(where: { $0.label == "settings.json" })?.exists, false)
     }
 
+    func testReadInstalledSkillDocumentLoadsSkillMarkdown() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+        let skillDir = tempHome.appendingPathComponent(".claude/skills/demo-skill", isDirectory: true)
+        let skillPath = skillDir.appendingPathComponent("SKILL.md", isDirectory: false)
+
+        try FileManager.default.createDirectory(at: skillDir, withIntermediateDirectories: true)
+        try """
+        # Demo Skill
+
+        A compact description.
+        """.write(to: skillPath, atomically: true, encoding: .utf8)
+
+        _ = try await coordinator.syncInstalledSkillsFromDisk()
+        let document = try await coordinator.readInstalledSkillDocument(directory: "demo-skill")
+
+        XCTAssertEqual(document.skill.name, "Demo Skill")
+        XCTAssertEqual(document.skill.description, "A compact description.")
+        XCTAssertEqual(document.path, skillPath.path)
+        XCTAssertTrue(document.content.contains("# Demo Skill"))
+    }
+
+    func testUpdateInstalledSkillContentRewritesSkillMarkdownAndRefreshesMetadata() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+        let skillDir = tempHome.appendingPathComponent(".claude/skills/demo-skill", isDirectory: true)
+        let skillPath = skillDir.appendingPathComponent("SKILL.md", isDirectory: false)
+
+        try FileManager.default.createDirectory(at: skillDir, withIntermediateDirectories: true)
+        try """
+        # Old Skill
+
+        Old description.
+        """.write(to: skillPath, atomically: true, encoding: .utf8)
+
+        _ = try await coordinator.syncInstalledSkillsFromDisk()
+
+        let updated = try await coordinator.updateInstalledSkillContent(
+            directory: "demo-skill",
+            content: """
+            # New Skill
+
+            Better description.
+            """
+        )
+
+        let fileContent = try String(contentsOf: skillPath, encoding: .utf8)
+
+        XCTAssertEqual(updated.skill.name, "New Skill")
+        XCTAssertEqual(updated.skill.description, "Better description.")
+        XCTAssertTrue(fileContent.contains("# New Skill"))
+        XCTAssertTrue(fileContent.contains("Better description."))
+    }
+
     func testListClaudeHooksParsesNestedHookGroups() async throws {
         let tempHome = try makeTemporaryHome()
         defer { try? FileManager.default.removeItem(at: tempHome) }

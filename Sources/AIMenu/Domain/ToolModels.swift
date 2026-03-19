@@ -195,6 +195,13 @@ struct InstalledSkill: Codable, Equatable, Identifiable {
     var installedAt: Int64
 }
 
+struct InstalledSkillDocument: Equatable, Identifiable {
+    var id: String { skill.id }
+    var skill: InstalledSkill
+    var path: String
+    var content: String
+}
+
 // MARK: - Local Config Overview
 
 enum LocalConfigKind: String, Codable, Equatable {

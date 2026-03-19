@@ -87,6 +87,29 @@ struct ToolsPageView: View {
             )
             .frame(width: 520, height: 320)
         }
+        .sheet(
+            isPresented: Binding(
+                get: { model.editingInstalledSkillDocument != nil },
+                set: { newValue in
+                    if !newValue {
+                        model.editingInstalledSkillDocument = nil
+                    }
+                }
+            )
+        ) {
+            if let document = model.editingInstalledSkillDocument {
+                InstalledSkillEditorSheet(
+                    document: document,
+                    onSave: { content in
+                        Task { await model.saveInstalledSkill(directory: document.skill.directory, content: content) }
+                    },
+                    onCancel: {
+                        model.editingInstalledSkillDocument = nil
+                    }
+                )
+                .frame(width: 760, height: 620)
+            }
+        }
     }
 
     // MARK: - Managed Services
@@ -1404,6 +1427,13 @@ struct ToolsPageView: View {
 
             HStack(spacing: 4) {
                 Button {
+                    Task { await model.openInstalledSkill(directory: skill.directory) }
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .liquidGlassActionButtonStyle(density: .compact)
+
+                Button {
                     let path = NSHomeDirectory() + "/.claude/skills/\(skill.directory)"
                     NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                 } label: {
@@ -1424,6 +1454,10 @@ struct ToolsPageView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Task { await model.openInstalledSkill(directory: skill.directory) }
+        }
         .background {
             RoundedRectangle(cornerRadius: 8)
                 .fill(hoveredSkill == skill.id ? Color.primary.opacity(0.05) : Color.clear)
@@ -1895,6 +1929,96 @@ private struct MCPServerEditorSheet: View {
 
     private static func dictToMultiline(_ value: [String: String]) -> String {
         value.keys.sorted().map { "\($0)=\(value[$0] ?? "")" }.joined(separator: "\n")
+    }
+}
+
+private struct InstalledSkillEditorSheet: View {
+    let document: InstalledSkillDocument
+    let onSave: (String) -> Void
+    let onCancel: () -> Void
+
+    @State private var content: String
+
+    init(
+        document: InstalledSkillDocument,
+        onSave: @escaping (String) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.document = document
+        self.onSave = onSave
+        self.onCancel = onCancel
+        _content = State(initialValue: document.content)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(document.skill.name)
+                            .font(.headline)
+                        Text(repoLabel)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.primary.opacity(0.05), in: Capsule())
+                    }
+                    Text(document.path)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer(minLength: 0)
+                Button("取消") { onCancel() }
+                    .keyboardShortcut(.escape)
+                Button("保存") {
+                    onSave(content)
+                }
+                .keyboardShortcut(.return, modifiers: .command)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Text(verbatim: "SKILL.md")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    Button("在 Finder 中打开") {
+                        NSWorkspace.shared.selectFile(document.path, inFileViewerRootedAtPath: "")
+                    }
+                    .aimenuActionButtonStyle(density: .compact)
+                }
+
+                TextEditor(text: $content)
+                    .font(.system(.body, design: .monospaced))
+                    .padding(10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.primary.opacity(0.05))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+            }
+            .padding(20)
+        }
+    }
+
+    private var repoLabel: String {
+        let owner = document.skill.repoOwner.trimmingCharacters(in: .whitespacesAndNewlines)
+        let repo = document.skill.repoName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !owner.isEmpty, !repo.isEmpty {
+            return "\(owner)/\(repo)"
+        }
+        return "本地技能"
     }
 }
 

@@ -894,6 +894,27 @@ actor ProviderConfigService {
         homeDirectory.appendingPathComponent(".claude/skills")
     }
 
+    func installedSkillMarkdownPath(directory: String) -> URL {
+        installedSkillDirectoryURL(directory: directory).appendingPathComponent("SKILL.md", isDirectory: false)
+    }
+
+    func readInstalledSkillContent(directory: String) throws -> String {
+        let path = installedSkillMarkdownPath(directory: directory)
+        guard fileManager.fileExists(atPath: path.path) else {
+            throw AppError.fileNotFound("未找到技能文件：\(directory)/SKILL.md")
+        }
+        return try String(contentsOf: path, encoding: .utf8)
+    }
+
+    func writeInstalledSkillContent(directory: String, content: String) throws {
+        let path = installedSkillMarkdownPath(directory: directory)
+        let parent = path.deletingLastPathComponent()
+        guard fileManager.fileExists(atPath: parent.path) else {
+            throw AppError.fileNotFound("未找到技能目录：\(directory)")
+        }
+        try content.write(to: path, atomically: true, encoding: .utf8)
+    }
+
     private func loadJSONObject(from path: URL) -> [String: Any] {
         guard fileManager.fileExists(atPath: path.path),
               let data = try? Data(contentsOf: path),
@@ -907,6 +928,14 @@ actor ProviderConfigService {
         try fileManager.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
         let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: path, options: .atomic)
+    }
+
+    private func installedSkillDirectoryURL(directory: String) -> URL {
+        directory
+            .split(separator: "/")
+            .reduce(skillsInstallDirectory) { partialResult, component in
+                partialResult.appendingPathComponent(String(component), isDirectory: true)
+            }
     }
 
     private func makeLocalConfigFile(label: String, kind: LocalConfigKind, path: URL) -> LocalConfigFile {

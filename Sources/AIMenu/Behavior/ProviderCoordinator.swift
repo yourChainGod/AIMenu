@@ -613,22 +613,28 @@ actor ProviderCoordinator {
         let enumerator = fm.enumerator(
             at: installDir,
             includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles]
+            options: []
         )
 
         var scanned: [InstalledSkill] = []
         while let url = enumerator?.nextObject() as? URL {
             guard url.lastPathComponent == "SKILL.md" else { continue }
             let skillDir = url.deletingLastPathComponent()
-            let relativePath = skillDir.path.replacingOccurrences(of: installDir.path + "/", with: "")
+            let relativePath = relativeSkillPath(skillDir: skillDir, installDir: installDir)
             let metadata = parseSkillMetadata(at: url)
 
             if let existing = existingByDirectory[relativePath] {
                 var skill = existing
-                if skill.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if metadata.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if skill.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        skill.name = metadata.name
+                    }
+                } else {
                     skill.name = metadata.name
                 }
-                if skill.description?.trimmedNonEmpty == nil {
+                if let description = metadata.description?.trimmedNonEmpty {
+                    skill.description = description
+                } else if skill.description?.trimmedNonEmpty == nil {
                     skill.description = metadata.description
                 }
                 scanned.append(skill)
@@ -654,12 +660,44 @@ actor ProviderCoordinator {
         return merged
     }
 
+    func readInstalledSkillDocument(directory: String) async throws -> InstalledSkillDocument {
+        let installedSkills = try await syncInstalledSkillsFromDisk()
+        guard let skill = installedSkills.first(where: { $0.directory == directory }) else {
+            throw AppError.fileNotFound("未找到技能：\(directory)")
+        }
+
+        let content = try await configService.readInstalledSkillContent(directory: directory)
+        let path = await configService.installedSkillMarkdownPath(directory: directory)
+
+        return InstalledSkillDocument(
+            skill: skill,
+            path: path.path,
+            content: content
+        )
+    }
+
+    func updateInstalledSkillContent(directory: String, content: String) async throws -> InstalledSkillDocument {
+        try await configService.writeInstalledSkillContent(directory: directory, content: content)
+        return try await readInstalledSkillDocument(directory: directory)
+    }
+
     private func parseSkillMetadata(at url: URL) -> (name: String, description: String?) {
         guard let content = try? String(contentsOf: url, encoding: .utf8) else {
             return (url.deletingLastPathComponent().lastPathComponent, nil)
         }
 
         return parseSkillMetadata(from: content, fallbackName: url.deletingLastPathComponent().lastPathComponent)
+    }
+
+    private func relativeSkillPath(skillDir: URL, installDir: URL) -> String {
+        let normalizedSkillPath = skillDir.resolvingSymlinksInPath().path
+        let normalizedInstallPath = installDir.resolvingSymlinksInPath().path
+
+        if normalizedSkillPath.hasPrefix(normalizedInstallPath + "/") {
+            return String(normalizedSkillPath.dropFirst(normalizedInstallPath.count + 1))
+        }
+
+        return skillDir.lastPathComponent
     }
 
     private func discoverAvailableSkills(
