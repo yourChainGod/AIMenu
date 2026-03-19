@@ -85,6 +85,10 @@ actor ProviderConfigService {
         homeDirectory.appendingPathComponent(".claude/settings.json")
     }
 
+    private var claudeSkillsDirectory: URL {
+        homeDirectory.appendingPathComponent(".claude/skills", isDirectory: true)
+    }
+
     private func writeClaudeConfig(_ config: ClaudeSettingsConfig) throws {
         let settingsPath = claudeSettingsPath
         try fileManager.createDirectory(at: settingsPath.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -186,6 +190,14 @@ actor ProviderConfigService {
         homeDirectory.appendingPathComponent(".codex/config.toml")
     }
 
+    private var codexHooksPath: URL {
+        homeDirectory.appendingPathComponent(".codex/hooks.json")
+    }
+
+    private var codexSkillsDirectory: URL {
+        homeDirectory.appendingPathComponent(".codex/skills", isDirectory: true)
+    }
+
     func writeCodexConfig(_ config: CodexSettingsConfig) throws {
         let authPath = codexAuthPath
         try fileManager.createDirectory(at: authPath.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -239,6 +251,14 @@ actor ProviderConfigService {
 
     private var geminiEnvPath: URL {
         homeDirectory.appendingPathComponent(".gemini/.env")
+    }
+
+    private var geminiSettingsPath: URL {
+        homeDirectory.appendingPathComponent(".gemini/settings.json")
+    }
+
+    private var geminiSkillsDirectory: URL {
+        homeDirectory.appendingPathComponent(".gemini/skills", isDirectory: true)
     }
 
     func writeGeminiConfig(_ config: GeminiSettingsConfig) throws {
@@ -836,25 +856,99 @@ actor ProviderConfigService {
     // MARK: - Claude Hooks
 
     func loadClaudeHooks() throws -> [ClaudeHook] {
-        let path = claudeSettingsPath
-        guard fileManager.fileExists(atPath: path.path) else { return [] }
+        mergeLiveHooks(
+            loadClaudeUserHooks()
+                + loadCodexHooks()
+                + loadGeminiHooks()
+        )
+    }
 
-        let settings = loadJSONObject(from: path)
+    private func loadClaudeUserHooks() -> [ClaudeHook] {
+        let settings = loadJSONObject(from: claudeSettingsPath)
         guard let hooks = settings["hooks"] as? [String: Any] else { return [] }
 
-        var result: [ClaudeHook] = []
-        for event in hooks.keys.sorted() {
-            result.append(
-                contentsOf: parseClaudeHooks(
-                    event: event,
-                    rawValue: hooks[event],
-                    sourcePath: path.path,
-                    scope: .user
-                )
+        return hooks.keys.sorted().flatMap { event in
+            parseClaudeHooks(
+                event: event,
+                rawValue: hooks[event],
+                sourcePath: claudeSettingsPath.path,
+                scope: .user,
+                apps: MCPAppToggles(claude: true)
             )
         }
+    }
 
-        return result.sorted { lhs, rhs in
+    private func loadCodexHooks() -> [ClaudeHook] {
+        let object = loadJSONObject(from: codexHooksPath)
+        guard let hooks = object["hooks"] as? [String: Any] else { return [] }
+
+        let featureEnabled = isCodexFeatureEnabled("codex_hooks")
+        return hooks.keys.sorted().flatMap { event in
+            parseClaudeHooks(
+                event: event,
+                rawValue: hooks[event],
+                sourcePath: codexHooksPath.path,
+                scope: .user,
+                apps: MCPAppToggles(codex: true)
+            )
+            .map { hook in
+                var updated = hook
+                updated.enabled = featureEnabled && hook.enabled
+                return updated
+            }
+        }
+    }
+
+    private func loadGeminiHooks() -> [ClaudeHook] {
+        let settings = loadJSONObject(from: geminiSettingsPath)
+        guard let hooks = settings["hooks"] as? [String: Any] else { return [] }
+
+        let hooksConfig = settings["hooksConfig"] as? [String: Any] ?? [:]
+        let hooksEnabled = hooksConfig["enabled"] as? Bool ?? true
+        let disabledHookNames = Set(
+            ((hooksConfig["disabled"] as? [Any]) ?? [])
+                .compactMap { $0 as? String }
+        )
+
+        return hooks.keys.sorted().flatMap { event in
+            parseClaudeHooks(
+                event: event,
+                rawValue: hooks[event],
+                sourcePath: geminiSettingsPath.path,
+                scope: .user,
+                apps: MCPAppToggles(gemini: true)
+            )
+            .map { hook in
+                var updated = hook
+                updated.timeout = hook.timeout.map { max(1, Int(ceil(Double($0) / 1000.0))) }
+                if !hooksEnabled || disabledHookNames.contains(hook.id) {
+                    updated.enabled = false
+                }
+                return updated
+            }
+        }
+    }
+
+    private func mergeLiveHooks(_ hooks: [ClaudeHook]) -> [ClaudeHook] {
+        var merged: [String: ClaudeHook] = [:]
+
+        for hook in hooks {
+            let key = hookMergeKey(for: hook)
+            if var existing = merged[key] {
+                existing.apps.claude = existing.apps.claude || hook.apps.claude
+                existing.apps.codex = existing.apps.codex || hook.apps.codex
+                existing.apps.gemini = existing.apps.gemini || hook.apps.gemini
+                existing.enabled = existing.enabled || hook.enabled
+                existing.sourcePath = liveHookSourceSummary(for: existing.apps)
+                merged[key] = existing
+            } else {
+                var inserted = hook
+                inserted.sourcePath = liveHookSourceSummary(for: hook.apps)
+                merged[key] = inserted
+            }
+        }
+
+        return merged.values.sorted { lhs, rhs in
             if lhs.event != rhs.event {
                 return lhs.event.localizedCaseInsensitiveCompare(rhs.event) == .orderedAscending
             }
@@ -865,6 +959,93 @@ actor ProviderConfigService {
             }
             return lhs.command.localizedCaseInsensitiveCompare(rhs.command) == .orderedAscending
         }
+    }
+
+    func syncHooks(_ hooks: [ClaudeHook]) throws {
+        try writeClaudeHooks(hooks.filter { $0.apps.claude && $0.supports(app: .claude) })
+        try writeCodexHooks(hooks.filter { $0.apps.codex && $0.supports(app: .codex) })
+        try writeGeminiHooks(hooks.filter { $0.apps.gemini && $0.supports(app: .gemini) })
+    }
+
+    private func writeClaudeHooks(_ hooks: [ClaudeHook]) throws {
+        var settings = loadJSONObject(from: claudeSettingsPath)
+        let payload = renderClaudeStyleHooksPayload(hooks)
+        if payload.isEmpty {
+            settings.removeValue(forKey: "hooks")
+        } else {
+            settings["hooks"] = payload
+        }
+        try writeJSONObject(settings, to: claudeSettingsPath)
+    }
+
+    private func writeCodexHooks(_ hooks: [ClaudeHook]) throws {
+        let activeHooks = hooks.filter(\.enabled)
+        if activeHooks.isEmpty {
+            if fileManager.fileExists(atPath: codexHooksPath.path) {
+                try fileManager.removeItem(at: codexHooksPath)
+            }
+        } else {
+            let payload: [String: Any] = ["hooks": renderCodexHooksPayload(activeHooks)]
+            try writeJSONObject(payload, to: codexHooksPath)
+        }
+
+        let updatedContent = updateCodexFeatureFlags(["codex_hooks": activeHooks.isEmpty ? nil : true])
+        try writeTOML(updatedContent, to: codexConfigPath)
+    }
+
+    private func writeGeminiHooks(_ hooks: [ClaudeHook]) throws {
+        var settings = loadJSONObject(from: geminiSettingsPath)
+        let payload = renderGeminiHooksPayload(hooks)
+        if payload.isEmpty {
+            settings.removeValue(forKey: "hooks")
+        } else {
+            settings["hooks"] = payload
+        }
+
+        var hooksConfig = (settings["hooksConfig"] as? [String: Any]) ?? [:]
+        if hooks.isEmpty {
+            hooksConfig.removeValue(forKey: "disabled")
+        } else {
+            hooksConfig["enabled"] = true
+            let disabledNames = hooks
+                .filter { !$0.enabled }
+                .map(geminiHookName(for:))
+                .sorted()
+            hooksConfig["disabled"] = disabledNames
+        }
+
+        if hooksConfig.isEmpty {
+            settings.removeValue(forKey: "hooksConfig")
+        } else {
+            settings["hooksConfig"] = hooksConfig
+        }
+
+        try writeJSONObject(settings, to: geminiSettingsPath)
+    }
+
+    // MARK: - Hook Store Persistence
+
+    private var hookStorePath: URL {
+        appSupportDirectory.appendingPathComponent("hooks.json")
+    }
+
+    func loadHookStore() throws -> HookStore {
+        let path = hookStorePath
+        guard fileManager.fileExists(atPath: path.path) else { return HookStore() }
+        let data = try Data(contentsOf: path)
+        return try JSONDecoder().decode(HookStore.self, from: data)
+    }
+
+    func saveHookStore(_ store: HookStore) throws {
+        let path = hookStorePath
+        let parent = path.deletingLastPathComponent()
+        try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
+        let data = try JSONEncoder.pretty.encode(store)
+        try data.write(to: path, options: .atomic)
+    }
+
+    func hookSourceSummary(for apps: MCPAppToggles) -> String {
+        liveHookSourceSummary(for: apps)
     }
 
     // MARK: - Skill Store Persistence
@@ -891,7 +1072,18 @@ actor ProviderConfigService {
     }
 
     var skillsInstallDirectory: URL {
-        homeDirectory.appendingPathComponent(".claude/skills")
+        appSupportDirectory.appendingPathComponent("skills", isDirectory: true)
+    }
+
+    func appSkillsDirectory(for app: ProviderAppType) -> URL {
+        switch app {
+        case .claude:
+            return claudeSkillsDirectory
+        case .codex:
+            return codexSkillsDirectory
+        case .gemini:
+            return geminiSkillsDirectory
+        }
     }
 
     func installedSkillMarkdownPath(directory: String) -> URL {
@@ -915,6 +1107,31 @@ actor ProviderConfigService {
         try content.write(to: path, atomically: true, encoding: .utf8)
     }
 
+    func syncInstalledSkill(_ skill: InstalledSkill) throws {
+        let sourceDirectory = installedSkillDirectoryURL(directory: skill.directory)
+        guard fileManager.fileExists(atPath: sourceDirectory.path) else {
+            throw AppError.fileNotFound("未找到技能目录：\(skill.directory)")
+        }
+
+        for app in ProviderAppType.allCases {
+            let targetDirectory = appSkillsDirectory(for: app).appendingPathComponent(skill.directory, isDirectory: true)
+            if skill.apps.isEnabled(for: app) {
+                try copyDirectoryReplacingExisting(from: sourceDirectory, to: targetDirectory)
+            } else if fileManager.fileExists(atPath: targetDirectory.path) {
+                try fileManager.removeItem(at: targetDirectory)
+            }
+        }
+    }
+
+    func removeInstalledSkillFromApps(directory: String) throws {
+        for app in ProviderAppType.allCases {
+            let targetDirectory = appSkillsDirectory(for: app).appendingPathComponent(directory, isDirectory: true)
+            if fileManager.fileExists(atPath: targetDirectory.path) {
+                try fileManager.removeItem(at: targetDirectory)
+            }
+        }
+    }
+
     private func loadJSONObject(from path: URL) -> [String: Any] {
         guard fileManager.fileExists(atPath: path.path),
               let data = try? Data(contentsOf: path),
@@ -936,6 +1153,138 @@ actor ProviderConfigService {
             .reduce(skillsInstallDirectory) { partialResult, component in
                 partialResult.appendingPathComponent(String(component), isDirectory: true)
             }
+    }
+
+    private func copyDirectoryReplacingExisting(from source: URL, to destination: URL) throws {
+        let parent = destination.deletingLastPathComponent()
+        try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        try fileManager.copyItem(at: source, to: destination)
+    }
+
+    private func hookMergeKey(for hook: ClaudeHook) -> String {
+        [
+            hook.event,
+            hook.matcher ?? "",
+            hook.command,
+            hook.commandType ?? "",
+            hook.timeout.map(String.init) ?? "",
+            hook.scope.rawValue,
+        ].joined(separator: "\u{1f}")
+    }
+
+    private func liveHookSourceSummary(for apps: MCPAppToggles) -> String {
+        var parts: [String] = []
+        if apps.claude {
+            parts.append(claudeSettingsPath.path)
+        }
+        if apps.codex {
+            parts.append(codexHooksPath.path)
+        }
+        if apps.gemini {
+            parts.append(geminiSettingsPath.path)
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func renderClaudeStyleHooksPayload(_ hooks: [ClaudeHook]) -> [String: Any] {
+        renderHooksPayload(hooks) { hook in
+            var item: [String: Any] = [
+                "command": hook.command,
+                "type": hook.commandType?.trimmedNonEmpty ?? "command",
+            ]
+            if let timeout = hook.timeout {
+                item["timeout"] = timeout
+            }
+            if !hook.enabled {
+                item["enabled"] = false
+            }
+            if let id = hook.id.trimmedNonEmpty {
+                item["id"] = id
+            }
+            return item
+        }
+    }
+
+    private func renderCodexHooksPayload(_ hooks: [ClaudeHook]) -> [String: Any] {
+        renderHooksPayload(hooks.filter(\.enabled)) { hook in
+            var item: [String: Any] = [
+                "command": hook.command,
+                "type": hook.commandType?.trimmedNonEmpty ?? "command",
+            ]
+            if let timeout = hook.timeout {
+                item["timeout"] = timeout
+            }
+            return item
+        }
+    }
+
+    private func renderGeminiHooksPayload(_ hooks: [ClaudeHook]) -> [String: Any] {
+        renderHooksPayload(hooks) { hook in
+            var item: [String: Any] = [
+                "name": geminiHookName(for: hook),
+                "type": hook.commandType?.trimmedNonEmpty ?? "command",
+                "command": hook.command,
+            ]
+            if let timeout = hook.timeout {
+                item["timeout"] = timeout * 1000
+            }
+            return item
+        }
+    }
+
+    private func renderHooksPayload(
+        _ hooks: [ClaudeHook],
+        itemBuilder: (ClaudeHook) -> [String: Any]
+    ) -> [String: Any] {
+        let groupedEvents = Dictionary(grouping: hooks, by: \.event)
+        var payload: [String: Any] = [:]
+
+        for event in groupedEvents.keys.sorted() {
+            let eventHooks = groupedEvents[event] ?? []
+            let groupedMatchers = Dictionary(grouping: eventHooks) { $0.matcher?.trimmedNonEmpty ?? "" }
+
+            let groups: [[String: Any]] = groupedMatchers.keys.sorted().compactMap { matcherKey in
+                let matcherHooks = (groupedMatchers[matcherKey] ?? []).sorted { lhs, rhs in
+                    if lhs.command != rhs.command {
+                        return lhs.command.localizedCaseInsensitiveCompare(rhs.command) == .orderedAscending
+                    }
+                    return lhs.id.localizedCaseInsensitiveCompare(rhs.id) == .orderedAscending
+                }
+
+                guard !matcherHooks.isEmpty else { return nil }
+
+                var group: [String: Any] = ["hooks": matcherHooks.map(itemBuilder)]
+                if let matcher = matcherKey.trimmedNonEmpty {
+                    group["matcher"] = matcher
+                }
+                return group
+            }
+
+            if !groups.isEmpty {
+                payload[event] = groups
+            }
+        }
+
+        return payload
+    }
+
+    private func geminiHookName(for hook: ClaudeHook) -> String {
+        let raw = hook.id.trimmedNonEmpty ?? "\(hook.event)-\(hook.command.prefix(32))"
+        let sanitized = raw.lowercased().map { character -> Character in
+            switch character {
+            case "a"..."z", "0"..."9", "-", "_":
+                return character
+            default:
+                return "-"
+            }
+        }
+        let collapsed = String(sanitized)
+            .replacingOccurrences(of: "--", with: "-")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return collapsed.isEmpty ? "hook-\(hook.event.lowercased())" : collapsed
     }
 
     private func makeLocalConfigFile(label: String, kind: LocalConfigKind, path: URL) -> LocalConfigFile {
@@ -968,7 +1317,8 @@ actor ProviderConfigService {
         event: String,
         rawValue: Any?,
         sourcePath: String,
-        scope: ClaudeHookScope
+        scope: ClaudeHookScope,
+        apps: MCPAppToggles
     ) -> [ClaudeHook] {
         guard let entries = rawValue as? [Any] else { return [] }
 
@@ -988,7 +1338,8 @@ actor ProviderConfigService {
                             defaultID: "\(event)-\(entryIndex)-\(hookIndex)",
                             enabled: groupEnabled,
                             sourcePath: sourcePath,
-                            scope: scope
+                            scope: scope,
+                            apps: apps
                         ) {
                             hooks.append(parsed)
                         }
@@ -1003,7 +1354,8 @@ actor ProviderConfigService {
                     defaultID: "\(event)-\(entryIndex)",
                     enabled: groupEnabled,
                     sourcePath: sourcePath,
-                    scope: scope
+                    scope: scope,
+                    apps: apps
                 ) {
                     hooks.append(parsed)
                 }
@@ -1017,7 +1369,8 @@ actor ProviderConfigService {
                 defaultID: "\(event)-\(entryIndex)",
                 enabled: true,
                 sourcePath: sourcePath,
-                scope: scope
+                scope: scope,
+                apps: apps
             ) {
                 hooks.append(parsed)
             }
@@ -1033,7 +1386,8 @@ actor ProviderConfigService {
         defaultID: String,
         enabled: Bool,
         sourcePath: String,
-        scope: ClaudeHookScope
+        scope: ClaudeHookScope,
+        apps: MCPAppToggles
     ) -> ClaudeHook? {
         if let command = (rawValue as? String)?.trimmedNonEmpty {
             return ClaudeHook(
@@ -1045,7 +1399,8 @@ actor ProviderConfigService {
                 timeout: nil,
                 enabled: enabled,
                 scope: scope,
-                sourcePath: sourcePath
+                sourcePath: sourcePath,
+                apps: apps
             )
         }
 
@@ -1060,7 +1415,9 @@ actor ProviderConfigService {
         let explicitEnabled = dictionary["enabled"] as? Bool ?? enabled
 
         return ClaudeHook(
-            id: (dictionary["id"] as? String)?.trimmedNonEmpty ?? defaultID,
+            id: (dictionary["id"] as? String)?.trimmedNonEmpty
+                ?? (dictionary["name"] as? String)?.trimmedNonEmpty
+                ?? defaultID,
             event: event,
             matcher: matcher,
             command: command,
@@ -1068,7 +1425,8 @@ actor ProviderConfigService {
             timeout: timeout,
             enabled: explicitEnabled,
             scope: scope,
-            sourcePath: sourcePath
+            sourcePath: sourcePath,
+            apps: apps
         )
     }
 
@@ -1142,6 +1500,96 @@ actor ProviderConfigService {
         }
 
         return combined.joined(separator: "\n")
+    }
+
+    private func updateCodexFeatureFlags(_ values: [String: Bool?]) -> String {
+        let content = readTOML(at: codexConfigPath)
+        let lines = content.normalizedNewlines.components(separatedBy: "\n")
+
+        var beforeSection: [String] = []
+        var featureLines: [String] = []
+        var afterSection: [String] = []
+        var state = 0
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if state == 0 {
+                if trimmed == "[features]" {
+                    state = 1
+                    continue
+                }
+                beforeSection.append(line)
+                continue
+            }
+
+            if state == 1 {
+                if trimmed.hasPrefix("[") {
+                    state = 2
+                    afterSection.append(line)
+                    continue
+                }
+
+                if let key = rootAssignmentKey(in: line), values.keys.contains(key) {
+                    continue
+                }
+                featureLines.append(line)
+                continue
+            }
+
+            afterSection.append(line)
+        }
+
+        featureLines = trimTrailingBlankLines(featureLines)
+        for key in values.keys.sorted() {
+            if let enabled = values[key] ?? nil {
+                featureLines.append("\(key) = \(enabled ? "true" : "false")")
+            }
+        }
+
+        var combined = trimTrailingBlankLines(beforeSection)
+        if !featureLines.isEmpty {
+            if !combined.isEmpty {
+                combined.append("")
+            }
+            combined.append("[features]")
+            combined.append(contentsOf: featureLines)
+        }
+
+        let trailing = trimLeadingBlankLines(afterSection)
+        if !trailing.isEmpty {
+            if !combined.isEmpty {
+                combined.append("")
+            }
+            combined.append(contentsOf: trailing)
+        }
+
+        return collapseDuplicateBlankLines(combined).joined(separator: "\n")
+    }
+
+    private func isCodexFeatureEnabled(_ key: String) -> Bool {
+        let content = readTOML(at: codexConfigPath)
+        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+
+        var inFeaturesSection = false
+        for line in content.normalizedNewlines.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("[") {
+                inFeaturesSection = trimmed == "[features]"
+                continue
+            }
+
+            guard inFeaturesSection,
+                  rootAssignmentKey(in: line) == key,
+                  let equalsIndex = trimmed.firstIndex(of: "=") else {
+                continue
+            }
+
+            let value = trimmed[trimmed.index(after: equalsIndex)...]
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return value == "true"
+        }
+
+        return false
     }
 
     private func replacingCodexMCPSection(in content: String, serverID: String, spec: MCPServerSpec) -> String {

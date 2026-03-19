@@ -422,7 +422,30 @@ actor ProviderCoordinator {
     }
 
     func listClaudeHooks() async throws -> [ClaudeHook] {
-        try await configService.loadClaudeHooks()
+        try await mergedHookStore().hooks
+    }
+
+    func loadHookStore() async throws -> HookStore {
+        try await mergedHookStore()
+    }
+
+    func saveHookStore(_ store: HookStore) async throws {
+        try await configService.saveHookStore(store)
+        try await configService.syncHooks(store.hooks)
+    }
+
+    func toggleHookApp(hookId: String, app: ProviderAppType, enabled: Bool) async throws {
+        var store = try await mergedHookStore()
+        guard let index = store.hooks.firstIndex(where: { $0.id == hookId }) else {
+            throw AppError.invalidData("Hook 不存在")
+        }
+        guard !enabled || store.hooks[index].supports(app: app) else {
+            throw AppError.invalidData("\(app.displayName) 暂不支持 \(store.hooks[index].event) 事件")
+        }
+
+        store.hooks[index].apps.setEnabled(enabled, for: app)
+        store.hooks[index].sourcePath = await configService.hookSourceSummary(for: store.hooks[index].apps)
+        try await saveHookStore(store)
     }
 
     func addPrompt(_ prompt: Prompt) async throws {
@@ -525,14 +548,15 @@ actor ProviderCoordinator {
 
     func discoverAvailableSkills() async throws -> [DiscoverableSkill] {
         let store = try await configService.loadSkillStore()
-        let installedKeys = Set(store.installedSkills.map(\.key))
+        let installedSkills = try await syncInstalledSkillsFromDisk()
+        let installedByKey = Dictionary(uniqueKeysWithValues: installedSkills.map { ($0.key, $0) })
 
         var discovered: [DiscoverableSkill] = []
         var firstError: Error?
 
         for repo in store.repos where repo.isEnabled {
             do {
-                let repoSkills = try await discoverAvailableSkills(in: repo, installedKeys: installedKeys)
+                let repoSkills = try await discoverAvailableSkills(in: repo, installedByKey: installedByKey)
                 discovered.append(contentsOf: repoSkills)
             } catch {
                 if firstError == nil {
@@ -602,24 +626,38 @@ actor ProviderCoordinator {
             directory: installName,
             repoOwner: skill.repoOwner,
             repoName: skill.repoName,
-            installedAt: Int64(Date().timeIntervalSince1970)
+            installedAt: Int64(Date().timeIntervalSince1970),
+            apps: skill.apps
         )
         store.installedSkills.removeAll { $0.key == skill.key || $0.directory == installName }
         store.installedSkills.append(installed)
         try await configService.saveSkillStore(store)
+        try await configService.syncInstalledSkill(installed)
     }
 
     func uninstallSkill(directory: String) async throws {
         let installDir = await configService.skillsInstallDirectory
-        let targetDir = installDir.appendingPathComponent(directory)
+        let targetDir = skillDirectoryURL(directory: directory, root: installDir)
         let fm = FileManager.default
         if fm.fileExists(atPath: targetDir.path) {
             try fm.removeItem(at: targetDir)
         }
 
+        try await configService.removeInstalledSkillFromApps(directory: directory)
         var store = try await configService.loadSkillStore()
         store.installedSkills.removeAll { $0.directory == directory }
         try await configService.saveSkillStore(store)
+    }
+
+    func toggleSkillApp(directory: String, app: ProviderAppType, enabled: Bool) async throws {
+        var store = try await configService.loadSkillStore()
+        guard let index = store.installedSkills.firstIndex(where: { $0.directory == directory }) else {
+            throw AppError.invalidData("技能不存在")
+        }
+
+        store.installedSkills[index].apps.setEnabled(enabled, for: app)
+        try await configService.saveSkillStore(store)
+        try await configService.syncInstalledSkill(store.installedSkills[index])
     }
 
     func syncInstalledSkillsFromDisk() async throws -> [InstalledSkill] {
@@ -629,19 +667,15 @@ actor ProviderCoordinator {
 
         let existingStore = try await configService.loadSkillStore()
         let existingByDirectory = Dictionary(uniqueKeysWithValues: existingStore.installedSkills.map { ($0.directory, $0) })
-
-        let enumerator = fm.enumerator(
-            at: installDir,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: []
-        )
+        let importedApps = try await importMountedSkillsIfNeeded(into: installDir)
 
         var scanned: [InstalledSkill] = []
-        while let url = enumerator?.nextObject() as? URL {
+        for url in scanSkillMarkdownFiles(in: installDir) {
             guard url.lastPathComponent == "SKILL.md" else { continue }
             let skillDir = url.deletingLastPathComponent()
             let relativePath = relativeSkillPath(skillDir: skillDir, installDir: installDir)
             let metadata = parseSkillMetadata(at: url)
+            let importedToggle = importedApps[relativePath] ?? .none
 
             if let existing = existingByDirectory[relativePath] {
                 var skill = existing
@@ -657,8 +691,10 @@ actor ProviderCoordinator {
                 } else if skill.description?.trimmedNonEmpty == nil {
                     skill.description = metadata.description
                 }
+                skill.apps = mergeAppToggles(skill.apps, importedToggle)
                 scanned.append(skill)
             } else {
+                let apps = importedToggle.hasAnyEnabled ? importedToggle : .claudeOnly
                 scanned.append(
                     InstalledSkill(
                         key: "local:\(relativePath)",
@@ -667,7 +703,8 @@ actor ProviderCoordinator {
                         directory: relativePath,
                         repoOwner: "",
                         repoName: "",
-                        installedAt: Int64(Date().timeIntervalSince1970)
+                        installedAt: Int64(Date().timeIntervalSince1970),
+                        apps: apps
                     )
                 )
             }
@@ -677,6 +714,17 @@ actor ProviderCoordinator {
         var updatedStore = existingStore
         updatedStore.installedSkills = merged
         try await configService.saveSkillStore(updatedStore)
+
+        let mergedDirectories = Set(merged.map(\.directory))
+        let removedDirectories = Set(existingStore.installedSkills.map(\.directory)).subtracting(mergedDirectories)
+        for directory in removedDirectories {
+            try await configService.removeInstalledSkillFromApps(directory: directory)
+        }
+
+        for skill in merged {
+            try await configService.syncInstalledSkill(skill)
+        }
+
         return merged
     }
 
@@ -738,7 +786,7 @@ actor ProviderCoordinator {
 
     private func discoverAvailableSkills(
         in repo: SkillRepo,
-        installedKeys: Set<String>
+        installedByKey: [String: InstalledSkill]
     ) async throws -> [DiscoverableSkill] {
         let tree = try await fetchGitHubTree(owner: repo.owner, repo: repo.name, branch: repo.branch)
         let skillPaths = tree
@@ -763,6 +811,7 @@ actor ProviderCoordinator {
             )
 
             let key = "\(repo.owner)/\(repo.name):\(directory)"
+            let installed = installedByKey[key]
             discovered.append(
                 DiscoverableSkill(
                     key: key,
@@ -773,12 +822,141 @@ actor ProviderCoordinator {
                     repoName: repo.name,
                     repoBranch: repo.branch,
                     directory: directory,
-                    isInstalled: installedKeys.contains(key)
+                    isInstalled: installed != nil,
+                    apps: installed?.apps ?? .claudeOnly
                 )
             )
         }
 
         return discovered
+    }
+
+    private func mergedHookStore() async throws -> HookStore {
+        var store = try await configService.loadHookStore()
+        let liveHooks = try await configService.loadClaudeHooks()
+        let hooks = try await mergeHooks(stored: store.hooks, live: liveHooks)
+        store.hooks = hooks
+        try await configService.saveHookStore(store)
+        try await configService.syncHooks(hooks)
+        return store
+    }
+
+    private func mergeHooks(stored: [ClaudeHook], live: [ClaudeHook]) async throws -> [ClaudeHook] {
+        var merged: [String: ClaudeHook] = [:]
+
+        for hook in stored {
+            var storedHook = hook
+            storedHook.sourcePath = await configService.hookSourceSummary(for: storedHook.apps)
+            merged[hookMergeKey(for: storedHook)] = storedHook
+        }
+
+        for hook in live {
+            let key = hookMergeKey(for: hook)
+            if var existing = merged[key] {
+                existing.id = existing.id.trimmedNonEmpty ?? hook.id
+                existing.enabled = hook.enabled
+                existing.apps = mergeAppToggles(existing.apps, hook.apps)
+                existing.sourcePath = await configService.hookSourceSummary(for: existing.apps)
+                merged[key] = existing
+            } else {
+                var liveHook = hook
+                liveHook.sourcePath = await configService.hookSourceSummary(for: liveHook.apps)
+                merged[key] = liveHook
+            }
+        }
+
+        return merged.values.sorted { lhs, rhs in
+            if lhs.event != rhs.event {
+                return lhs.event.localizedCaseInsensitiveCompare(rhs.event) == .orderedAscending
+            }
+            let lhsMatcher = lhs.matcher ?? ""
+            let rhsMatcher = rhs.matcher ?? ""
+            if lhsMatcher != rhsMatcher {
+                return lhsMatcher.localizedCaseInsensitiveCompare(rhsMatcher) == .orderedAscending
+            }
+            return lhs.command.localizedCaseInsensitiveCompare(rhs.command) == .orderedAscending
+        }
+    }
+
+    private func hookMergeKey(for hook: ClaudeHook) -> String {
+        [
+            hook.event,
+            hook.matcher ?? "",
+            hook.command,
+            hook.commandType ?? "",
+            hook.timeout.map(String.init) ?? "",
+            hook.scope.rawValue,
+        ].joined(separator: "\u{1f}")
+    }
+
+    private func importMountedSkillsIfNeeded(into installDir: URL) async throws -> [String: MCPAppToggles] {
+        let fm = FileManager.default
+        var importedApps: [String: MCPAppToggles] = [:]
+
+        for app in ProviderAppType.allCases {
+            let appDir = await configService.appSkillsDirectory(for: app)
+            guard fm.fileExists(atPath: appDir.path) else { continue }
+
+            for file in scanSkillMarkdownFiles(in: appDir) {
+                let skillDir = file.deletingLastPathComponent()
+                let relativePath = relativeSkillPath(skillDir: skillDir, installDir: appDir)
+                var toggles = importedApps[relativePath] ?? .none
+                toggles.setEnabled(true, for: app)
+                importedApps[relativePath] = toggles
+
+                let centralizedDirectory = skillDirectoryURL(directory: relativePath, root: installDir)
+                if !fm.fileExists(atPath: centralizedDirectory.path) {
+                    try copyDirectoryReplacingExisting(from: skillDir, to: centralizedDirectory)
+                }
+            }
+        }
+
+        return importedApps
+    }
+
+    private func scanSkillMarkdownFiles(in root: URL) -> [URL] {
+        let fm = FileManager.default
+        guard let enumerator = fm.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        var files: [URL] = []
+        while let url = enumerator.nextObject() as? URL {
+            if url.lastPathComponent == "SKILL.md" {
+                files.append(url)
+            }
+        }
+        return files
+    }
+
+    private func skillDirectoryURL(directory: String, root: URL) -> URL {
+        directory
+            .split(separator: "/")
+            .reduce(root) { partialResult, component in
+                partialResult.appendingPathComponent(String(component), isDirectory: true)
+            }
+    }
+
+    private func copyDirectoryReplacingExisting(from source: URL, to destination: URL) throws {
+        let fm = FileManager.default
+        let parent = destination.deletingLastPathComponent()
+        try fm.createDirectory(at: parent, withIntermediateDirectories: true)
+        if fm.fileExists(atPath: destination.path) {
+            try fm.removeItem(at: destination)
+        }
+        try fm.copyItem(at: source, to: destination)
+    }
+
+    private func mergeAppToggles(_ lhs: MCPAppToggles, _ rhs: MCPAppToggles) -> MCPAppToggles {
+        MCPAppToggles(
+            claude: lhs.claude || rhs.claude,
+            codex: lhs.codex || rhs.codex,
+            gemini: lhs.gemini || rhs.gemini
+        )
     }
 
     private func fetchGitHubTree(owner: String, repo: String, branch: String) async throws -> [GitHubTreeResponse.Entry] {

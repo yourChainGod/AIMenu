@@ -317,6 +317,9 @@ final class ProviderIntegrationTests: XCTestCase {
         let coordinator = ProviderCoordinator(configService: service)
         let skillDir = tempHome.appendingPathComponent(".claude/skills/demo-skill", isDirectory: true)
         let skillPath = skillDir.appendingPathComponent("SKILL.md", isDirectory: false)
+        let managedSkillPath = tempHome
+            .appendingPathComponent("Library/Application Support/AIMenu/skills/demo-skill", isDirectory: true)
+            .appendingPathComponent("SKILL.md", isDirectory: false)
 
         try FileManager.default.createDirectory(at: skillDir, withIntermediateDirectories: true)
         try """
@@ -330,8 +333,9 @@ final class ProviderIntegrationTests: XCTestCase {
 
         XCTAssertEqual(document.skill.name, "Demo Skill")
         XCTAssertEqual(document.skill.description, "A compact description.")
-        XCTAssertEqual(document.path, skillPath.path)
+        XCTAssertEqual(document.path, managedSkillPath.path)
         XCTAssertTrue(document.content.contains("# Demo Skill"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: managedSkillPath.path))
     }
 
     func testReadDiscoverableSkillDocumentLoadsRemoteSkillMarkdown() async throws {

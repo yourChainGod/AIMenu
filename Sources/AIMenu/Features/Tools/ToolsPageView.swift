@@ -1203,13 +1203,13 @@ struct ToolsPageView: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         HStack(spacing: 8) {
-                            mcpAppToggle(serverId: server.id, label: "Claude Code", isOn: server.apps.claude, onChange: { v in
+                            mcpAppToggle(serverId: server.id, label: "Claude Code", app: .claude, isOn: server.apps.claude, onChange: { v in
                                 Task { await model.toggleMCPApp(serverId: server.id, app: .claude, enabled: v) }
                             })
-                            mcpAppToggle(serverId: server.id, label: "Codex", isOn: server.apps.codex, onChange: { v in
+                            mcpAppToggle(serverId: server.id, label: "Codex", app: .codex, isOn: server.apps.codex, onChange: { v in
                                 Task { await model.toggleMCPApp(serverId: server.id, app: .codex, enabled: v) }
                             })
-                            mcpAppToggle(serverId: server.id, label: "Gemini", isOn: server.apps.gemini, onChange: { v in
+                            mcpAppToggle(serverId: server.id, label: "Gemini", app: .gemini, isOn: server.apps.gemini, onChange: { v in
                                 Task { await model.toggleMCPApp(serverId: server.id, app: .gemini, enabled: v) }
                             })
                         }
@@ -1230,30 +1230,14 @@ struct ToolsPageView: View {
         .onHover { isHovered in hoveredMCPServer = isHovered ? server.id : nil }
     }
 
-    private func mcpAppToggle(serverId: String, label: String, isOn: Bool, onChange: @escaping (Bool) -> Void) -> some View {
-        Button {
-            onChange(!isOn)
-        } label: {
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(isOn ? Color.mint : Color.secondary.opacity(0.3))
-                    .frame(width: 6, height: 6)
-                Text(label)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(isOn ? .primary : .secondary)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isOn ? Color.mint.opacity(0.12) : Color.primary.opacity(0.05))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 6)
-                            .strokeBorder(isOn ? Color.mint.opacity(0.3) : Color.clear, lineWidth: 1)
-                    }
-            }
-        }
-        .buttonStyle(.plain)
+    private func mcpAppToggle(
+        serverId _: String,
+        label: String,
+        app: ProviderAppType,
+        isOn: Bool,
+        onChange: @escaping (Bool) -> Void
+    ) -> some View {
+        appMountChip(app: app, label: label, isOn: isOn, onChange: onChange)
     }
 
     // MARK: - Prompts
@@ -1473,11 +1457,17 @@ struct ToolsPageView: View {
                             Image(systemName: "arrow.clockwise")
                         }
                         .liquidGlassActionButtonStyle(density: .compact)
-                        .help("刷新 Claude Hooks")
+                        .help("刷新 Hooks")
 
                         workbenchMoreMenu(help: "更多 Hooks 操作") {
                             Button("打开 Claude settings.json") {
                                 NSWorkspace.shared.selectFile(NSHomeDirectory() + "/.claude/settings.json", inFileViewerRootedAtPath: "")
+                            }
+                            Button("打开 Codex hooks.json") {
+                                NSWorkspace.shared.selectFile(NSHomeDirectory() + "/.codex/hooks.json", inFileViewerRootedAtPath: "")
+                            }
+                            Button("打开 Gemini settings.json") {
+                                NSWorkspace.shared.selectFile(NSHomeDirectory() + "/.gemini/settings.json", inFileViewerRootedAtPath: "")
                             }
                         }
                     }
@@ -1489,7 +1479,7 @@ struct ToolsPageView: View {
                             Image(systemName: "arrow.clockwise")
                         }
                         .liquidGlassActionButtonStyle(density: .compact)
-                        .help("刷新 Claude Hooks")
+                        .help("刷新 Hooks")
 
                         Button {
                             NSWorkspace.shared.selectFile(NSHomeDirectory() + "/.claude/settings.json", inFileViewerRootedAtPath: "")
@@ -1517,8 +1507,13 @@ struct ToolsPageView: View {
         let hookGroups = groupedClaudeHooks
 
         HStack(spacing: 8) {
-            Label("~/.claude/settings.json", systemImage: "doc.text")
+            Label("已挂载", systemImage: "point.3.connected.trianglepath.dotted")
                 .font(.caption.weight(.medium))
+            ForEach(ProviderAppType.allCases) { app in
+                if model.claudeHooks.contains(where: { $0.apps.isEnabled(for: app) }) {
+                    ToolsStatusBadge(text: compactAppName(for: app), tint: localConfigAccent(for: app))
+                }
+            }
             Text("\(model.claudeHooks.count) 条")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -1544,7 +1539,7 @@ struct ToolsPageView: View {
                 Image(systemName: "point.3.connected.trianglepath.dotted")
                     .font(.system(size: 28))
                     .foregroundStyle(.secondary.opacity(0.4))
-                Text("未扫描到 Claude Hooks")
+                Text("未扫描到 Hooks")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -1607,6 +1602,20 @@ struct ToolsPageView: View {
                     .foregroundStyle(.primary)
                     .lineLimit(2)
                     .truncationMode(.middle)
+
+                HStack(spacing: 6) {
+                    ForEach(ProviderAppType.allCases) { app in
+                        appMountChip(
+                            app: app,
+                            isOn: hook.apps.isEnabled(for: app),
+                            disabled: !hook.supports(app: app),
+                            onChange: { enabled in
+                                Task { await model.toggleHookApp(hookId: hook.id, app: app, enabled: enabled) }
+                            }
+                        )
+                    }
+                    Spacer(minLength: 0)
+                }
 
                 Text(hook.sourcePath)
                     .font(.caption2.monospaced())
@@ -1978,6 +1987,23 @@ struct ToolsPageView: View {
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                if skill.isInstalled {
+                    Text("挂载到 \(skill.apps.displayText)")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                } else {
+                    HStack(spacing: 6) {
+                        ForEach(ProviderAppType.allCases) { app in
+                            appMountChip(
+                                app: app,
+                                isOn: skill.apps.isEnabled(for: app),
+                                onChange: { enabled in
+                                    model.toggleDiscoverableSkillApp(skillId: skill.id, app: app, enabled: enabled)
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(minLength: 0)
@@ -2060,11 +2086,22 @@ struct ToolsPageView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                Text("~/.claude/skills/\(skill.directory)")
+                Text(tildePath(installedSkillPath(for: skill)))
                     .font(.caption2.monospaced())
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                HStack(spacing: 6) {
+                    ForEach(ProviderAppType.allCases) { app in
+                        appMountChip(
+                            app: app,
+                            isOn: skill.apps.isEnabled(for: app),
+                            onChange: { enabled in
+                                Task { await model.toggleInstalledSkillApp(directory: skill.directory, app: app, enabled: enabled) }
+                            }
+                        )
+                    }
+                }
             }
 
             Spacer(minLength: 0)
@@ -2086,7 +2123,7 @@ struct ToolsPageView: View {
                 .liquidGlassActionButtonStyle(density: .compact)
 
                 Button {
-                    let path = NSHomeDirectory() + "/.claude/skills/\(skill.directory)"
+                    let path = installedSkillPath(for: skill)
                     NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                 } label: {
                     Image(systemName: "folder")
@@ -2126,6 +2163,54 @@ struct ToolsPageView: View {
         return "本地技能"
     }
 
+    private func compactAppName(for app: ProviderAppType) -> String {
+        switch app {
+        case .claude:
+            return "Claude"
+        case .codex:
+            return "Codex"
+        case .gemini:
+            return "Gemini"
+        }
+    }
+
+    private func appMountChip(
+        app: ProviderAppType,
+        label: String? = nil,
+        isOn: Bool,
+        disabled: Bool = false,
+        onChange: @escaping (Bool) -> Void
+    ) -> some View {
+        let tint = localConfigAccent(for: app)
+        let title = label ?? compactAppName(for: app)
+
+        return Button {
+            onChange(!isOn)
+        } label: {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(isOn ? tint : Color.secondary.opacity(0.28))
+                    .frame(width: 6, height: 6)
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(isOn ? .primary : .secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(isOn ? tint.opacity(0.12) : Color.primary.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(isOn ? tint.opacity(0.22) : Color.clear, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.42 : 1)
+    }
+
     private func localConfigAccent(for app: ProviderAppType) -> Color {
         switch app {
         case .claude:
@@ -2154,6 +2239,10 @@ struct ToolsPageView: View {
         let home = NSHomeDirectory()
         guard path.hasPrefix(home) else { return path }
         return "~" + path.dropFirst(home.count)
+    }
+
+    private func installedSkillPath(for skill: InstalledSkill) -> String {
+        NSHomeDirectory() + "/Library/Application Support/\(FileSystemPaths.appSupportDirectoryName)/skills/\(skill.directory)"
     }
 
     private func openDirectory(_ path: String) {

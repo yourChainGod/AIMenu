@@ -215,7 +215,18 @@ final class ToolsPageModel: ObservableObject {
     func refreshClaudeHooks() async {
         do {
             claudeHooks = try await coordinator.listClaudeHooks()
-            notice = NoticeMessage(style: .success, text: "已刷新 Claude Hooks")
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            notice = NoticeMessage(style: .success, text: "已刷新 Hooks")
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    func toggleHookApp(hookId: String, app: ProviderAppType, enabled: Bool) async {
+        do {
+            try await coordinator.toggleHookApp(hookId: hookId, app: app, enabled: enabled)
+            claudeHooks = try await coordinator.listClaudeHooks()
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -260,6 +271,12 @@ final class ToolsPageModel: ObservableObject {
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
+    }
+
+    func toggleDiscoverableSkillApp(skillId: String, app: ProviderAppType, enabled: Bool) {
+        guard let index = discoverableSkills.firstIndex(where: { $0.id == skillId }) else { return }
+        discoverableSkills[index].apps.setEnabled(enabled, for: app)
+        refreshDiscoverableSkillPreviewIfNeeded()
     }
 
     func addSkillRepo(owner: String, name: String, branch: String) async {
@@ -330,6 +347,21 @@ final class ToolsPageModel: ObservableObject {
                 refreshDiscoverableSkillPreviewIfNeeded()
             }
             notice = NoticeMessage(style: .info, text: "技能已移除")
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    func toggleInstalledSkillApp(directory: String, app: ProviderAppType, enabled: Bool) async {
+        do {
+            try await coordinator.toggleSkillApp(directory: directory, app: app, enabled: enabled)
+            var skillStore = try await coordinator.loadSkillStore()
+            skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
+            skills = skillStore
+            if !discoverableSkills.isEmpty {
+                discoverableSkills = try await coordinator.discoverAvailableSkills()
+                refreshDiscoverableSkillPreviewIfNeeded()
+            }
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
