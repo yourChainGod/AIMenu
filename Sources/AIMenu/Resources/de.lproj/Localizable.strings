@@ -1,4 +1,7 @@
 "tab.accounts" = "Konten";
+"tab.providers" = "Anbieter";
+"tab.tools" = "Werkzeuge";
+"tab.workbench" = "Werkbank";
 "tab.proxy" = "Proxy";
 "tab.settings" = "Einstellungen";
 

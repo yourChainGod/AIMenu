@@ -1,4 +1,7 @@
 "tab.accounts" = "계정";
+"tab.providers" = "공급자";
+"tab.tools" = "도구";
+"tab.workbench" = "워크벤치";
 "tab.proxy" = "프록시";
 "tab.settings" = "설정";
 

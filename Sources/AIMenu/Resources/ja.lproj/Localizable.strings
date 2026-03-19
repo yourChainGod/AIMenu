@@ -1,4 +1,7 @@
 "tab.accounts" = "アカウント";
+"tab.providers" = "プロバイダー";
+"tab.tools" = "ツール";
+"tab.workbench" = "ワークベンチ";
 "tab.proxy" = "プロキシ";
 "tab.settings" = "設定";
 

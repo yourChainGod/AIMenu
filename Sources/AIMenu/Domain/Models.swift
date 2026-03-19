@@ -4,6 +4,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     case accounts
     case providers
     case tools
+    case workbench
     case settings
 
     var id: String { rawValue }

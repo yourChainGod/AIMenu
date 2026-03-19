@@ -1,4 +1,7 @@
 "tab.accounts" = "Аккаунты";
+"tab.providers" = "Провайдеры";
+"tab.tools" = "Инструменты";
+"tab.workbench" = "Рабочее место";
 "tab.proxy" = "Прокси";
 "tab.settings" = "Настройки";
 

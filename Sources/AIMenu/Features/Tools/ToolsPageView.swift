@@ -2,6 +2,11 @@ import SwiftUI
 import AppKit
 
 struct ToolsPageView: View {
+    enum PageMode {
+        case tools
+        case workbench
+    }
+
     private enum SkillsFilter: String, CaseIterable, Identifiable {
         case all
         case installed
@@ -19,6 +24,7 @@ struct ToolsPageView: View {
     }
 
     @ObservedObject var model: ToolsPageModel
+    let mode: PageMode
 
     @State private var servicesExpanded = true
     @State private var configsExpanded = true
@@ -42,12 +48,7 @@ struct ToolsPageView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: LayoutRules.sectionSpacing) {
-                servicesSection
-                configsSection
-                mcpSection
-                promptsSection
-                hooksSection
-                skillsSection
+                contentSections
             }
             .padding(LayoutRules.pagePadding)
         }
@@ -151,6 +152,20 @@ struct ToolsPageView: View {
                 )
                 .frame(width: 760, height: 620)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var contentSections: some View {
+        switch mode {
+        case .tools:
+            servicesSection
+            configsSection
+        case .workbench:
+            mcpSection
+            promptsSection
+            hooksSection
+            skillsSection
         }
     }
 

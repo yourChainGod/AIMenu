@@ -30,7 +30,7 @@ struct RootScene: View {
             return proxyModel.notice ?? accountsModel.notice
         case .providers:
             return providerModel.notice
-        case .tools:
+        case .tools, .workbench:
             return toolsModel.notice
         case .settings:
             return settingsModel.notice
@@ -66,7 +66,7 @@ struct RootScene: View {
             if tab == .providers {
                 Task { await providerModel.load() }
             }
-            if tab == .tools {
+            if tab == .tools || tab == .workbench {
                 Task { await toolsModel.load() }
             }
         }
@@ -116,7 +116,9 @@ struct RootScene: View {
         case .providers:
             ProviderPageView(model: providerModel)
         case .tools:
-            ToolsPageView(model: toolsModel)
+            ToolsPageView(model: toolsModel, mode: .tools)
+        case .workbench:
+            ToolsPageView(model: toolsModel, mode: .workbench)
         case .settings:
             SettingsPageView(model: settingsModel)
         }
@@ -177,6 +179,7 @@ private struct AppTabToolbarSwitcher: View {
                         .frame(maxWidth: .infinity, minHeight: 40)
                 }
                 .buttonStyle(.plain)
+                .help(L10n.tr(tab.titleTranslationKey))
                 .background {
                     if selection == tab {
                         selectedBackground
@@ -235,6 +238,7 @@ private extension AppTab {
         case .accounts: return "person.2"
         case .providers: return "arrow.triangle.swap"
         case .tools: return "wrench.and.screwdriver"
+        case .workbench: return "square.grid.2x2"
         case .settings: return "gearshape"
         }
     }
@@ -244,6 +248,7 @@ private extension AppTab {
         case .accounts: return "tab.accounts"
         case .providers: return "tab.providers"
         case .tools: return "tab.tools"
+        case .workbench: return "tab.workbench"
         case .settings: return "tab.settings"
         }
     }
@@ -253,6 +258,7 @@ private extension AppTab {
         case .accounts: return "tab.accounts"
         case .providers: return "tab.providers"
         case .tools: return "tab.tools"
+        case .workbench: return "tab.workbench"
         case .settings: return "tab.settings"
         }
     }
