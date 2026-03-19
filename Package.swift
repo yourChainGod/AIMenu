@@ -2,26 +2,26 @@
 import PackageDescription
 
 let package = Package(
-    name: "Copool",
+    name: "AIMenu",
     defaultLocalization: "en",
     platforms: [
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "Copool", targets: ["Copool"])
+        .executable(name: "AIMenu", targets: ["AIMenu"])
     ],
     targets: [
         .executableTarget(
-            name: "Copool",
-            path: "Sources/Copool",
+            name: "AIMenu",
+            path: "Sources/AIMenu",
             resources: [
                 .process("Resources")
             ]
         ),
         .testTarget(
-            name: "CopoolTests",
-            dependencies: ["Copool"],
-            path: "Tests/CopoolTests"
+            name: "AIMenuTests",
+            dependencies: ["AIMenu"],
+            path: "Tests/AIMenuTests"
         )
     ]
 )

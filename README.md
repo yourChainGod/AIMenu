@@ -1,93 +1,65 @@
-# Copool
+# AIMenu
 
-<img src="./Copool.png" alt="Copool Icon" width="160" />
+<img src="./AIMenu.png" alt="AIMenu Icon" width="160" />
 
-Copool is a SwiftUI app for macOS and iOS that manages Codex/ChatGPT auth accounts, usage-based smart switching, and local/remote API proxy workflows.
+AIMenu is a macOS menu bar app for managing AI account pools, provider presets, and local proxy access for Codex, Claude Code, Gemini CLI, and related workflows.
 
-Copool 是一个面向 macOS 和 iOS 的 SwiftUI 应用，用于管理 Codex/ChatGPT 授权账号、按用量智能切换，以及本地/远程 API 代理工作流。
+AIMenu 是一个面向 macOS 菜单栏的 AI 工具管理器，用来统一管理账号池、提供商预设、本地代理接入，以及 Codex、Claude Code、Gemini CLI 等相关工作流。
 
-## Screenshots / 截图
+## Preview
 
 <img src="./account.png" alt="Accounts Overview" width="560" />
 <img src="./account_2.png" alt="Accounts Detail" width="560" />
 <img src="./proxy.png" alt="Proxy" width="560" />
 <img src="./setting.png" alt="Settings" width="560" />
 
-## Features / 功能
+## What It Does
 
-- Native SwiftUI architecture with layered design (`App`, `Features`, `UI`, `Behavior`, `Infrastructure`, `Domain`, `Layout`)
-- 纯 SwiftUI 分层架构（`App`、`Features`、`UI`、`Behavior`、`Infrastructure`、`Domain`、`Layout`）
-- Account import/switch/delete and usage refresh (5h / 1week)
-- 账号导入/切换/删除与用量刷新（5h / 1week）
-- Smart switch based on remaining quota score
-- 基于剩余额度评分的智能切换
-- iCloud-backed account sync, current-selection sync, and proxy control sync
-- 基于 iCloud 的账号同步、当前账号选择同步与代理控制同步
-- Local API proxy runtime (Swift native server) with model compatibility mapping
-- 本地 API 代理运行时（Swift 原生服务）与模型兼容映射
-- Cloudflared public tunnel management
-- Cloudflared 公网隧道管理
-- Remote Linux deployment/start/stop/logs for proxy nodes over SSH
-- 远程 Linux 代理节点 SSH 部署/启停/日志
-- ChatGPT OAuth import plus editor restart / launch integration on account switch
-- ChatGPT OAuth 导入，以及切换账号时的编辑器重启 / 拉起集成
-- Menu bar integration (MenuBarExtra)
-- 菜单栏集成（MenuBarExtra）
+- Manage account pools and usage-aware routing for API access.
+- 为账号池提供统一导入、管理和按用量智能切换。
+- Generate and host a local API proxy for Codex and related tools.
+- 为 Codex 等工具生成并托管本地集中代理接入。
+- Configure Claude, Codex, and Gemini providers with editable JSON, TOML, and ENV previews.
+- 用可编辑的 JSON、TOML、ENV 预览来配置 Claude、Codex、Gemini 提供商。
+- Maintain MCP/tool presets and keep configuration files aligned with the desktop app state.
+- 统一管理 MCP/工具预设，并让配置文件与桌面端状态保持同步。
+- Ship as a native SwiftUI macOS app with menu bar integration.
+- 基于 SwiftUI 原生实现，并通过菜单栏常驻提供快速入口。
 
-## Requirements / 环境要求
+## Tech Stack
 
-- macOS 14+
-- iOS 26+
+- Swift 6
+- SwiftUI
 - Xcode 17+
-- Swift 6 toolchain
+- macOS 14+
 
-## Build & Run / 构建与运行
+## Build
 
 ```bash
-cd Copool
-xcodebuild test -project Copool.xcodeproj -scheme Copool -destination 'platform=macOS'
-xcodebuild -project Copool.xcodeproj -scheme Copool -configuration Debug -destination 'platform=macOS' build
-xcodebuild -project Copool.xcodeproj -scheme CopooliOS -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' build
+swift build
+swift test
+xcodebuild -project AIMenu.xcodeproj -scheme AIMenu -destination 'platform=macOS' build
 ```
 
-Open `Copool.xcodeproj` in Xcode and run `Copool` for macOS or `CopooliOS` for iOS.
+Open `AIMenu.xcodeproj` in Xcode and run the `AIMenu` scheme.
 
-使用 Xcode 打开 `Copool.xcodeproj`，macOS 运行 `Copool` scheme，iOS 运行 `CopooliOS` scheme。
+使用 Xcode 打开 `AIMenu.xcodeproj`，运行 `AIMenu` scheme 即可。
 
-## Release Channels / 发布渠道
+## Project Structure
 
-- macOS release artifacts are published through GitHub Releases.
-- macOS 发布产物通过 GitHub Releases 分发。
-- iOS builds are archived from the `CopooliOS` scheme and distributed through TestFlight.
-- iOS 构建通过 `CopooliOS` scheme 归档，并通过 TestFlight 分发。
+- `Sources/AIMenu/App`: app entry, scene composition, tray bootstrap
+- `Sources/AIMenu/Features`: account pool, proxy, providers, tools, settings pages
+- `Sources/AIMenu/Behavior`: coordinators and workflow orchestration
+- `Sources/AIMenu/Infrastructure`: file system, network, process, auth, update integrations
+- `Sources/AIMenu/Domain`: models, protocols, localized state definitions
+- `Sources/AIMenu/UI`: reusable controls, cards, banners, and interaction styles
+- `Sources/AIMenu/Layout`: centralized layout tokens
 
-## Project Structure / 项目结构
+## Repository
 
-- `Sources/Copool/App`: scene composition and app bootstrap
-- `Sources/Copool/Features`: page-level composition and bindings
-- `Sources/Copool/UI`: reusable visual primitives
-- `Sources/Copool/Behavior`: coordinators and behavior modules
-- `Sources/Copool/Infrastructure`: IO/network/process integrations
-- `Sources/Copool/Domain`: models and protocols (single source of truth)
-- `Sources/Copool/Layout`: centralized layout rules
+- GitHub: [yourChainGod/AIMenu](https://github.com/yourChainGod/AIMenu)
 
-## Reference Project / 参考项目
+## Credits
 
-- [170-carry/codex-tools](https://github.com/170-carry/codex-tools)
-
-This project is a Swift-native migration and redesign inspired by the original Tauri-based implementation.
-
-本项目是对原 Tauri 版本的 Swift 原生迁移与重构。
-
-## Acknowledgements / 致谢
-
-- Thanks to the original authors and contributors of `170-carry/codex-tools`.
-- 感谢 `170-carry/codex-tools` 的原作者与贡献者。
-- Thanks to all users who provided migration feedback and UI/UX suggestions.
-- 感谢所有提供迁移反馈与界面建议的用户。
-
-## License / 许可证
-
-Please follow the upstream license and your organization’s compliance requirements when reusing code from referenced projects.
-
-复用参考项目代码时，请遵循上游许可证与所在组织的合规要求。
+- Inspired in part by earlier community tooling around Codex account and proxy workflows.
+- 感谢所有为界面打磨、提供商接入和交互细节提出建议的贡献者与用户。
