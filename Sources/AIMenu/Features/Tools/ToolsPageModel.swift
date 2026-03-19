@@ -302,6 +302,23 @@ final class ToolsPageModel: ObservableObject {
         }
     }
 
+    func setSkillRepoEnabled(_ repo: SkillRepo, enabled: Bool) async {
+        do {
+            try await coordinator.setSkillRepoEnabled(owner: repo.owner, name: repo.name, enabled: enabled)
+            skills = try await coordinator.loadSkillStore()
+
+            if !discoverableSkills.isEmpty || !enabled {
+                discoverableSkills = try await coordinator.discoverAvailableSkills()
+                refreshDiscoverableSkillPreviewIfNeeded()
+            }
+
+            let stateText = enabled ? "已启用" : "已停用"
+            notice = NoticeMessage(style: .success, text: "\(stateText)技能仓库：\(repo.owner)/\(repo.name)")
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
     func uninstallSkill(directory: String) async {
         do {
             try await coordinator.uninstallSkill(directory: directory)

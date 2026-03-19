@@ -377,6 +377,37 @@ final class ProviderIntegrationTests: XCTestCase {
         XCTAssertTrue(document.content.contains("Remote description."))
     }
 
+    func testSetSkillRepoEnabledUpdatesStoredRepoState() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+
+        try await coordinator.saveSkillStore(
+            SkillStore(
+                repos: [
+                    SkillRepo(
+                        owner: "demo",
+                        name: "skills",
+                        branch: "main",
+                        isEnabled: true,
+                        isDefault: false
+                    )
+                ],
+                installedSkills: []
+            )
+        )
+
+        try await coordinator.setSkillRepoEnabled(owner: "demo", name: "skills", enabled: false)
+
+        let store = try await coordinator.loadSkillStore()
+        XCTAssertEqual(store.repos.count, 1)
+        XCTAssertEqual(store.repos[0].owner, "demo")
+        XCTAssertEqual(store.repos[0].name, "skills")
+        XCTAssertFalse(store.repos[0].isEnabled)
+    }
+
     func testUpdateInstalledSkillContentRewritesSkillMarkdownAndRefreshesMetadata() async throws {
         let tempHome = try makeTemporaryHome()
         defer { try? FileManager.default.removeItem(at: tempHome) }

@@ -2,6 +2,22 @@ import SwiftUI
 import AppKit
 
 struct ToolsPageView: View {
+    private enum SkillsFilter: String, CaseIterable, Identifiable {
+        case all
+        case installed
+        case discoverable
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "全部"
+            case .installed: return "已装"
+            case .discoverable: return "可装"
+            }
+        }
+    }
+
     @ObservedObject var model: ToolsPageModel
 
     @State private var servicesExpanded = true
@@ -21,6 +37,7 @@ struct ToolsPageView: View {
     @State private var hoveredSkill: String? = nil
     @State private var hoveredDiscoverableSkill: String? = nil
     @State private var skillsSearchText = ""
+    @State private var selectedSkillsFilter: SkillsFilter = .all
 
     var body: some View {
         ScrollView {
@@ -174,6 +191,24 @@ struct ToolsPageView: View {
         }
     }
 
+    private var visibleInstalledSkills: [InstalledSkill] {
+        switch selectedSkillsFilter {
+        case .all, .installed:
+            return filteredInstalledSkills
+        case .discoverable:
+            return []
+        }
+    }
+
+    private var visibleDiscoverableSkills: [DiscoverableSkill] {
+        switch selectedSkillsFilter {
+        case .all, .discoverable:
+            return filteredDiscoverableSkills
+        case .installed:
+            return []
+        }
+    }
+
     private var groupedClaudeHooks: [(event: String, hooks: [ClaudeHook])] {
         Dictionary(grouping: model.claudeHooks, by: \.event)
             .map { event, hooks in
@@ -198,6 +233,17 @@ struct ToolsPageView: View {
         fields.contains { field in
             guard let value = field?.trimmedNonEmpty else { return false }
             return value.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    private func count(for filter: SkillsFilter) -> Int {
+        switch filter {
+        case .all:
+            return filteredInstalledSkills.count + filteredDiscoverableSkills.count
+        case .installed:
+            return filteredInstalledSkills.count
+        case .discoverable:
+            return filteredDiscoverableSkills.count
         }
     }
 
@@ -1347,13 +1393,13 @@ struct ToolsPageView: View {
 
     @ViewBuilder
     private var skillsContent: some View {
-        let installed = filteredInstalledSkills
-        let discoverable = filteredDiscoverableSkills
+        let installed = visibleInstalledSkills
+        let discoverable = visibleDiscoverableSkills
         VStack(alignment: .leading, spacing: 10) {
             skillReposRow
             skillsSearchRow
 
-            if model.skillDiscoveryLoading || !model.discoverableSkills.isEmpty {
+            if selectedSkillsFilter != .installed && (model.skillDiscoveryLoading || !model.discoverableSkills.isEmpty) {
                 discoverableSkillsPanel(skills: discoverable)
             }
 
@@ -1367,7 +1413,7 @@ struct ToolsPageView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
-            } else if model.skills.installedSkills.isEmpty {
+            } else if selectedSkillsFilter == .installed && model.skills.installedSkills.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "wand.and.stars")
                         .font(.system(size: 28))
@@ -1398,49 +1444,81 @@ struct ToolsPageView: View {
                         }
                     }
                 }
+            } else if selectedSkillsFilter == .discoverable && discoverable.isEmpty && !model.skillDiscoveryLoading {
+                EmptyView()
             }
         }
     }
 
     private var skillsSearchRow: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.orange.opacity(0.9))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.orange.opacity(0.9))
 
-                TextField("搜索技能、仓库或目录", text: $skillsSearchText)
-                    .textFieldStyle(.plain)
-                    .font(.subheadline)
+                    TextField("搜索技能、仓库或目录", text: $skillsSearchText)
+                        .textFieldStyle(.plain)
+                        .font(.subheadline)
 
-                if !skillsSearchText.isEmpty {
-                    Button {
-                        skillsSearchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.tertiary)
+                    if !skillsSearchText.isEmpty {
+                        Button {
+                            skillsSearchText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.orange.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(Color.orange.opacity(0.14), lineWidth: 1)
+                        )
+                )
+
+                if !model.skills.installedSkills.isEmpty {
+                    skillCountBadge(title: "已装", count: filteredInstalledSkills.count, tint: .orange)
+                }
+
+                if model.skillDiscoveryLoading || !model.discoverableSkills.isEmpty {
+                    skillCountBadge(title: "可装", count: filteredDiscoverableSkills.count, tint: .blue)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.orange.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(Color.orange.opacity(0.14), lineWidth: 1)
-                    )
-            )
 
-            if !model.skills.installedSkills.isEmpty {
-                skillCountBadge(title: "已装", count: filteredInstalledSkills.count, tint: .orange)
-            }
-
-            if model.skillDiscoveryLoading || !model.discoverableSkills.isEmpty {
-                skillCountBadge(title: "可装", count: filteredDiscoverableSkills.count, tint: .blue)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(SkillsFilter.allCases) { filter in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.16)) {
+                                selectedSkillsFilter = filter
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text(filter.title)
+                                    .font(.caption.weight(.semibold))
+                                Text("\(count(for: filter))")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(selectedSkillsFilter == filter ? Color.white.opacity(0.88) : .secondary)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                        }
+                        .buttonStyle(.plain)
+                        .background(
+                            Capsule()
+                                .fill(selectedSkillsFilter == filter ? Color.orange.opacity(0.92) : Color.primary.opacity(0.05))
+                        )
+                        .foregroundStyle(selectedSkillsFilter == filter ? Color.white : Color.primary)
+                    }
+                }
             }
         }
     }
@@ -1463,14 +1541,25 @@ struct ToolsPageView: View {
             HStack(spacing: 8) {
                 ForEach(model.skills.repos) { repo in
                     HStack(spacing: 6) {
-                        Circle()
-                            .fill(repo.isEnabled ? Color.mint : Color.secondary.opacity(0.3))
-                            .frame(width: 6, height: 6)
-                        Text("\(repo.owner)/\(repo.name)")
-                            .font(.caption.weight(.medium))
-                        Text(repo.branch)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(.secondary)
+                        Button {
+                            Task { await model.setSkillRepoEnabled(repo, enabled: !repo.isEnabled) }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: repo.isEnabled ? "checkmark.circle.fill" : "circle")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(repo.isEnabled ? .mint : .secondary)
+                                Text("\(repo.owner)/\(repo.name)")
+                                    .font(.caption.weight(.medium))
+                                Text(repo.branch)
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(repo.isEnabled ? Color.mint.opacity(0.08) : Color.primary.opacity(0.05), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+
                         if !repo.isDefault {
                             Button(role: .destructive) {
                                 Task { await model.removeSkillRepo(repo) }
@@ -1482,9 +1571,7 @@ struct ToolsPageView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(Color.primary.opacity(0.05), in: Capsule())
+                    .opacity(repo.isEnabled ? 1 : 0.72)
                 }
             }
         }

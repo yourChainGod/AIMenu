@@ -510,6 +510,19 @@ actor ProviderCoordinator {
         try await configService.saveSkillStore(store)
     }
 
+    func setSkillRepoEnabled(owner: String, name: String, enabled: Bool) async throws {
+        var store = try await configService.loadSkillStore()
+        guard let index = store.repos.firstIndex(where: {
+            $0.owner.caseInsensitiveCompare(owner) == .orderedSame &&
+                $0.name.caseInsensitiveCompare(name) == .orderedSame
+        }) else {
+            throw AppError.invalidData("技能仓库不存在")
+        }
+
+        store.repos[index].isEnabled = enabled
+        try await configService.saveSkillStore(store)
+    }
+
     func discoverAvailableSkills() async throws -> [DiscoverableSkill] {
         let store = try await configService.loadSkillStore()
         let installedKeys = Set(store.installedSkills.map(\.key))
