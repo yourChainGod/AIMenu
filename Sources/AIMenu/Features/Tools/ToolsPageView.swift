@@ -175,6 +175,10 @@ struct ToolsPageView: View {
         workbenchSections.contains(model.activeSection) ? model.activeSection : .mcp
     }
 
+    private var isWorkbenchMode: Bool {
+        mode == .workbench
+    }
+
     private var workbenchSwitcherRow: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
@@ -345,6 +349,33 @@ struct ToolsPageView: View {
         case .skills:
             return "\(model.skills.installedSkills.count) 已装"
         }
+    }
+
+    private var promptAppPicker: some View {
+        Picker("", selection: Binding(
+            get: { model.selectedPromptApp },
+            set: { app in Task { await model.switchPromptApp(app) } }
+        )) {
+            ForEach(PromptAppType.allCases) { app in
+                Text(app.displayName).tag(app)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    private func workbenchMoreMenu<Content: View>(
+        help text: String = "更多操作",
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        Menu {
+            content()
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .liquidGlassActionButtonStyle(density: .compact)
+        .help(text)
     }
 
     private var hasSkillsSearchQuery: Bool {
@@ -864,39 +895,66 @@ struct ToolsPageView: View {
             icon: "server.rack",
             iconColor: .blue,
             headerTrailing: {
-                HStack(spacing: 6) {
-                    Button {
-                        withAnimation(.spring(duration: 0.25)) { showMCPPresets.toggle() }
-                    } label: {
-                        Image(systemName: showMCPPresets ? "square.grid.2x2.fill" : "square.grid.2x2")
-                    }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help(showMCPPresets ? "预设已展开" : "显示 MCP 预设")
+                if isWorkbenchMode {
+                    HStack(spacing: 6) {
+                        Button {
+                            Task { await model.importLiveMCPServers() }
+                        } label: {
+                            Image(systemName: "square.and.arrow.down")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("从 Claude / Codex / Gemini 导入 MCP")
 
-                    Button {
-                        Task { await model.importLiveMCPServers() }
-                    } label: {
-                        Image(systemName: "square.and.arrow.down")
-                    }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("从 Claude / Codex / Gemini 导入 MCP")
+                        Button {
+                            editingMCPServer = nil
+                            showMCPForm = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("添加自定义 MCP 服务器")
 
-                    Button {
-                        editingMCPServer = nil
-                        showMCPForm = true
-                    } label: {
-                        Image(systemName: "plus")
+                        workbenchMoreMenu(help: "更多 MCP 操作") {
+                            Button(showMCPPresets ? "隐藏预设" : "显示预设") {
+                                withAnimation(.spring(duration: 0.25)) { showMCPPresets.toggle() }
+                            }
+                        }
                     }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("添加自定义 MCP 服务器")
+                } else {
+                    HStack(spacing: 6) {
+                        Button {
+                            withAnimation(.spring(duration: 0.25)) { showMCPPresets.toggle() }
+                        } label: {
+                            Image(systemName: showMCPPresets ? "square.grid.2x2.fill" : "square.grid.2x2")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help(showMCPPresets ? "预设已展开" : "显示 MCP 预设")
 
-                    CollapseChevronButton(isExpanded: mcpExpanded) {
-                        withAnimation(.easeInOut(duration: 0.2)) { mcpExpanded.toggle() }
+                        Button {
+                            Task { await model.importLiveMCPServers() }
+                        } label: {
+                            Image(systemName: "square.and.arrow.down")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("从 Claude / Codex / Gemini 导入 MCP")
+
+                        Button {
+                            editingMCPServer = nil
+                            showMCPForm = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("添加自定义 MCP 服务器")
+
+                        CollapseChevronButton(isExpanded: mcpExpanded) {
+                            withAnimation(.easeInOut(duration: 0.2)) { mcpExpanded.toggle() }
+                        }
                     }
                 }
             }
         ) {
-            if mcpExpanded {
+            if isWorkbenchMode || mcpExpanded {
                 VStack(alignment: .leading, spacing: 8) {
                     if showMCPPresets {
                         mcpPresetsGrid
@@ -1206,35 +1264,8 @@ struct ToolsPageView: View {
             icon: "text.bubble",
             iconColor: .purple,
             headerTrailing: {
-                HStack(spacing: 6) {
-                    if promptsExpanded {
-                        Picker("", selection: Binding(
-                            get: { model.selectedPromptApp },
-                            set: { app in Task { await model.switchPromptApp(app) } }
-                        )) {
-                            ForEach(PromptAppType.allCases) { app in
-                                Text(app.displayName).tag(app)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 160)
-
-                        Button {
-                            Task { await model.importLivePrompt() }
-                        } label: {
-                            Image(systemName: "square.and.arrow.down")
-                        }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help("从 \(model.selectedPromptApp.fileName) 导入")
-
-                        Button {
-                            NSWorkspace.shared.selectFile(model.selectedPromptApp.filePath.path, inFileViewerRootedAtPath: "")
-                        } label: {
-                            Image(systemName: "doc.text")
-                        }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help("打开 \(model.selectedPromptApp.fileName)")
-
+                if isWorkbenchMode {
+                    HStack(spacing: 6) {
                         Button {
                             editingPrompt = nil
                             showPromptEditor = true
@@ -1242,15 +1273,55 @@ struct ToolsPageView: View {
                             Image(systemName: "plus")
                         }
                         .liquidGlassActionButtonStyle(density: .compact)
-                    }
 
-                    CollapseChevronButton(isExpanded: promptsExpanded) {
-                        withAnimation(.easeInOut(duration: 0.2)) { promptsExpanded.toggle() }
+                        workbenchMoreMenu(help: "更多 Prompt 操作") {
+                            Button("从 \(model.selectedPromptApp.fileName) 导入") {
+                                Task { await model.importLivePrompt() }
+                            }
+                            Button("打开 \(model.selectedPromptApp.fileName)") {
+                                NSWorkspace.shared.selectFile(model.selectedPromptApp.filePath.path, inFileViewerRootedAtPath: "")
+                            }
+                        }
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        if promptsExpanded {
+                            promptAppPicker
+                                .frame(maxWidth: 160)
+
+                            Button {
+                                Task { await model.importLivePrompt() }
+                            } label: {
+                                Image(systemName: "square.and.arrow.down")
+                            }
+                            .liquidGlassActionButtonStyle(density: .compact)
+                            .help("从 \(model.selectedPromptApp.fileName) 导入")
+
+                            Button {
+                                NSWorkspace.shared.selectFile(model.selectedPromptApp.filePath.path, inFileViewerRootedAtPath: "")
+                            } label: {
+                                Image(systemName: "doc.text")
+                            }
+                            .liquidGlassActionButtonStyle(density: .compact)
+                            .help("打开 \(model.selectedPromptApp.fileName)")
+
+                            Button {
+                                editingPrompt = nil
+                                showPromptEditor = true
+                            } label: {
+                                Image(systemName: "plus")
+                            }
+                            .liquidGlassActionButtonStyle(density: .compact)
+                        }
+
+                        CollapseChevronButton(isExpanded: promptsExpanded) {
+                            withAnimation(.easeInOut(duration: 0.2)) { promptsExpanded.toggle() }
+                        }
                     }
                 }
             }
         ) {
-            if promptsExpanded {
+            if isWorkbenchMode || promptsExpanded {
                 promptsContent
             }
         }
@@ -1258,6 +1329,16 @@ struct ToolsPageView: View {
 
     @ViewBuilder
     private var promptsContent: some View {
+        if isWorkbenchMode {
+            HStack(spacing: 10) {
+                promptAppPicker
+                ToolsStatusBadge(text: "\(model.prompts.count) 条", tint: .purple)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color.purple.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+
         promptLiveFileBar
 
         if model.prompts.isEmpty {
@@ -1384,30 +1465,48 @@ struct ToolsPageView: View {
             icon: "point.3.connected.trianglepath.dotted",
             iconColor: .indigo,
             headerTrailing: {
-                HStack(spacing: 6) {
-                    Button {
-                        Task { await model.refreshClaudeHooks() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("刷新 Claude Hooks")
+                if isWorkbenchMode {
+                    HStack(spacing: 6) {
+                        Button {
+                            Task { await model.refreshClaudeHooks() }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("刷新 Claude Hooks")
 
-                    Button {
-                        NSWorkspace.shared.selectFile(NSHomeDirectory() + "/.claude/settings.json", inFileViewerRootedAtPath: "")
-                    } label: {
-                        Image(systemName: "doc.text")
+                        workbenchMoreMenu(help: "更多 Hooks 操作") {
+                            Button("打开 Claude settings.json") {
+                                NSWorkspace.shared.selectFile(NSHomeDirectory() + "/.claude/settings.json", inFileViewerRootedAtPath: "")
+                            }
+                        }
                     }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("打开 Claude settings.json")
+                } else {
+                    HStack(spacing: 6) {
+                        Button {
+                            Task { await model.refreshClaudeHooks() }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("刷新 Claude Hooks")
 
-                    CollapseChevronButton(isExpanded: hooksExpanded) {
-                        withAnimation(.easeInOut(duration: 0.2)) { hooksExpanded.toggle() }
+                        Button {
+                            NSWorkspace.shared.selectFile(NSHomeDirectory() + "/.claude/settings.json", inFileViewerRootedAtPath: "")
+                        } label: {
+                            Image(systemName: "doc.text")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("打开 Claude settings.json")
+
+                        CollapseChevronButton(isExpanded: hooksExpanded) {
+                            withAnimation(.easeInOut(duration: 0.2)) { hooksExpanded.toggle() }
+                        }
                     }
                 }
             }
         ) {
-            if hooksExpanded {
+            if isWorkbenchMode || hooksExpanded {
                 hooksContent
             }
         }
@@ -1531,54 +1630,91 @@ struct ToolsPageView: View {
             icon: "wand.and.stars",
             iconColor: .orange,
             headerTrailing: {
-                HStack(spacing: 6) {
-                    Button {
-                        Task { await model.discoverSkills() }
-                    } label: {
-                        if model.skillDiscoveryLoading {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "sparkles")
+                if isWorkbenchMode {
+                    HStack(spacing: 6) {
+                        Button {
+                            Task { await model.discoverSkills() }
+                        } label: {
+                            if model.skillDiscoveryLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "sparkles")
+                            }
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("发现可安装技能")
+
+                        Button {
+                            Task { await model.refreshSkillsFromDisk() }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("扫描 ~/.claude/skills")
+
+                        workbenchMoreMenu(help: "更多 Skills 操作") {
+                            Button("添加技能仓库") {
+                                showSkillRepoEditor = true
+                            }
+                            Button("打开技能目录") {
+                                NSWorkspace.shared.selectFile(
+                                    NSHomeDirectory() + "/.claude/skills",
+                                    inFileViewerRootedAtPath: ""
+                                )
+                            }
                         }
                     }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("发现可安装技能")
+                } else {
+                    HStack(spacing: 6) {
+                        Button {
+                            Task { await model.discoverSkills() }
+                        } label: {
+                            if model.skillDiscoveryLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "sparkles")
+                            }
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("发现可安装技能")
 
-                    Button {
-                        showSkillRepoEditor = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("添加技能仓库")
+                        Button {
+                            showSkillRepoEditor = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("添加技能仓库")
 
-                    Button {
-                        Task { await model.refreshSkillsFromDisk() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("扫描 ~/.claude/skills")
+                        Button {
+                            Task { await model.refreshSkillsFromDisk() }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("扫描 ~/.claude/skills")
 
-                    Button {
-                        NSWorkspace.shared.selectFile(
-                            NSHomeDirectory() + "/.claude/skills",
-                            inFileViewerRootedAtPath: ""
-                        )
-                    } label: {
-                        Image(systemName: "folder")
-                    }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("打开技能目录")
+                        Button {
+                            NSWorkspace.shared.selectFile(
+                                NSHomeDirectory() + "/.claude/skills",
+                                inFileViewerRootedAtPath: ""
+                            )
+                        } label: {
+                            Image(systemName: "folder")
+                        }
+                        .liquidGlassActionButtonStyle(density: .compact)
+                        .help("打开技能目录")
 
-                    CollapseChevronButton(isExpanded: skillsExpanded) {
-                        withAnimation(.easeInOut(duration: 0.2)) { skillsExpanded.toggle() }
+                        CollapseChevronButton(isExpanded: skillsExpanded) {
+                            withAnimation(.easeInOut(duration: 0.2)) { skillsExpanded.toggle() }
+                        }
                     }
                 }
             }
         ) {
-            if skillsExpanded {
+            if isWorkbenchMode || skillsExpanded {
                 skillsContent
             }
         }
