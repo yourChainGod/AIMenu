@@ -20,6 +20,7 @@ struct ToolsPageView: View {
     @State private var hoveredPrompt: String? = nil
     @State private var hoveredSkill: String? = nil
     @State private var hoveredDiscoverableSkill: String? = nil
+    @State private var skillsSearchText = ""
 
     var body: some View {
         ScrollView {
@@ -133,6 +134,70 @@ struct ToolsPageView: View {
                 )
                 .frame(width: 760, height: 620)
             }
+        }
+    }
+
+    private var hasSkillsSearchQuery: Bool {
+        skillsSearchText.trimmedNonEmpty != nil
+    }
+
+    private var filteredInstalledSkills: [InstalledSkill] {
+        guard let query = skillsSearchText.trimmedNonEmpty else {
+            return model.skills.installedSkills
+        }
+
+        return model.skills.installedSkills.filter { skill in
+            matchesSkillsSearch(query: query, fields: [
+                skill.name,
+                skill.description,
+                skill.directory,
+                skill.repoOwner,
+                skill.repoName
+            ])
+        }
+    }
+
+    private var filteredDiscoverableSkills: [DiscoverableSkill] {
+        guard let query = skillsSearchText.trimmedNonEmpty else {
+            return model.discoverableSkills
+        }
+
+        return model.discoverableSkills.filter { skill in
+            matchesSkillsSearch(query: query, fields: [
+                skill.name,
+                skill.description,
+                skill.directory,
+                skill.repoOwner,
+                skill.repoName,
+                skill.repoBranch
+            ])
+        }
+    }
+
+    private var groupedClaudeHooks: [(event: String, hooks: [ClaudeHook])] {
+        Dictionary(grouping: model.claudeHooks, by: \.event)
+            .map { event, hooks in
+                (
+                    event: event,
+                    hooks: hooks.sorted { lhs, rhs in
+                        let lhsMatcher = lhs.matcher ?? ""
+                        let rhsMatcher = rhs.matcher ?? ""
+                        if lhsMatcher != rhsMatcher {
+                            return lhsMatcher.localizedCaseInsensitiveCompare(rhsMatcher) == .orderedAscending
+                        }
+                        return lhs.command.localizedCaseInsensitiveCompare(rhs.command) == .orderedAscending
+                    }
+                )
+            }
+            .sorted { lhs, rhs in
+                lhs.event.localizedCaseInsensitiveCompare(rhs.event) == .orderedAscending
+            }
+    }
+
+    private func matchesSkillsSearch(query: String, fields: [String?]) -> Bool {
+        fields.contains { field in
+            guard let value = field?.trimmedNonEmpty else { return false }
+            return value.localizedCaseInsensitiveContains(query)
         }
     }
 
@@ -1111,6 +1176,8 @@ struct ToolsPageView: View {
 
     @ViewBuilder
     private var hooksContent: some View {
+        let hookGroups = groupedClaudeHooks
+
         HStack(spacing: 8) {
             Label("~/.claude/settings.json", systemImage: "doc.text")
                 .font(.caption.weight(.medium))
@@ -1120,6 +1187,14 @@ struct ToolsPageView: View {
                 .padding(.horizontal, 7)
                 .padding(.vertical, 4)
                 .background(Color.primary.opacity(0.05), in: Capsule())
+            if !hookGroups.isEmpty {
+                Text("\(hookGroups.count) 组")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.indigo.opacity(0.08), in: Capsule())
+            }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 10)
@@ -1137,12 +1212,35 @@ struct ToolsPageView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
         } else {
-            VStack(spacing: 2) {
-                ForEach(model.claudeHooks) { hook in
+            VStack(spacing: 8) {
+                ForEach(hookGroups, id: \.event) { group in
+                    claudeHookGroup(event: group.event, hooks: group.hooks)
+                }
+            }
+        }
+    }
+
+    private func claudeHookGroup(event: String, hooks: [ClaudeHook]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                ToolsStatusBadge(text: event, tint: Color.indigo)
+                Text("\(hooks.count) 条")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                if hooks.contains(where: { $0.scope == .project }) {
+                    ToolsStatusBadge(text: "含项目级", tint: Color.orange)
+                }
+            }
+
+            VStack(spacing: 4) {
+                ForEach(hooks) { hook in
                     claudeHookRow(hook)
                 }
             }
         }
+        .padding(8)
+        .background(Color.indigo.opacity(0.035), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private func claudeHookRow(_ hook: ClaudeHook) -> some View {
@@ -1154,7 +1252,6 @@ struct ToolsPageView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
-                    ToolsStatusBadge(text: hook.event, tint: Color.indigo)
                     if let matcher = hook.matcher?.trimmedNonEmpty {
                         ToolsStatusBadge(text: matcher, tint: Color.secondary)
                     }
@@ -1250,15 +1347,27 @@ struct ToolsPageView: View {
 
     @ViewBuilder
     private var skillsContent: some View {
-        let installed = model.skills.installedSkills
+        let installed = filteredInstalledSkills
+        let discoverable = filteredDiscoverableSkills
         VStack(alignment: .leading, spacing: 10) {
             skillReposRow
+            skillsSearchRow
 
             if model.skillDiscoveryLoading || !model.discoverableSkills.isEmpty {
-                discoverableSkillsPanel
+                discoverableSkillsPanel(skills: discoverable)
             }
 
-            if installed.isEmpty {
+            if hasSkillsSearchQuery && installed.isEmpty && discoverable.isEmpty && !model.skillDiscoveryLoading {
+                VStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.secondary.opacity(0.45))
+                    Text("没有匹配的技能")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+            } else if model.skills.installedSkills.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "wand.and.stars")
                         .font(.system(size: 28))
@@ -1268,14 +1377,85 @@ struct ToolsPageView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
-            } else {
-                VStack(spacing: 2) {
-                    ForEach(installed) { skill in
-                        skillRow(skill)
+            } else if !installed.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("已安装")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text("\(installed.count)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 4)
+                            .background(Color.orange.opacity(0.08), in: Capsule())
+                        Spacer(minLength: 0)
+                    }
+
+                    VStack(spacing: 2) {
+                        ForEach(installed) { skill in
+                            skillRow(skill)
+                        }
                     }
                 }
             }
         }
+    }
+
+    private var skillsSearchRow: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.orange.opacity(0.9))
+
+                TextField("搜索技能、仓库或目录", text: $skillsSearchText)
+                    .textFieldStyle(.plain)
+                    .font(.subheadline)
+
+                if !skillsSearchText.isEmpty {
+                    Button {
+                        skillsSearchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.orange.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.orange.opacity(0.14), lineWidth: 1)
+                    )
+            )
+
+            if !model.skills.installedSkills.isEmpty {
+                skillCountBadge(title: "已装", count: filteredInstalledSkills.count, tint: .orange)
+            }
+
+            if model.skillDiscoveryLoading || !model.discoverableSkills.isEmpty {
+                skillCountBadge(title: "可装", count: filteredDiscoverableSkills.count, tint: .blue)
+            }
+        }
+    }
+
+    private func skillCountBadge(title: String, count: Int, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+            Text("\(count)")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(tint.opacity(0.08), in: Capsule())
     }
 
     private var skillReposRow: some View {
@@ -1310,13 +1490,18 @@ struct ToolsPageView: View {
         }
     }
 
-    @ViewBuilder
-    private var discoverableSkillsPanel: some View {
+    private func discoverableSkillsPanel(skills: [DiscoverableSkill]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("可安装")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
+                Text("\(skills.count)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.08), in: Capsule())
                 Spacer(minLength: 0)
             }
 
@@ -1331,11 +1516,20 @@ struct ToolsPageView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            } else if model.discoverableSkills.isEmpty {
-                EmptyView()
+            } else if skills.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .foregroundStyle(.secondary)
+                    Text("当前筛选下没有可安装技能")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             } else {
                 VStack(spacing: 2) {
-                    ForEach(model.discoverableSkills) { skill in
+                    ForEach(skills) { skill in
                         discoverableSkillRow(skill)
                     }
                 }
