@@ -195,6 +195,32 @@ struct InstalledSkill: Codable, Equatable, Identifiable {
     var installedAt: Int64
 }
 
+// MARK: - Claude Hooks
+
+enum ClaudeHookScope: String, Codable, Equatable {
+    case user
+    case project
+
+    var displayName: String {
+        switch self {
+        case .user: return "用户"
+        case .project: return "项目"
+        }
+    }
+}
+
+struct ClaudeHook: Equatable, Identifiable {
+    var id: String
+    var event: String
+    var matcher: String?
+    var command: String
+    var commandType: String?
+    var timeout: Int?
+    var enabled: Bool
+    var scope: ClaudeHookScope
+    var sourcePath: String
+}
+
 struct SkillStore: Codable, Equatable {
     var version: Int = 1
     var repos: [SkillRepo] = []

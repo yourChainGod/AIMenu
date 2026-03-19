@@ -7,6 +7,7 @@ struct ToolsPageView: View {
     @State private var servicesExpanded = true
     @State private var mcpExpanded = true
     @State private var promptsExpanded = true
+    @State private var hooksExpanded = true
     @State private var skillsExpanded = true
     @State private var showMCPPresets = false
     @State private var showMCPForm = false
@@ -25,6 +26,7 @@ struct ToolsPageView: View {
                 servicesSection
                 mcpSection
                 promptsSection
+                hooksSection
                 skillsSection
             }
             .padding(LayoutRules.pagePadding)
@@ -843,6 +845,121 @@ struct ToolsPageView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: hoveredPrompt)
         .onHover { isHovered in hoveredPrompt = isHovered ? prompt.id : nil }
+    }
+
+    // MARK: - Hooks
+
+    private var hooksSection: some View {
+        SectionCard(
+            title: "Hooks",
+            icon: "point.3.connected.trianglepath.dotted",
+            iconColor: .indigo,
+            headerTrailing: {
+                HStack(spacing: 6) {
+                    Button {
+                        Task { await model.refreshClaudeHooks() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("刷新 Claude Hooks")
+
+                    Button {
+                        NSWorkspace.shared.selectFile(NSHomeDirectory() + "/.claude/settings.json", inFileViewerRootedAtPath: "")
+                    } label: {
+                        Image(systemName: "doc.text")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("打开 Claude settings.json")
+
+                    CollapseChevronButton(isExpanded: hooksExpanded) {
+                        withAnimation(.easeInOut(duration: 0.2)) { hooksExpanded.toggle() }
+                    }
+                }
+            }
+        ) {
+            if hooksExpanded {
+                hooksContent
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var hooksContent: some View {
+        HStack(spacing: 8) {
+            Label("~/.claude/settings.json", systemImage: "doc.text")
+                .font(.caption.weight(.medium))
+            Text("\(model.claudeHooks.count) 条")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(Color.primary.opacity(0.05), in: Capsule())
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+        if model.claudeHooks.isEmpty {
+            VStack(spacing: 8) {
+                Image(systemName: "point.3.connected.trianglepath.dotted")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.secondary.opacity(0.4))
+                Text("未扫描到 Claude Hooks")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+        } else {
+            VStack(spacing: 2) {
+                ForEach(model.claudeHooks) { hook in
+                    claudeHookRow(hook)
+                }
+            }
+        }
+    }
+
+    private func claudeHookRow(_ hook: ClaudeHook) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(hook.enabled ? Color.mint : Color.secondary.opacity(0.35))
+                .frame(width: 7, height: 7)
+                .padding(.top, 7)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    ToolsStatusBadge(text: hook.event, tint: Color.indigo)
+                    if let matcher = hook.matcher?.trimmedNonEmpty {
+                        ToolsStatusBadge(text: matcher, tint: Color.secondary)
+                    }
+                    ToolsStatusBadge(text: hook.scope.displayName, tint: Color.secondary)
+                    if let commandType = hook.commandType?.trimmedNonEmpty {
+                        ToolsStatusBadge(text: commandType, tint: Color.blue)
+                    }
+                    if let timeout = hook.timeout {
+                        ToolsStatusBadge(text: "\(timeout)s", tint: Color.orange)
+                    }
+                }
+
+                Text(hook.command)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+
+                Text(hook.sourcePath)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     // MARK: - Skills

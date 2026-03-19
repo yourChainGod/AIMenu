@@ -9,12 +9,13 @@ final class ToolsPageModel: ObservableObject {
     private let portService: PortManagementServiceProtocol
     private let noticeScheduler = NoticeAutoDismissScheduler()
 
-    enum ToolsSection: String, CaseIterable { case mcp, prompts, skills }
+    enum ToolsSection: String, CaseIterable { case mcp, prompts, hooks, skills }
 
     @Published var activeSection: ToolsSection = .mcp
     @Published var mcpServers: [MCPServer] = []
     @Published var prompts: [Prompt] = []
     @Published var selectedPromptApp: PromptAppType = .claude
+    @Published var claudeHooks: [ClaudeHook] = []
     @Published var skills: SkillStore = SkillStore(repos: SkillStore.defaultRepos)
     @Published var discoverableSkills: [DiscoverableSkill] = []
     @Published var skillDiscoveryLoading = false
@@ -43,6 +44,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             mcpServers = try await coordinator.listMCPServers()
             prompts = try await coordinator.listPrompts(for: selectedPromptApp)
+            claudeHooks = try await coordinator.listClaudeHooks()
             var skillStore = try await coordinator.loadSkillStore()
             skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
             skills = skillStore
@@ -178,6 +180,17 @@ final class ToolsPageModel: ObservableObject {
             } else {
                 notice = NoticeMessage(style: .info, text: "未找到 \(selectedPromptApp.fileName)")
             }
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    // MARK: - Hooks
+
+    func refreshClaudeHooks() async {
+        do {
+            claudeHooks = try await coordinator.listClaudeHooks()
+            notice = NoticeMessage(style: .success, text: "已刷新 Claude Hooks")
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }

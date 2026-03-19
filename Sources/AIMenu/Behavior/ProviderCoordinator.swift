@@ -410,6 +410,10 @@ actor ProviderCoordinator {
         return prompts
     }
 
+    func listClaudeHooks() async throws -> [ClaudeHook] {
+        try await configService.loadClaudeHooks()
+    }
+
     func addPrompt(_ prompt: Prompt) async throws {
         var store = try await configService.loadPromptStore()
         store.prompts.append(prompt)

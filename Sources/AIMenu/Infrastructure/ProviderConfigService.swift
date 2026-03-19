@@ -779,6 +779,40 @@ actor ProviderConfigService {
         return try String(contentsOf: filePath, encoding: .utf8)
     }
 
+    // MARK: - Claude Hooks
+
+    func loadClaudeHooks() throws -> [ClaudeHook] {
+        let path = claudeSettingsPath
+        guard fileManager.fileExists(atPath: path.path) else { return [] }
+
+        let settings = loadJSONObject(from: path)
+        guard let hooks = settings["hooks"] as? [String: Any] else { return [] }
+
+        var result: [ClaudeHook] = []
+        for event in hooks.keys.sorted() {
+            result.append(
+                contentsOf: parseClaudeHooks(
+                    event: event,
+                    rawValue: hooks[event],
+                    sourcePath: path.path,
+                    scope: .user
+                )
+            )
+        }
+
+        return result.sorted { lhs, rhs in
+            if lhs.event != rhs.event {
+                return lhs.event.localizedCaseInsensitiveCompare(rhs.event) == .orderedAscending
+            }
+            let lhsMatcher = lhs.matcher ?? ""
+            let rhsMatcher = rhs.matcher ?? ""
+            if lhsMatcher != rhsMatcher {
+                return lhsMatcher.localizedCaseInsensitiveCompare(rhsMatcher) == .orderedAscending
+            }
+            return lhs.command.localizedCaseInsensitiveCompare(rhs.command) == .orderedAscending
+        }
+    }
+
     // MARK: - Skill Store Persistence
 
     private var skillStorePath: URL {
@@ -819,6 +853,114 @@ actor ProviderConfigService {
         try fileManager.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
         let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: path, options: .atomic)
+    }
+
+    private func parseClaudeHooks(
+        event: String,
+        rawValue: Any?,
+        sourcePath: String,
+        scope: ClaudeHookScope
+    ) -> [ClaudeHook] {
+        guard let entries = rawValue as? [Any] else { return [] }
+
+        var hooks: [ClaudeHook] = []
+
+        for (entryIndex, entry) in entries.enumerated() {
+            if let group = entry as? [String: Any] {
+                let matcher = (group["matcher"] as? String)?.trimmedNonEmpty
+                let groupEnabled = group["enabled"] as? Bool ?? true
+
+                if let nestedHooks = group["hooks"] as? [Any] {
+                    for (hookIndex, nestedHook) in nestedHooks.enumerated() {
+                        if let parsed = parseClaudeHookEntry(
+                            event: event,
+                            matcher: matcher,
+                            rawValue: nestedHook,
+                            defaultID: "\(event)-\(entryIndex)-\(hookIndex)",
+                            enabled: groupEnabled,
+                            sourcePath: sourcePath,
+                            scope: scope
+                        ) {
+                            hooks.append(parsed)
+                        }
+                    }
+                    continue
+                }
+
+                if let parsed = parseClaudeHookEntry(
+                    event: event,
+                    matcher: matcher,
+                    rawValue: group,
+                    defaultID: "\(event)-\(entryIndex)",
+                    enabled: groupEnabled,
+                    sourcePath: sourcePath,
+                    scope: scope
+                ) {
+                    hooks.append(parsed)
+                }
+                continue
+            }
+
+            if let parsed = parseClaudeHookEntry(
+                event: event,
+                matcher: nil,
+                rawValue: entry,
+                defaultID: "\(event)-\(entryIndex)",
+                enabled: true,
+                sourcePath: sourcePath,
+                scope: scope
+            ) {
+                hooks.append(parsed)
+            }
+        }
+
+        return hooks
+    }
+
+    private func parseClaudeHookEntry(
+        event: String,
+        matcher: String?,
+        rawValue: Any,
+        defaultID: String,
+        enabled: Bool,
+        sourcePath: String,
+        scope: ClaudeHookScope
+    ) -> ClaudeHook? {
+        if let command = (rawValue as? String)?.trimmedNonEmpty {
+            return ClaudeHook(
+                id: defaultID,
+                event: event,
+                matcher: matcher,
+                command: command,
+                commandType: nil,
+                timeout: nil,
+                enabled: enabled,
+                scope: scope,
+                sourcePath: sourcePath
+            )
+        }
+
+        guard let dictionary = rawValue as? [String: Any],
+              let command = (dictionary["command"] as? String)?.trimmedNonEmpty else {
+            return nil
+        }
+
+        let commandType = (dictionary["type"] as? String)?.trimmedNonEmpty
+        let timeout = (dictionary["timeout"] as? Int)
+            ?? (dictionary["timeout"] as? NSNumber)?.intValue
+        let explicitEnabled = dictionary["enabled"] as? Bool ?? enabled
+
+        return ClaudeHook(
+            id: (dictionary["id"] as? String)?.trimmedNonEmpty ?? defaultID,
+            event: event,
+            matcher: matcher,
+            command: command,
+            commandType: commandType,
+            timeout: timeout,
+            enabled: explicitEnabled,
+            scope: scope,
+            sourcePath: sourcePath
+        )
     }
 
     private func setJSONValue(_ object: inout [String: Any], key: String, value: String?) {
