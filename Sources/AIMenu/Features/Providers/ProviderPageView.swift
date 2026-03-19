@@ -65,8 +65,7 @@ struct ProviderPageView: View {
                 onAdd: { draft in
                     Task { await model.addProvider(draft: draft) }
                 },
-                onCancel: closeAddProviderSheet,
-                onChangePreset: reopenAddPresetPicker
+                onCancel: closeAddProviderSheet
             )
             .frame(width: 760, height: 820)
         }
@@ -403,13 +402,6 @@ struct ProviderPageView: View {
         addingPreset = nil
         pendingAddPreset = nil
     }
-
-    private func reopenAddPresetPicker() {
-        closeAddProviderSheet()
-        DispatchQueue.main.async {
-            showingAddPresetPicker = true
-        }
-    }
 }
 
 // MARK: - Add Provider Preset Popover
@@ -589,7 +581,6 @@ private struct AddProviderSheet: View {
     let initialPreset: ProviderPreset
     let onAdd: (ProviderDraft) -> Void
     let onCancel: () -> Void
-    let onChangePreset: () -> Void
 
     @State private var selectedPreset: ProviderPreset?
     @State private var searchText = ""
@@ -706,15 +697,13 @@ private struct AddProviderSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sheetHeader
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
-                .padding(.bottom, 12)
-
-            Divider()
-
-            configureStep
+        Group {
+            switch step {
+            case .selectPreset:
+                presetSelectionView
+            case .configure:
+                configureView
+            }
         }
         .frame(width: 700)
         .background(.regularMaterial)
@@ -725,25 +714,65 @@ private struct AddProviderSheet: View {
         }
     }
 
+    private var presetSelectionView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sheetHeader
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 12)
+
+            Divider()
+
+            presetPickerStep
+        }
+    }
+
+    private var configureView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sheetHeader
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 12)
+
+            Divider()
+
+            configureStep
+        }
+    }
+
     private var sheetHeader: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(selectedPreset?.name ?? "配置详情")
+                Text(step == .selectPreset ? "选择提供商" : (selectedPreset?.name ?? "配置详情"))
                     .font(.headline)
-                Text(appType.liveConfigPathsText)
+                Text(step == .selectPreset ? "先选预设，再补充详细配置。" : appType.liveConfigPathsText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Spacer(minLength: 0)
 
-            Button("更换预设") {
-                onChangePreset()
+            if step == .configure {
+                Button("更换预设") {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        step = .selectPreset
+                    }
+                }
+                .aimenuActionButtonStyle(density: .compact)
             }
-            .aimenuActionButtonStyle(density: .compact)
 
-            CloseGlassButton { onCancel() }
+            CloseGlassButton { handleClose() }
         }
+    }
+
+    private func handleClose() {
+        if step == .configure {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                step = .selectPreset
+            }
+            return
+        }
+        onCancel()
     }
 
     private var presetPickerStep: some View {
