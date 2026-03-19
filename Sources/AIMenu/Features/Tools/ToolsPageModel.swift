@@ -9,9 +9,10 @@ final class ToolsPageModel: ObservableObject {
     private let portService: PortManagementServiceProtocol
     private let noticeScheduler = NoticeAutoDismissScheduler()
 
-    enum ToolsSection: String, CaseIterable { case mcp, prompts, hooks, skills }
+    enum ToolsSection: String, CaseIterable { case configs, mcp, prompts, hooks, skills }
 
     @Published var activeSection: ToolsSection = .mcp
+    @Published var localConfigBundles: [LocalConfigBundle] = []
     @Published var mcpServers: [MCPServer] = []
     @Published var prompts: [Prompt] = []
     @Published var selectedPromptApp: PromptAppType = .claude
@@ -42,6 +43,7 @@ final class ToolsPageModel: ObservableObject {
         loading = true
         defer { loading = false }
         do {
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
             mcpServers = try await coordinator.listMCPServers()
             prompts = try await coordinator.listPrompts(for: selectedPromptApp)
             claudeHooks = try await coordinator.listClaudeHooks()
@@ -61,6 +63,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.addMCPServer(server)
             mcpServers = try await coordinator.listMCPServers()
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .success, text: "已添加 MCP：\(server.name)")
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -77,6 +80,7 @@ final class ToolsPageModel: ObservableObject {
                 notice = NoticeMessage(style: .success, text: "MCP 服务器已添加")
             }
             mcpServers = try await coordinator.listMCPServers()
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -86,6 +90,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.deleteMCPServer(id: id)
             mcpServers = try await coordinator.listMCPServers()
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .info, text: "MCP 服务器已移除")
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -95,6 +100,7 @@ final class ToolsPageModel: ObservableObject {
     func importLiveMCPServers() async {
         do {
             mcpServers = try await coordinator.importLiveMCPServers()
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .success, text: "已导入本地 MCP 配置")
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -105,6 +111,20 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.toggleMCPApp(serverId: serverId, app: app, enabled: enabled)
             mcpServers = try await coordinator.listMCPServers()
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    // MARK: - Local Config Overview
+
+    func refreshLocalConfigBundles(showNotice: Bool = true) async {
+        do {
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            if showNotice {
+                notice = NoticeMessage(style: .success, text: "已刷新本地配置概览")
+            }
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -155,6 +175,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.activatePrompt(id: id, appType: selectedPromptApp)
             prompts = try await coordinator.listPrompts(for: selectedPromptApp)
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .success, text: "Prompt activated \u{2192} \(selectedPromptApp.fileName)")
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -176,6 +197,7 @@ final class ToolsPageModel: ObservableObject {
             if let imported = try await coordinator.importLivePrompt(for: selectedPromptApp) {
                 try await coordinator.addPrompt(imported)
                 prompts = try await coordinator.listPrompts(for: selectedPromptApp)
+                localConfigBundles = try await coordinator.listLocalConfigBundles()
                 notice = NoticeMessage(style: .success, text: "已从 \(selectedPromptApp.fileName) 导入")
             } else {
                 notice = NoticeMessage(style: .info, text: "未找到 \(selectedPromptApp.fileName)")
@@ -342,6 +364,7 @@ final class ToolsPageModel: ObservableObject {
                 throw AppError.invalidData("请先启动 Cursor2API")
             }
             _ = try await coordinator.upsertManagedClaudeCursor2APIProvider(from: cursor2APIStatus)
+            localConfigBundles = try await coordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .success, text: "已切换 Claude Code 到 Cursor2API 本地桥接")
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)

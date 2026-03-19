@@ -5,6 +5,7 @@ struct ToolsPageView: View {
     @ObservedObject var model: ToolsPageModel
 
     @State private var servicesExpanded = true
+    @State private var configsExpanded = true
     @State private var mcpExpanded = true
     @State private var promptsExpanded = true
     @State private var hooksExpanded = true
@@ -24,6 +25,7 @@ struct ToolsPageView: View {
         ScrollView {
             VStack(spacing: LayoutRules.sectionSpacing) {
                 servicesSection
+                configsSection
                 mcpSection
                 promptsSection
                 hooksSection
@@ -320,6 +322,182 @@ struct ToolsPageView: View {
                     .liquidGlassActionButtonStyle(density: .compact)
                     .help("移除此端口")
                 }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    // MARK: - Local Config Overview
+
+    private var configsSection: some View {
+        SectionCard(
+            title: "本地配置",
+            icon: "folder.badge.gearshape",
+            iconColor: .green,
+            headerTrailing: {
+                HStack(spacing: 6) {
+                    Button {
+                        Task { await model.refreshLocalConfigBundles() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .liquidGlassActionButtonStyle(density: .compact)
+                    .help("刷新本地配置状态")
+
+                    CollapseChevronButton(isExpanded: configsExpanded) {
+                        withAnimation(.easeInOut(duration: 0.2)) { configsExpanded.toggle() }
+                    }
+                }
+            }
+        ) {
+            if configsExpanded {
+                localConfigContent
+            } else {
+                localConfigCollapsedSummary
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var localConfigContent: some View {
+        if model.localConfigBundles.isEmpty {
+            VStack(spacing: 8) {
+                Image(systemName: "folder.badge.gearshape")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.secondary.opacity(0.4))
+                Text("暂无本地配置概览")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 10)], spacing: 10) {
+                ForEach(model.localConfigBundles) { bundle in
+                    localConfigBundleCard(bundle)
+                }
+            }
+        }
+    }
+
+    private var localConfigCollapsedSummary: some View {
+        let total = model.localConfigBundles.reduce(0) { $0 + $1.files.count }
+        let existing = model.localConfigBundles.reduce(0) { $0 + $1.existingFileCount }
+        return Group {
+            if total == 0 {
+                Text("暂无配置")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(existing == total ? Color.mint : Color.orange)
+                        .frame(width: 6, height: 6)
+                    Text("\(existing) / \(total) 可见")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func localConfigBundleCard(_ bundle: LocalConfigBundle) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(localConfigAccent(for: bundle.app).opacity(0.12))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: bundle.app.iconName)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(localConfigAccent(for: bundle.app))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(bundle.app.displayName)
+                            .font(.headline)
+                        ToolsStatusBadge(
+                            text: "\(bundle.existingFileCount)/\(bundle.files.count)",
+                            tint: bundle.existingFileCount == bundle.files.count ? Color.mint : Color.orange
+                        )
+                    }
+                    Text(tildePath(bundle.rootPath))
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if let latestText = localConfigLatestText(bundle.latestModifiedAt) {
+                        Text(latestText)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Button {
+                    openDirectory(bundle.rootPath)
+                } label: {
+                    Image(systemName: "folder")
+                }
+                .liquidGlassActionButtonStyle(density: .compact)
+                .disabled(bundle.existingFileCount == 0)
+                .help("打开 \(bundle.app.displayName) 配置目录")
+            }
+
+            VStack(spacing: 6) {
+                ForEach(bundle.files) { file in
+                    localConfigFileRow(file)
+                }
+            }
+        }
+        .padding(14)
+        .cardSurface(cornerRadius: 14, tint: localConfigAccent(for: bundle.app).opacity(0.05))
+    }
+
+    private func localConfigFileRow(_ file: LocalConfigFile) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(file.exists ? Color.mint : Color.secondary.opacity(0.3))
+                .frame(width: 7, height: 7)
+                .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(file.label)
+                        .font(.caption.weight(.semibold))
+                    ToolsStatusBadge(text: file.kind.displayName, tint: localConfigKindTint(file.kind))
+                    ToolsStatusBadge(
+                        text: file.exists ? "可见" : "缺失",
+                        tint: file.exists ? Color.mint : Color.secondary
+                    )
+                }
+
+                Text(tildePath(file.path))
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                if let metaText = localConfigMetaText(file) {
+                    Text(metaText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            if file.exists {
+                Button {
+                    NSWorkspace.shared.selectFile(file.path, inFileViewerRootedAtPath: "")
+                } label: {
+                    Image(systemName: "arrow.up.right.square")
+                }
+                .liquidGlassActionButtonStyle(density: .compact)
+                .help("在 Finder 中定位 \(file.label)")
             }
         }
         .padding(.horizontal, 10)
@@ -1260,6 +1438,69 @@ struct ToolsPageView: View {
             return "\(owner)/\(repo)"
         }
         return "本地技能"
+    }
+
+    private func localConfigAccent(for app: ProviderAppType) -> Color {
+        switch app {
+        case .claude:
+            return .green
+        case .codex:
+            return .blue
+        case .gemini:
+            return .orange
+        }
+    }
+
+    private func localConfigKindTint(_ kind: LocalConfigKind) -> Color {
+        switch kind {
+        case .json:
+            return .blue
+        case .toml:
+            return .purple
+        case .env:
+            return .orange
+        case .markdown:
+            return .secondary
+        }
+    }
+
+    private func tildePath(_ path: String) -> String {
+        let home = NSHomeDirectory()
+        guard path.hasPrefix(home) else { return path }
+        return "~" + path.dropFirst(home.count)
+    }
+
+    private func openDirectory(_ path: String) {
+        guard FileManager.default.fileExists(atPath: path) else { return }
+        NSWorkspace.shared.open(URL(fileURLWithPath: path, isDirectory: true))
+    }
+
+    private func localConfigMetaText(_ file: LocalConfigFile) -> String? {
+        guard file.exists else { return nil }
+
+        var parts: [String] = []
+        if let byteCount = file.byteCount {
+            parts.append(ByteCountFormatter.string(fromByteCount: byteCount, countStyle: .file))
+        }
+        if let modifiedAt = file.modifiedAt {
+            parts.append(relativeDateString(modifiedAt))
+        }
+
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func localConfigLatestText(_ timestamp: Int64?) -> String? {
+        guard let timestamp else { return nil }
+        return "最近更新 \(relativeDateString(timestamp))"
+    }
+
+    private func relativeDateString(_ timestamp: Int64) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(
+            for: Date(timeIntervalSince1970: TimeInterval(timestamp)),
+            relativeTo: Date()
+        )
     }
 
     private func serviceMetric(title: String, value: String, tint: Color) -> some View {

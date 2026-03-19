@@ -195,6 +195,49 @@ struct InstalledSkill: Codable, Equatable, Identifiable {
     var installedAt: Int64
 }
 
+// MARK: - Local Config Overview
+
+enum LocalConfigKind: String, Codable, Equatable {
+    case json
+    case toml
+    case env
+    case markdown
+
+    var displayName: String {
+        switch self {
+        case .json: return "JSON"
+        case .toml: return "TOML"
+        case .env: return "ENV"
+        case .markdown: return "MD"
+        }
+    }
+}
+
+struct LocalConfigFile: Equatable, Identifiable {
+    var id: String { path }
+    var label: String
+    var path: String
+    var kind: LocalConfigKind
+    var exists: Bool
+    var byteCount: Int64?
+    var modifiedAt: Int64?
+}
+
+struct LocalConfigBundle: Equatable, Identifiable {
+    var id: String { app.id }
+    var app: ProviderAppType
+    var rootPath: String
+    var files: [LocalConfigFile]
+
+    var existingFileCount: Int {
+        files.filter(\.exists).count
+    }
+
+    var latestModifiedAt: Int64? {
+        files.compactMap(\.modifiedAt).max()
+    }
+}
+
 // MARK: - Claude Hooks
 
 enum ClaudeHookScope: String, Codable, Equatable {

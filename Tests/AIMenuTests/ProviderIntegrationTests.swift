@@ -261,6 +261,54 @@ final class ProviderIntegrationTests: XCTestCase {
         XCTAssertEqual(prompts.first(where: { $0.id == secondPrompt.id })?.isActive, false)
     }
 
+    func testListLocalConfigBundlesSummarizesLiveFiles() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+
+        let claudeSettings = tempHome.appendingPathComponent(".claude/settings.json")
+        let codexConfig = tempHome.appendingPathComponent(".codex/config.toml")
+        let geminiEnv = tempHome.appendingPathComponent(".gemini/.env")
+
+        try FileManager.default.createDirectory(
+            at: claudeSettings.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: codexConfig.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: geminiEnv.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+
+        try "{}".write(to: claudeSettings, atomically: true, encoding: .utf8)
+        try "model = \"gpt-5-codex\"".write(to: codexConfig, atomically: true, encoding: .utf8)
+        try "GEMINI_API_KEY=test".write(to: geminiEnv, atomically: true, encoding: .utf8)
+
+        let bundles = try await coordinator.listLocalConfigBundles()
+
+        XCTAssertEqual(bundles.map(\.app), [.claude, .codex, .gemini])
+
+        let claudeBundle = try XCTUnwrap(bundles.first(where: { $0.app == .claude }))
+        XCTAssertEqual(claudeBundle.existingFileCount, 1)
+        XCTAssertEqual(claudeBundle.files.first(where: { $0.label == "settings.json" })?.exists, true)
+        XCTAssertEqual(claudeBundle.files.first(where: { $0.label == "CLAUDE.md" })?.exists, false)
+
+        let codexBundle = try XCTUnwrap(bundles.first(where: { $0.app == .codex }))
+        XCTAssertEqual(codexBundle.existingFileCount, 1)
+        XCTAssertEqual(codexBundle.files.first(where: { $0.label == "config.toml" })?.kind, .toml)
+        XCTAssertEqual(codexBundle.files.first(where: { $0.label == "auth.json" })?.exists, false)
+
+        let geminiBundle = try XCTUnwrap(bundles.first(where: { $0.app == .gemini }))
+        XCTAssertEqual(geminiBundle.existingFileCount, 1)
+        XCTAssertEqual(geminiBundle.files.first(where: { $0.label == ".env" })?.exists, true)
+        XCTAssertEqual(geminiBundle.files.first(where: { $0.label == "settings.json" })?.exists, false)
+    }
+
     func testListClaudeHooksParsesNestedHookGroups() async throws {
         let tempHome = try makeTemporaryHome()
         defer { try? FileManager.default.removeItem(at: tempHome) }

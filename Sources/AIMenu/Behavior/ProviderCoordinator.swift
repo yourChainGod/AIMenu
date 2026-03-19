@@ -388,6 +388,10 @@ actor ProviderCoordinator {
         return store.servers.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    func listLocalConfigBundles() async throws -> [LocalConfigBundle] {
+        try await configService.loadLocalConfigBundles()
+    }
+
     // MARK: - Prompts
 
     func listPrompts(for app: PromptAppType) async throws -> [Prompt] {

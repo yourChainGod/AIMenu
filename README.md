@@ -35,7 +35,9 @@ AIMenu 是一个面向 macOS 菜单栏的 AI CLI 控制台，用来统一接管 
 - 工具管理
   - MCP 统一面板：预设添加、手动编辑、从本地配置导入。
   - Prompt 管理：针对 `CLAUDE.md`、`AGENTS.md`、`GEMINI.md` 的导入、编辑、写入。
+  - Hooks 可视化：扫描 `~/.claude/settings.json`，展示事件、matcher、命令和超时。
   - Skills 管理：扫描已安装 skills、发现 GitHub 仓库中的可安装 skills、快速安装/卸载。
+  - 本地配置总览：直接查看 Claude / Codex / Gemini 当前 live 文件是否存在，并可快速打开。
 - 本地服务
   - 托管 `cursor2api-go` 的下载、安装、启动、停止、配置文件与日志。
   - 一键把 Claude Code 切换到本地 Cursor2API 桥接。

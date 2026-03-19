@@ -779,6 +779,60 @@ actor ProviderConfigService {
         return try String(contentsOf: filePath, encoding: .utf8)
     }
 
+    // MARK: - Local Config Overview
+
+    func loadLocalConfigBundles() throws -> [LocalConfigBundle] {
+        [
+            LocalConfigBundle(
+                app: .claude,
+                rootPath: homeDirectory.appendingPathComponent(".claude", isDirectory: true).path,
+                files: [
+                    makeLocalConfigFile(label: "settings.json", kind: .json, path: claudeSettingsPath),
+                    makeLocalConfigFile(
+                        label: "CLAUDE.md",
+                        kind: .markdown,
+                        path: PromptAppType.claude.filePath(in: homeDirectory)
+                    ),
+                    makeLocalConfigFile(
+                        label: ".claude.json",
+                        kind: .json,
+                        path: homeDirectory.appendingPathComponent(".claude.json", isDirectory: false)
+                    )
+                ]
+            ),
+            LocalConfigBundle(
+                app: .codex,
+                rootPath: homeDirectory.appendingPathComponent(".codex", isDirectory: true).path,
+                files: [
+                    makeLocalConfigFile(label: "auth.json", kind: .json, path: codexAuthPath),
+                    makeLocalConfigFile(label: "config.toml", kind: .toml, path: codexConfigPath),
+                    makeLocalConfigFile(
+                        label: "AGENTS.md",
+                        kind: .markdown,
+                        path: PromptAppType.codex.filePath(in: homeDirectory)
+                    )
+                ]
+            ),
+            LocalConfigBundle(
+                app: .gemini,
+                rootPath: homeDirectory.appendingPathComponent(".gemini", isDirectory: true).path,
+                files: [
+                    makeLocalConfigFile(label: ".env", kind: .env, path: geminiEnvPath),
+                    makeLocalConfigFile(
+                        label: "settings.json",
+                        kind: .json,
+                        path: homeDirectory.appendingPathComponent(".gemini/settings.json", isDirectory: false)
+                    ),
+                    makeLocalConfigFile(
+                        label: "GEMINI.md",
+                        kind: .markdown,
+                        path: PromptAppType.gemini.filePath(in: homeDirectory)
+                    )
+                ]
+            )
+        ]
+    }
+
     // MARK: - Claude Hooks
 
     func loadClaudeHooks() throws -> [ClaudeHook] {
@@ -853,6 +907,32 @@ actor ProviderConfigService {
         try fileManager.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
         let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: path, options: .atomic)
+    }
+
+    private func makeLocalConfigFile(label: String, kind: LocalConfigKind, path: URL) -> LocalConfigFile {
+        guard fileManager.fileExists(atPath: path.path) else {
+            return LocalConfigFile(
+                label: label,
+                path: path.path,
+                kind: kind,
+                exists: false,
+                byteCount: nil,
+                modifiedAt: nil
+            )
+        }
+
+        let attributes = try? fileManager.attributesOfItem(atPath: path.path)
+        let byteCount = (attributes?[.size] as? NSNumber)?.int64Value
+        let modifiedAt = (attributes?[.modificationDate] as? Date).map { Int64($0.timeIntervalSince1970) }
+
+        return LocalConfigFile(
+            label: label,
+            path: path.path,
+            kind: kind,
+            exists: true,
+            byteCount: byteCount,
+            modifiedAt: modifiedAt
+        )
     }
 
     private func parseClaudeHooks(
