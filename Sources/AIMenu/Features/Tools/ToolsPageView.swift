@@ -182,26 +182,21 @@ struct ToolsPageView: View {
     private var workbenchSwitcherRow: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(workbenchSectionTint(for: activeWorkbenchSection).opacity(0.12))
-                    .overlay {
-                        Image(systemName: workbenchSectionIcon(for: activeWorkbenchSection))
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(workbenchSectionTint(for: activeWorkbenchSection))
-                    }
-                    .frame(width: 32, height: 32)
-
-                ToolsStatusBadge(
-                    text: workbenchSectionBadge(for: activeWorkbenchSection),
+                workbenchMetaPill(
+                    icon: workbenchSectionIcon(for: activeWorkbenchSection),
                     tint: workbenchSectionTint(for: activeWorkbenchSection)
                 )
 
-                Spacer(minLength: 0)
+                workbenchMetaPill(
+                    text: workbenchSectionBadge(for: activeWorkbenchSection),
+                    tint: workbenchSectionTint(for: activeWorkbenchSection)
+                )
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(workbenchSections, id: \.self) { section in
+                HStack(spacing: 0) {
+                    ForEach(Array(workbenchSections.enumerated()), id: \.element) { index, section in
                         Button {
                             withAnimation(.easeInOut(duration: 0.18)) {
                                 model.activeSection = section
@@ -222,28 +217,44 @@ struct ToolsPageView: View {
                                             : Color.secondary
                                     )
                             }
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .frame(minWidth: 92)
                         }
                         .buttonStyle(.plain)
                         .background {
-                            Capsule()
-                                .fill(
-                                    activeWorkbenchSection == section
-                                        ? workbenchSectionTint(for: section).opacity(0.92)
-                                        : Color.primary.opacity(0.05)
-                                )
+                            if activeWorkbenchSection == section {
+                                Capsule()
+                                    .fill(.regularMaterial)
+                                    .overlay {
+                                        Capsule()
+                                            .fill(workbenchSectionTint(for: section).opacity(0.14))
+                                    }
+                                    .padding(3)
+                            }
                         }
-                        .foregroundStyle(activeWorkbenchSection == section ? Color.white : Color.primary)
+                        .overlay(alignment: .trailing) {
+                            if shouldShowWorkbenchDivider(after: index) {
+                                Rectangle()
+                                    .fill(workbenchSeparatorColor.opacity(0.55))
+                                    .frame(width: 1, height: 20)
+                            }
+                        }
+                        .foregroundStyle(activeWorkbenchSection == section ? Color.primary : Color.secondary)
                     }
                 }
+                .background {
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+                }
+                .overlay {
+                    Capsule()
+                        .strokeBorder(workbenchSeparatorColor, lineWidth: 1)
+                }
+                .clipShape(Capsule())
             }
         }
-        .padding(14)
-        .cardSurface(
-            cornerRadius: LayoutRules.cardRadius,
-            tint: workbenchSectionTint(for: activeWorkbenchSection).opacity(0.05)
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -274,6 +285,41 @@ struct ToolsPageView: View {
         case .skills:
             return "Skills"
         }
+    }
+
+    @ViewBuilder
+    private func workbenchMetaPill(
+        icon: String? = nil,
+        text: String? = nil,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 6) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.callout.weight(.semibold))
+            }
+
+            if let text {
+                Text(text)
+                    .font(.callout.weight(.semibold))
+                    .lineLimit(1)
+            }
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, icon != nil && text == nil ? 11 : 12)
+        .padding(.vertical, 7)
+        .frostedCapsuleSurface(prominent: true, tint: tint)
+    }
+
+    private func shouldShowWorkbenchDivider(after index: Int) -> Bool {
+        guard index < workbenchSections.count - 1 else { return false }
+        let current = workbenchSections[index]
+        let next = workbenchSections[index + 1]
+        return activeWorkbenchSection != current && activeWorkbenchSection != next
+    }
+
+    private var workbenchSeparatorColor: Color {
+        Color(nsColor: .separatorColor).opacity(0.9)
     }
 
     private func workbenchSectionIcon(for section: ToolsPageModel.ToolsSection) -> String {
