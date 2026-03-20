@@ -452,29 +452,7 @@ struct ProviderPageView: View {
     // MARK: - Toolbar
 
     private var toolBar: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(pageAccent.opacity(0.14))
-                    .overlay {
-                        Image(systemName: model.selectedApp.iconName)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(pageAccent)
-                    }
-                    .frame(width: 36, height: 36)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("提供商管理")
-                        .font(.headline.weight(.semibold))
-                    Text("为 \(model.selectedApp.displayName) 管理模型接入与切换。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-            }
-
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: LayoutRules.listRowSpacing) {
                 ForEach(ProviderAppType.allCases) { app in
                     Button {

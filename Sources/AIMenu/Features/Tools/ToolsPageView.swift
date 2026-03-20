@@ -182,29 +182,21 @@ struct ToolsPageView: View {
     private var workbenchSwitcherRow: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(workbenchSectionTint(for: activeWorkbenchSection).opacity(0.12))
-                        .frame(width: 38, height: 38)
-                    Image(systemName: workbenchSectionIcon(for: activeWorkbenchSection))
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(workbenchSectionTint(for: activeWorkbenchSection))
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(workbenchSectionTitle(for: activeWorkbenchSection))
-                        .font(.headline)
-                    Text(workbenchSectionSubtitle(for: activeWorkbenchSection))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 0)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(workbenchSectionTint(for: activeWorkbenchSection).opacity(0.12))
+                    .overlay {
+                        Image(systemName: workbenchSectionIcon(for: activeWorkbenchSection))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(workbenchSectionTint(for: activeWorkbenchSection))
+                    }
+                    .frame(width: 32, height: 32)
 
                 ToolsStatusBadge(
                     text: workbenchSectionBadge(for: activeWorkbenchSection),
                     tint: workbenchSectionTint(for: activeWorkbenchSection)
                 )
+
+                Spacer(minLength: 0)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -281,19 +273,6 @@ struct ToolsPageView: View {
             return "Hooks"
         case .skills:
             return "Skills"
-        }
-    }
-
-    private func workbenchSectionSubtitle(for section: ToolsPageModel.ToolsSection) -> String {
-        switch section {
-        case .configs, .mcp:
-            return "导入、启停、挂载应用"
-        case .prompts:
-            return "切换应用、导入、写入"
-        case .hooks:
-            return "扫描事件分组与来源"
-        case .skills:
-            return "发现、安装、编辑技能"
         }
     }
 
