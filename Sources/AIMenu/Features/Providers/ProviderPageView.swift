@@ -1597,10 +1597,10 @@ private struct AddProviderSheet: View {
                                 .padding(.vertical, 5)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(selection.wrappedValue == modelID ? accentTint.opacity(0.18) : Color.primary.opacity(0.06))
+                                        .fill(selection.wrappedValue == modelID ? accentTint.opacity(0.11) : Color.primary.opacity(0.04))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                .strokeBorder(selection.wrappedValue == modelID ? accentTint.opacity(0.35) : Color.primary.opacity(0.08), lineWidth: 1)
+                                                .strokeBorder(selection.wrappedValue == modelID ? accentTint.opacity(0.22) : Color.primary.opacity(0.06), lineWidth: 1)
                                         )
                                 )
                                 .foregroundStyle(selection.wrappedValue == modelID ? accentTint : .secondary)
@@ -1828,7 +1828,7 @@ private struct AddProviderSheet: View {
                 HStack(alignment: .top, spacing: 10) {
                     if let icon {
                         RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(accentTint.opacity(0.14))
+                            .fill(accentTint.opacity(0.08))
                             .overlay {
                                 Image(systemName: icon)
                                     .font(.system(size: 12, weight: .semibold))
@@ -1859,8 +1859,8 @@ private struct AddProviderSheet: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(0.92),
-                            accentTint.opacity(emphasis ? 0.09 : 0.04)
+                            Color(nsColor: .controlBackgroundColor).opacity(0.96),
+                            accentTint.opacity(emphasis ? 0.05 : 0.025)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -1869,12 +1869,12 @@ private struct AddProviderSheet: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(
-                            accentTint.opacity(emphasis ? 0.18 : 0.10),
+                            accentTint.opacity(emphasis ? 0.12 : 0.07),
                             lineWidth: 1
                         )
                 )
         )
-        .shadow(color: accentTint.opacity(emphasis ? 0.08 : 0.03), radius: emphasis ? 18 : 10, x: 0, y: 6)
+        .shadow(color: accentTint.opacity(emphasis ? 0.04 : 0.016), radius: emphasis ? 12 : 6, x: 0, y: 4)
     }
 
     @ViewBuilder
@@ -2563,10 +2563,10 @@ private struct EditProviderSheet: View {
                                 .padding(.vertical, 5)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(selection.wrappedValue == modelID ? accentTint.opacity(0.18) : Color.primary.opacity(0.06))
+                                        .fill(selection.wrappedValue == modelID ? accentTint.opacity(0.11) : Color.primary.opacity(0.04))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                .strokeBorder(selection.wrappedValue == modelID ? accentTint.opacity(0.35) : Color.primary.opacity(0.08), lineWidth: 1)
+                                                .strokeBorder(selection.wrappedValue == modelID ? accentTint.opacity(0.22) : Color.primary.opacity(0.06), lineWidth: 1)
                                         )
                                 )
                                 .foregroundStyle(selection.wrappedValue == modelID ? accentTint : .secondary)
@@ -2796,7 +2796,7 @@ private struct EditProviderSheet: View {
                 HStack(alignment: .top, spacing: 10) {
                     if let icon {
                         RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(accentTint.opacity(0.14))
+                            .fill(accentTint.opacity(0.08))
                             .overlay {
                                 Image(systemName: icon)
                                     .font(.system(size: 12, weight: .semibold))
@@ -2827,8 +2827,8 @@ private struct EditProviderSheet: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(0.92),
-                            accentTint.opacity(emphasis ? 0.09 : 0.04)
+                            Color(nsColor: .controlBackgroundColor).opacity(0.96),
+                            accentTint.opacity(emphasis ? 0.05 : 0.025)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -2837,12 +2837,12 @@ private struct EditProviderSheet: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(
-                            accentTint.opacity(emphasis ? 0.18 : 0.10),
+                            accentTint.opacity(emphasis ? 0.12 : 0.07),
                             lineWidth: 1
                         )
                 )
         )
-        .shadow(color: accentTint.opacity(emphasis ? 0.08 : 0.03), radius: emphasis ? 18 : 10, x: 0, y: 6)
+        .shadow(color: accentTint.opacity(emphasis ? 0.04 : 0.016), radius: emphasis ? 12 : 6, x: 0, y: 4)
     }
 
     @ViewBuilder
@@ -2973,8 +2973,8 @@ private struct ProviderConfigPreviewBlock: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.black.opacity(0.02),
-                                    accent.opacity(0.05)
+                                    Color.black.opacity(0.012),
+                                    accent.opacity(0.028)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -2982,7 +2982,7 @@ private struct ProviderConfigPreviewBlock: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(accent.opacity(0.12), lineWidth: 1)
+                                .strokeBorder(accent.opacity(0.08), lineWidth: 1)
                         )
                 )
         }
@@ -2992,8 +2992,8 @@ private struct ProviderConfigPreviewBlock: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(0.9),
-                            accent.opacity(0.05)
+                            Color(nsColor: .controlBackgroundColor).opacity(0.94),
+                            accent.opacity(0.032)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -3001,7 +3001,7 @@ private struct ProviderConfigPreviewBlock: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(accent.opacity(0.10), lineWidth: 1)
+                        .strokeBorder(accent.opacity(0.07), lineWidth: 1)
                 )
         )
         .onChange(of: content) { _, newValue in
@@ -3071,8 +3071,8 @@ private struct ProviderModelInputRow: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            accent.opacity(0.08),
-                            accent.opacity(0.025)
+                            accent.opacity(0.05),
+                            accent.opacity(0.015)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -3080,7 +3080,7 @@ private struct ProviderModelInputRow: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .strokeBorder(accent.opacity(0.12), lineWidth: 1)
+                        .strokeBorder(accent.opacity(0.08), lineWidth: 1)
                 )
         )
     }
@@ -3098,10 +3098,10 @@ private struct ProviderConfigBadge: View {
             .padding(.vertical, 4)
             .background(
                 Capsule()
-                    .fill((tint == .secondary ? Color.primary : tint).opacity(0.1))
+                    .fill((tint == .secondary ? Color.primary : tint).opacity(0.065))
                     .overlay(
                         Capsule()
-                            .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.12), lineWidth: 1)
+                            .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.085), lineWidth: 1)
                     )
             )
     }
@@ -3156,8 +3156,8 @@ private struct ClaudeCommonConfigControls: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(0.88),
-                            accent.opacity(0.05)
+                            Color(nsColor: .controlBackgroundColor).opacity(0.93),
+                            accent.opacity(0.028)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -3165,7 +3165,7 @@ private struct ClaudeCommonConfigControls: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(accent.opacity(0.10), lineWidth: 1)
+                        .strokeBorder(accent.opacity(0.07), lineWidth: 1)
                 )
         )
     }
@@ -3611,11 +3611,11 @@ private struct ProviderSegmentedControl<Selection: Hashable>: View {
                         .padding(.horizontal, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(isSelected ? accent.opacity(0.17) : Color.clear)
+                                .fill(isSelected ? accent.opacity(0.10) : Color.clear)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .strokeBorder(
-                                            isSelected ? accent.opacity(0.34) : Color.primary.opacity(0.06),
+                                            isSelected ? accent.opacity(0.20) : Color.primary.opacity(0.05),
                                             lineWidth: 1
                                         )
                                 )
@@ -3632,7 +3632,7 @@ private struct ProviderSegmentedControl<Selection: Hashable>: View {
                     LinearGradient(
                         colors: [
                             Color(nsColor: .controlBackgroundColor).opacity(0.96),
-                            accent.opacity(0.08)
+                            accent.opacity(0.045)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -3640,7 +3640,7 @@ private struct ProviderSegmentedControl<Selection: Hashable>: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .strokeBorder(accent.opacity(0.14), lineWidth: 1)
+                        .strokeBorder(accent.opacity(0.09), lineWidth: 1)
                 )
         )
     }
