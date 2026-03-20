@@ -240,6 +240,33 @@ final class SwiftNativeProxyRuntimeServiceTests: XCTestCase {
         XCTAssertEqual((modelsByAPIKeyHeaderResponse as? HTTPURLResponse)?.statusCode, 200)
     }
 
+    func testStatusDoesNotPersistAPIKeyBeforeStart() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let paths = FileSystemPaths(
+            applicationSupportDirectory: tempDir,
+            accountStorePath: tempDir.appendingPathComponent("accounts.json"),
+            codexAuthPath: tempDir.appendingPathComponent("auth.json"),
+            codexConfigPath: tempDir.appendingPathComponent("config.toml"),
+            proxyDaemonDataDirectory: tempDir.appendingPathComponent("proxyd", isDirectory: true),
+            proxyDaemonKeyPath: tempDir.appendingPathComponent("proxyd/api-proxy.key"),
+            cloudflaredLogDirectory: tempDir.appendingPathComponent("cloudflared-logs", isDirectory: true)
+        )
+
+        let runtime = SwiftNativeProxyRuntimeService(
+            paths: paths,
+            storeRepository: MockStoreRepository(),
+            authRepository: MockAuthRepository()
+        )
+
+        let status = await runtime.status()
+
+        XCTAssertNil(status.apiKey)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: paths.proxyDaemonKeyPath.path))
+    }
+
     func testStartKeepsLegacyPersistedAPIKey() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)

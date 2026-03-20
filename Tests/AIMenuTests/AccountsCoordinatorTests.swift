@@ -387,7 +387,7 @@ private final class StubChatGPTOAuthLoginService: ChatGPTOAuthLoginServiceProtoc
 }
 
 private final class StubCodexCLIService: CodexCLIServiceProtocol, @unchecked Sendable {
-    func launchApp(workspacePath: String?) throws -> Bool {
+    func launchApp(workspacePath: String?) async throws -> Bool {
         _ = workspacePath
         return false
     }
@@ -396,7 +396,7 @@ private final class StubCodexCLIService: CodexCLIServiceProtocol, @unchecked Sen
 private final class RecordingCodexCLIService: CodexCLIServiceProtocol, @unchecked Sendable {
     private(set) var launchCallCount = 0
 
-    func launchApp(workspacePath: String?) throws -> Bool {
+    func launchApp(workspacePath: String?) async throws -> Bool {
         _ = workspacePath
         launchCallCount += 1
         return false
@@ -405,7 +405,7 @@ private final class RecordingCodexCLIService: CodexCLIServiceProtocol, @unchecke
 
 private final class StubEditorAppService: EditorAppServiceProtocol, @unchecked Sendable {
     func listInstalledApps() -> [InstalledEditorApp] { [] }
-    func restartSelectedApps(_ targets: [EditorAppID]) -> (restarted: [EditorAppID], error: String?) {
+    func restartSelectedApps(_ targets: [EditorAppID]) async -> (restarted: [EditorAppID], error: String?) {
         _ = targets
         return ([], nil)
     }
@@ -416,7 +416,7 @@ private final class RecordingEditorAppService: EditorAppServiceProtocol, @unchec
 
     func listInstalledApps() -> [InstalledEditorApp] { [] }
 
-    func restartSelectedApps(_ targets: [EditorAppID]) -> (restarted: [EditorAppID], error: String?) {
+    func restartSelectedApps(_ targets: [EditorAppID]) async -> (restarted: [EditorAppID], error: String?) {
         _ = targets
         restartCallCount += 1
         return ([], nil)

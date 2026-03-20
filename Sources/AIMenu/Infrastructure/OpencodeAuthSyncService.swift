@@ -2,6 +2,26 @@ import Foundation
 
 final class OpencodeAuthSyncService: OpencodeAuthSyncServiceProtocol, @unchecked Sendable {
     private static let fallbackExpiresInMs: Int64 = 55 * 60 * 1000
+    private let fileManager: FileManager
+    private let environmentProvider: @Sendable () -> [String: String]
+    private let nowProvider: @Sendable () -> Int64
+    private let dataWriter: @Sendable (Data, URL) throws -> Void
+
+    init(
+        fileManager: FileManager = .default,
+        environmentProvider: @escaping @Sendable () -> [String: String] = { ProcessInfo.processInfo.environment },
+        nowProvider: @escaping @Sendable () -> Int64 = {
+            Int64(Date().timeIntervalSince1970 * 1000)
+        },
+        dataWriter: @escaping @Sendable (Data, URL) throws -> Void = { data, url in
+            try data.write(to: url, options: .atomic)
+        }
+    ) {
+        self.fileManager = fileManager
+        self.environmentProvider = environmentProvider
+        self.nowProvider = nowProvider
+        self.dataWriter = dataWriter
+    }
 
     func syncFromCodexAuth(_ authJSON: JSONValue) throws {
         let tokens = try extractTokens(from: authJSON)
@@ -43,16 +63,25 @@ final class OpencodeAuthSyncService: OpencodeAuthSyncServiceProtocol, @unchecked
         merged["openai"] = openai
 
         let parent = path.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
         let data = try JSONSerialization.data(withJSONObject: merged, options: [.prettyPrinted, .sortedKeys])
-        try data.write(to: path, options: .atomic)
-        #if canImport(Darwin)
-        _ = chmod(path.path, S_IRUSR | S_IWUSR)
-        #endif
+        let backupURL = backupURL(for: path)
+        let originalExists = fileManager.fileExists(atPath: path.path)
+        if originalExists {
+            try updateBackup(from: path, to: backupURL)
+        }
+
+        do {
+            try dataWriter(data, path)
+            applyOwnerOnlyPermissionsIfPossible(to: path)
+        } catch {
+            restoreBackupIfNeeded(from: backupURL, to: path)
+            throw error
+        }
     }
 
     private func readOrInitJSONObject(_ path: URL) throws -> [String: Any] {
-        guard FileManager.default.fileExists(atPath: path.path) else {
+        guard fileManager.fileExists(atPath: path.path) else {
             return [:]
         }
         let data = try Data(contentsOf: path)
@@ -61,13 +90,13 @@ final class OpencodeAuthSyncService: OpencodeAuthSyncServiceProtocol, @unchecked
     }
 
     private func detectAuthPaths() -> [URL] {
-        if let custom = ProcessInfo.processInfo.environment["OPENCODE_AUTH_PATH"], !custom.isEmpty {
+        let env = environmentProvider()
+        if let custom = env["OPENCODE_AUTH_PATH"], !custom.isEmpty {
             return [URL(fileURLWithPath: custom)]
         }
 
         var candidates: [URL] = []
-        let env = ProcessInfo.processInfo.environment
-        let home = FileManager.default.homeDirectoryForCurrentUser
+        let home = fileManager.homeDirectoryForCurrentUser
 
         if let configHome = env["OPENCODE_CONFIG_HOME"], !configHome.isEmpty {
             candidates.append(URL(fileURLWithPath: configHome).appendingPathComponent("auth.json"))
@@ -91,7 +120,7 @@ final class OpencodeAuthSyncService: OpencodeAuthSyncServiceProtocol, @unchecked
             unique.append(url)
         }
 
-        let existing = unique.filter { FileManager.default.fileExists(atPath: $0.path) }
+        let existing = unique.filter { fileManager.fileExists(atPath: $0.path) }
         return existing.isEmpty ? (unique.first.map { [$0] } ?? []) : existing
     }
 
@@ -154,7 +183,48 @@ final class OpencodeAuthSyncService: OpencodeAuthSyncServiceProtocol, @unchecked
     }
 
     private func nowUnixMillis() -> Int64 {
-        Int64(Date().timeIntervalSince1970 * 1000)
+        nowProvider()
+    }
+
+    private func backupURL(for path: URL) -> URL {
+        path.deletingLastPathComponent().appendingPathComponent("\(path.lastPathComponent).bak")
+    }
+
+    private func updateBackup(from path: URL, to backupURL: URL) throws {
+        let tempBackupURL = backupURL.deletingLastPathComponent()
+            .appendingPathComponent(".\(backupURL.lastPathComponent).\(UUID().uuidString).tmp")
+        try fileManager.copyItem(at: path, to: tempBackupURL)
+
+        do {
+            if fileManager.fileExists(atPath: backupURL.path) {
+                _ = try fileManager.replaceItemAt(backupURL, withItemAt: tempBackupURL)
+            } else {
+                try fileManager.moveItem(at: tempBackupURL, to: backupURL)
+            }
+        } catch {
+            try? fileManager.removeItem(at: tempBackupURL)
+            throw error
+        }
+    }
+
+    private func restoreBackupIfNeeded(from backupURL: URL, to path: URL) {
+        guard !fileManager.fileExists(atPath: path.path),
+              fileManager.fileExists(atPath: backupURL.path) else {
+            return
+        }
+
+        do {
+            try fileManager.copyItem(at: backupURL, to: path)
+            applyOwnerOnlyPermissionsIfPossible(to: path)
+        } catch {
+            NSLog("Opencode auth restore failed for %@: %@", path.path, error.localizedDescription)
+        }
+    }
+
+    private func applyOwnerOnlyPermissionsIfPossible(to path: URL) {
+        #if canImport(Darwin)
+        _ = chmod(path.path, S_IRUSR | S_IWUSR)
+        #endif
     }
 }
 

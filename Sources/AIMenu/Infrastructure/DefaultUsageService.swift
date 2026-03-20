@@ -55,7 +55,11 @@ final class DefaultUsageService: UsageService, @unchecked Sendable {
     }
 
     private func resolveUsageURLs() -> [String] {
-        let baseOrigin = ChatGPTBaseOriginResolver.resolve(configPath: configPath)
+        Self.resolveUsageURLs(baseOrigin: ChatGPTBaseOriginResolver.resolve(configPath: configPath))
+    }
+
+    static func resolveUsageURLs(baseOrigin rawBaseOrigin: String) -> [String] {
+        let baseOrigin = rawBaseOrigin.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let backendPrefix = "/backend-api"
         let whamPath = "/wham/usage"
         let codexPath = "/api/codex/usage"
@@ -63,7 +67,6 @@ final class DefaultUsageService: UsageService, @unchecked Sendable {
         var candidates: [String] = []
         if let originWithoutBackend = baseOrigin.removingSuffix(backendPrefix) {
             candidates.append("\(baseOrigin)\(whamPath)")
-            candidates.append("\(originWithoutBackend)\(backendPrefix)\(whamPath)")
             candidates.append("\(originWithoutBackend)\(codexPath)")
         } else {
             candidates.append("\(baseOrigin)\(backendPrefix)\(whamPath)")

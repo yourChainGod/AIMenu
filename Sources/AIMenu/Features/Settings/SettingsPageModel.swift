@@ -92,14 +92,14 @@ final class SettingsPageModel: ObservableObject {
     }
 
     func setRestartEditorTarget(_ target: EditorAppID?) {
-        guard let resolvedTarget = target ?? resolvedRestartEditorTarget else {
+        guard let target else {
             notice = NoticeMessage(style: .error, text: L10n.tr("error.editor.no_restart_target_selected"))
             return
         }
 
         Task {
             await update(
-                AppSettingsPatch(restartEditorTargets: [resolvedTarget]),
+                AppSettingsPatch(restartEditorTargets: [target]),
                 successText: L10n.tr("settings.notice.restart_target_updated")
             )
         }

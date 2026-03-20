@@ -17,4 +17,15 @@ final class UsageWindowSelectorTests: XCTestCase {
         let selected = UsageWindowSelector.pickNearestWindow([], targetSeconds: 100)
         XCTAssertNil(selected)
     }
+
+    func testPickNearestWindowUsesShorterWindowAsTieBreaker() {
+        let windows = [
+            UsageWindowRaw(usedPercent: 40, limitWindowSeconds: 4 * 60 * 60, resetAt: 123),
+            UsageWindowRaw(usedPercent: 20, limitWindowSeconds: 6 * 60 * 60, resetAt: 456)
+        ]
+
+        let selected = UsageWindowSelector.pickNearestWindow(windows, targetSeconds: 5 * 60 * 60)
+
+        XCTAssertEqual(selected?.limitWindowSeconds, 4 * 60 * 60)
+    }
 }

@@ -44,8 +44,8 @@ final class ProviderPageModel: ObservableObject {
             notice = NoticeMessage(
                 style: .success,
                 text: outcome.didApplyToLiveConfig
-                    ? "已添加并启用：\(outcome.provider.name)"
-                    : "已添加提供商：\(outcome.provider.name)"
+                    ? L10n.tr("providers.notice.added_enabled_format", outcome.provider.name)
+                    : L10n.tr("providers.notice.added_format", outcome.provider.name)
             )
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -56,7 +56,7 @@ final class ProviderPageModel: ObservableObject {
         do {
             try await coordinator.switchProvider(id: provider.id, appType: selectedApp)
             await load()
-            notice = NoticeMessage(style: .success, text: "已切换至 \(provider.name)")
+            notice = NoticeMessage(style: .success, text: L10n.tr("providers.notice.switched_format", provider.name))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -67,11 +67,14 @@ final class ProviderPageModel: ObservableObject {
             let outcome = try await coordinator.deleteProvider(id: provider.id, appType: selectedApp)
             await load()
             if outcome.didDeleteCurrentProvider, let fallback = outcome.fallbackProvider {
-                notice = NoticeMessage(style: .info, text: "已删除 \(provider.name)，并切换到 \(fallback.name)")
+                notice = NoticeMessage(
+                    style: .info,
+                    text: L10n.tr("providers.notice.deleted_switched_format", provider.name, fallback.name)
+                )
             } else if outcome.didDeleteCurrentProvider {
-                notice = NoticeMessage(style: .info, text: "已删除 \(provider.name)，当前已清空活动配置")
+                notice = NoticeMessage(style: .info, text: L10n.tr("providers.notice.deleted_cleared_format", provider.name))
             } else {
-                notice = NoticeMessage(style: .info, text: "已删除 \(provider.name)")
+                notice = NoticeMessage(style: .info, text: L10n.tr("providers.notice.deleted_format", provider.name))
             }
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -93,8 +96,8 @@ final class ProviderPageModel: ObservableObject {
             notice = NoticeMessage(
                 style: .success,
                 text: outcome.didApplyToLiveConfig
-                    ? "已保存并同步当前配置：\(outcome.provider.name)"
-                    : "已保存：\(outcome.provider.name)"
+                    ? L10n.tr("providers.notice.saved_synced_format", outcome.provider.name)
+                    : L10n.tr("providers.notice.saved_format", outcome.provider.name)
             )
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)

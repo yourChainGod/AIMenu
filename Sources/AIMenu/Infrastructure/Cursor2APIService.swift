@@ -38,9 +38,14 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
         let apiKey = config.apiKey ?? "0000"
         let baseURL = "http://127.0.0.1:\(port)"
         let installed = fileManager.isExecutableFile(atPath: paths.cursor2APIBinaryPath.path)
-        let processAlive = process?.isRunning == true
         let portStatus = await portService.status(for: port)
-        let shouldProbeHealth = processAlive || portStatus.occupied
+        var processAlive = process?.isRunning == true
+        if processAlive, !portStatus.occupied {
+            // Drop stale process handles so we do not keep probing a dead local endpoint.
+            process = nil
+            processAlive = false
+        }
+        let shouldProbeHealth = processAlive || isManagedCursor2APIOccupant(portStatus.command)
         let healthAlive = shouldProbeHealth ? await isHealthy(baseURL: baseURL) : false
 
         if !(processAlive || healthAlive) {
@@ -69,7 +74,7 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
         try prepareDirectories()
         let asset = try await latestReleaseAsset()
         guard let downloadURL = URL(string: asset.browser_download_url) else {
-            throw AppError.invalidData("Cursor2API 下载地址无效")
+            throw AppError.invalidData(L10n.tr("error.cursor2api.download_url_invalid"))
         }
 
         var request = URLRequest(url: downloadURL)
@@ -104,8 +109,10 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
 
         let occupied = await portService.status(for: resolvedPort)
         if occupied.occupied {
-            let processLabel = occupied.command ?? "未知进程"
-            throw AppError.invalidData("端口 \(resolvedPort) 已被 \(processLabel) 占用，请先释放端口。")
+            let processLabel = occupied.command ?? L10n.tr("error.cursor2api.unknown_process")
+            throw AppError.invalidData(
+                L10n.tr("error.cursor2api.port_occupied_format", String(resolvedPort), processLabel)
+            )
         }
 
         try writeConfig(
@@ -147,7 +154,7 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
         do {
             try command.run()
         } catch {
-            throw AppError.io("启动 Cursor2API 失败：\(error.localizedDescription)")
+            throw AppError.io(L10n.tr("error.cursor2api.launch_failed_format", error.localizedDescription))
         }
 
         process = command
@@ -166,12 +173,12 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
 
         let logTail = (try? String(contentsOf: newLogPath, encoding: .utf8))?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        lastError = logTail?.trimmedNonEmpty ?? "Cursor2API 启动后未通过健康检查"
+        lastError = logTail?.trimmedNonEmpty ?? L10n.tr("error.cursor2api.health_check_failed")
         if command.isRunning {
             command.terminate()
         }
         process = nil
-        throw AppError.io(lastError ?? "Cursor2API 启动失败")
+        throw AppError.io(lastError ?? L10n.tr("error.cursor2api.start_failed"))
     }
 
     func stop() async -> Cursor2APIStatus {
@@ -213,7 +220,7 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
 
     private func latestReleaseAsset() async throws -> GitHubRelease.Asset {
         guard let url = URL(string: "https://api.github.com/repos/yourChainGod/cursor2api-go/releases/latest") else {
-            throw AppError.invalidData("Cursor2API Release 地址无效")
+            throw AppError.invalidData(L10n.tr("error.cursor2api.release_url_invalid"))
         }
         var request = URLRequest(url: url)
         request.setValue("AIMenu/1.0", forHTTPHeaderField: "User-Agent")
@@ -236,7 +243,7 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
             return fallback
         }
 
-        throw AppError.invalidData("未找到适用于当前 macOS 的 Cursor2API 二进制")
+        throw AppError.invalidData(L10n.tr("error.cursor2api.binary_not_found"))
     }
 
     private func writeConfig(port: Int, apiKey: String, models: [String]) throws {
@@ -310,6 +317,14 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
             .appendingPathComponent("cursor2api-\(Int(Date().timeIntervalSince1970)).log")
     }
 
+    private func isManagedCursor2APIOccupant(_ command: String?) -> Bool {
+        guard let command = command?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !command.isEmpty else {
+            return false
+        }
+        return command.contains("cursor2api")
+    }
+
     private func isHealthy(baseURL: String) async -> Bool {
         guard let url = URL(string: "\(baseURL)/health") else { return false }
         var request = URLRequest(url: url)
@@ -326,7 +341,7 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
     private func setExecutablePermission(at url: URL) throws {
         #if canImport(Darwin)
         guard chmod(url.path, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) == 0 else {
-            throw AppError.io("无法设置 Cursor2API 执行权限")
+            throw AppError.io(L10n.tr("error.cursor2api.set_executable_failed"))
         }
         #endif
     }

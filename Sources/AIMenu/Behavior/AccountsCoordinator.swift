@@ -173,14 +173,14 @@ actor AccountsCoordinator {
         try updateCurrentAccountProjection(authJSON: account.authJSON)
     }
 
-    func switchAccountAndApplySettings(id: String, workspacePath: String? = nil) throws -> SwitchAccountExecutionResult {
+    func switchAccountAndApplySettings(id: String, workspacePath: String? = nil) async throws -> SwitchAccountExecutionResult {
         let store = try storeRepository.loadStore()
         guard let account = store.accounts.first(where: { $0.id == id }) else {
             throw AppError.invalidData(L10n.tr("error.accounts.account_not_found_for_switch"))
         }
 
         try updateCurrentAccountProjection(authJSON: account.authJSON)
-        return try applySwitchSideEffects(
+        return try await applySwitchSideEffects(
             for: account,
             settings: store.settings,
             workspacePath: workspacePath
@@ -190,7 +190,7 @@ actor AccountsCoordinator {
     func smartSwitch() async throws -> (AccountSummary, SwitchAccountExecutionResult)? {
         let sorted = AccountRanking.sortByRemaining(try await listAccounts())
         guard let best = sorted.first else { return nil }
-        let execution = try switchAccountAndApplySettings(id: best.id)
+        let execution = try await switchAccountAndApplySettings(id: best.id)
         return (best, execution)
     }
 
@@ -199,7 +199,7 @@ actor AccountsCoordinator {
         guard let target = AccountRanking.pickAutoSwitchTarget(accounts) else {
             return nil
         }
-        let execution = try switchAccountAndApplySettings(id: target.id)
+        let execution = try await switchAccountAndApplySettings(id: target.id)
         return (target, execution)
     }
 
@@ -499,7 +499,7 @@ actor AccountsCoordinator {
         for account: StoredAccount,
         settings: AppSettings,
         workspacePath: String?
-    ) throws -> SwitchAccountExecutionResult {
+    ) async throws -> SwitchAccountExecutionResult {
         var result = SwitchAccountExecutionResult.idle
 
         if settings.syncOpencodeOpenaiAuth {
@@ -516,13 +516,13 @@ actor AccountsCoordinator {
         }
 
         if settings.restartEditorsOnSwitch {
-            let restart = editorAppService.restartSelectedApps(settings.restartEditorTargets)
+            let restart = await editorAppService.restartSelectedApps(settings.restartEditorTargets)
             result.restartedEditorApps = restart.restarted
             result.editorRestartError = restart.error
         }
 
         if settings.launchCodexAfterSwitch {
-            result.usedFallbackCLI = try codexCLIService.launchApp(workspacePath: workspacePath)
+            result.usedFallbackCLI = try await codexCLIService.launchApp(workspacePath: workspacePath)
         }
 
         return result

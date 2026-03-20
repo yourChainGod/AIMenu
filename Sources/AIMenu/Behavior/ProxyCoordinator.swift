@@ -62,7 +62,10 @@ actor ProxyCoordinator {
             return status
         } catch {
             var updated = status
-            let syncMessage = "Codex 提供商同步失败: \(error.localizedDescription)"
+            let syncMessage = L10n.tr(
+                "error.proxy.codex_provider_sync_failed_format",
+                error.localizedDescription
+            )
             if let existing = updated.lastError?.trimmedNonEmpty {
                 updated.lastError = "\(existing) | \(syncMessage)"
             } else {

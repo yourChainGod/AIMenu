@@ -72,7 +72,7 @@ private struct EditorAppServiceStub: EditorAppServiceProtocol {
         apps
     }
 
-    func restartSelectedApps(_ targets: [EditorAppID]) -> (restarted: [EditorAppID], error: String?) {
+    func restartSelectedApps(_ targets: [EditorAppID]) async -> (restarted: [EditorAppID], error: String?) {
         (targets, nil)
     }
 }

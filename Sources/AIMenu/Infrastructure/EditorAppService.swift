@@ -60,7 +60,7 @@ final class EditorAppService: EditorAppServiceProtocol, @unchecked Sendable {
         }
     }
 
-    func restartSelectedApps(_ targets: [EditorAppID]) -> (restarted: [EditorAppID], error: String?) {
+    func restartSelectedApps(_ targets: [EditorAppID]) async -> (restarted: [EditorAppID], error: String?) {
         guard !targets.isEmpty else {
             return ([], L10n.tr("error.editor.no_restart_target_selected"))
         }
@@ -77,7 +77,7 @@ final class EditorAppService: EditorAppServiceProtocol, @unchecked Sendable {
             do {
                 let path = try resolveBundlePath(for: spec)
                 forceKillProcesses(spec.processNames)
-                Thread.sleep(forTimeInterval: 0.22)
+                try? await Task.sleep(for: .milliseconds(220))
                 _ = try CommandRunner.runChecked(
                     "/usr/bin/open",
                     arguments: ["-na", path.path],

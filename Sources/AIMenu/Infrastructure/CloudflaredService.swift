@@ -14,6 +14,8 @@ actor CloudflaredService: CloudflaredServiceProtocol {
     private var customHostname: String?
     private var logPath: URL?
     private var lastError: String?
+    // Named tunnel cleanup is best-effort and only runs on app-managed stop.
+    // If cloudflared exits externally, Cloudflare-side resources may need manual cleanup.
     private var cleanupAPIToken: String?
     private var cleanupAccountID: String?
     private var cleanupTunnelID: String?
@@ -67,15 +69,11 @@ actor CloudflaredService: CloudflaredServiceProtocol {
             return await status()
         }
 
-        #if os(macOS)
         _ = try CommandRunner.runChecked(
             "/usr/bin/env",
             arguments: ["brew", "install", "cloudflared"],
             errorPrefix: L10n.tr("error.cloudflared.install_failed")
         )
-        #else
-        throw AppError.io(L10n.tr("error.cloudflared.install_unsupported_platform"))
-        #endif
 
         return await status()
     }

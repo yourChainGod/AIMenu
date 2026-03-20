@@ -84,7 +84,13 @@ final class StoreFileRepository: AccountsStoreRepository, @unchecked Sendable {
             _ = try fileManager.replaceItemAt(destination, withItemAt: tempURL)
             Self.setPrivatePermissions(at: destination)
         } catch {
-            try? fileManager.removeItem(at: tempURL)
+            do {
+                if fileManager.fileExists(atPath: tempURL.path) {
+                    try fileManager.removeItem(at: tempURL)
+                }
+            } catch {
+                NSLog("StoreFileRepository cleanup failed for temp file %@: %@", tempURL.path, error.localizedDescription)
+            }
             if !fileManager.fileExists(atPath: destination.path) {
                 do {
                     try data.write(to: destination, options: .atomic)

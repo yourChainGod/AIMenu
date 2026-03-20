@@ -69,7 +69,7 @@ actor ProviderCoordinator {
     func updateProvider(_ provider: Provider) async throws -> ProviderSaveOutcome {
         var store = try await configService.loadProviderStore()
         guard let index = store.providers.firstIndex(where: { $0.id == provider.id }) else {
-            throw AppError.invalidData("Provider not found")
+            throw AppError.invalidData(L10n.tr("error.provider.not_found"))
         }
         var updated = provider
         updated.updatedAt = Int64(Date().timeIntervalSince1970)
@@ -109,7 +109,7 @@ actor ProviderCoordinator {
     func switchProvider(id: String, appType: ProviderAppType) async throws {
         var store = try await configService.loadProviderStore()
         guard let provider = store.providers.first(where: { $0.id == id }) else {
-            throw AppError.invalidData("Provider not found")
+            throw AppError.invalidData(L10n.tr("error.provider.not_found"))
         }
         store.setCurrentProviderId(id, for: appType)
         try await configService.saveProviderStore(store)
@@ -308,7 +308,7 @@ actor ProviderCoordinator {
             providerId: provider.id,
             providerName: provider.name,
             latencyMs: latency,
-            error: latency == nil ? "Connection failed" : nil,
+            error: latency == nil ? L10n.tr("providers.speed.connection_failed") : nil,
             testedAt: Date()
         )
     }
@@ -367,7 +367,7 @@ actor ProviderCoordinator {
     func updateMCPServer(_ server: MCPServer) async throws {
         var store = try await configService.loadMCPStore()
         guard let index = store.servers.firstIndex(where: { $0.id == server.id }) else {
-            throw AppError.invalidData("MCP server not found")
+            throw AppError.invalidData(L10n.tr("error.provider.mcp_server_not_found"))
         }
         let old = store.servers[index]
         var updated = server
@@ -489,10 +489,12 @@ actor ProviderCoordinator {
     func toggleHookApp(hookIdentity: String, app: ProviderAppType, enabled: Bool) async throws {
         var store = try await effectiveHookStore()
         guard let index = store.hooks.firstIndex(where: { $0.identityKey == hookIdentity }) else {
-            throw AppError.invalidData("Hook 不存在")
+            throw AppError.invalidData(L10n.tr("error.provider.hook_not_found"))
         }
         guard !enabled || store.hooks[index].supports(app: app) else {
-            throw AppError.invalidData("\(app.displayName) 暂不支持 \(store.hooks[index].event) 事件")
+            throw AppError.invalidData(
+                L10n.tr("error.provider.hook_event_unsupported_format", app.displayName, store.hooks[index].event)
+            )
         }
 
         store.hooks[index].apps.setEnabled(enabled, for: app)
@@ -509,7 +511,7 @@ actor ProviderCoordinator {
     func updatePrompt(_ prompt: Prompt) async throws {
         var store = try await configService.loadPromptStore()
         guard let index = store.prompts.firstIndex(where: { $0.id == prompt.id }) else {
-            throw AppError.invalidData("Prompt not found")
+            throw AppError.invalidData(L10n.tr("error.provider.prompt_not_found"))
         }
         var updated = prompt
         updated.updatedAt = Int64(Date().timeIntervalSince1970)
@@ -541,12 +543,13 @@ actor ProviderCoordinator {
             return nil
         }
         let now = Int64(Date().timeIntervalSince1970)
+        let importedAt = DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short)
         return Prompt(
             id: UUID().uuidString,
-            name: "Imported from \(appType.fileName)",
+            name: L10n.tr("provider.prompt.imported_name_format", appType.fileName),
             appType: appType,
             content: content,
-            description: "Imported at \(Date())",
+            description: L10n.tr("provider.prompt.imported_description_format", importedAt),
             isActive: true,
             createdAt: now,
             updatedAt: now
@@ -591,7 +594,7 @@ actor ProviderCoordinator {
             $0.owner.caseInsensitiveCompare(owner) == .orderedSame &&
                 $0.name.caseInsensitiveCompare(name) == .orderedSame
         }) else {
-            throw AppError.invalidData("技能仓库不存在")
+            throw AppError.invalidData(L10n.tr("error.provider.skill_repo_not_found"))
         }
 
         store.repos[index].isEnabled = enabled
@@ -656,7 +659,7 @@ actor ProviderCoordinator {
 
         let sourceDirectory = cloneTarget.appendingPathComponent(skill.directory)
         guard fm.fileExists(atPath: sourceDirectory.path) else {
-            throw AppError.fileNotFound("技能目录不存在：\(skill.directory)")
+            throw AppError.fileNotFound(L10n.tr("error.provider.skill_directory_not_found_format", skill.directory))
         }
 
         var store = try await configService.loadSkillStore()
@@ -708,7 +711,7 @@ actor ProviderCoordinator {
     func toggleSkillApp(directory: String, app: ProviderAppType, enabled: Bool) async throws {
         var store = try await configService.loadSkillStore()
         guard let index = store.installedSkills.firstIndex(where: { $0.directory == directory }) else {
-            throw AppError.invalidData("技能不存在")
+            throw AppError.invalidData(L10n.tr("error.provider.skill_not_found"))
         }
 
         store.installedSkills[index].apps.setEnabled(enabled, for: app)
@@ -787,7 +790,7 @@ actor ProviderCoordinator {
     func readInstalledSkillDocument(directory: String) async throws -> InstalledSkillDocument {
         let installedSkills = try await listInstalledSkills()
         guard let skill = installedSkills.first(where: { $0.directory == directory }) else {
-            throw AppError.fileNotFound("未找到技能：\(directory)")
+            throw AppError.fileNotFound(L10n.tr("error.provider.installed_skill_not_found_format", directory))
         }
 
         let content = try await configService.readInstalledSkillContent(directory: directory)
@@ -805,7 +808,7 @@ actor ProviderCoordinator {
 
         var store = try await configService.loadSkillStore()
         guard let index = store.installedSkills.firstIndex(where: { $0.directory == directory }) else {
-            throw AppError.fileNotFound("未找到技能：\(directory)")
+            throw AppError.fileNotFound(L10n.tr("error.provider.installed_skill_not_found_format", directory))
         }
 
         let fallbackName = directory.components(separatedBy: "/").last ?? directory
@@ -1022,7 +1025,7 @@ actor ProviderCoordinator {
 
     private func fetchGitHubTree(owner: String, repo: String, branch: String) async throws -> [GitHubTreeResponse.Entry] {
         guard let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/git/trees/\(branch)?recursive=1") else {
-            throw AppError.invalidData("技能仓库地址无效")
+            throw AppError.invalidData(L10n.tr("error.provider.skill_repo_url_invalid"))
         }
 
         var request = URLRequest(url: url)
@@ -1031,7 +1034,7 @@ actor ProviderCoordinator {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         if let httpResponse = response as? HTTPURLResponse, !(200..<300).contains(httpResponse.statusCode) {
-            throw AppError.io("读取技能仓库目录失败：HTTP \(httpResponse.statusCode)")
+            throw AppError.io(L10n.tr("error.provider.skill_repo_fetch_failed_format", String(httpResponse.statusCode)))
         }
 
         let payload = try JSONDecoder().decode(GitHubTreeResponse.self, from: data)
@@ -1044,7 +1047,7 @@ actor ProviderCoordinator {
         }
 
         guard let url = URL(string: "https://raw.githubusercontent.com/\(owner)/\(repo)/\(branch)/\(path)") else {
-            throw AppError.invalidData("技能文件地址无效")
+            throw AppError.invalidData(L10n.tr("error.provider.skill_file_url_invalid"))
         }
 
         var request = URLRequest(url: url)
@@ -1052,11 +1055,11 @@ actor ProviderCoordinator {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         if let httpResponse = response as? HTTPURLResponse, !(200..<300).contains(httpResponse.statusCode) {
-            throw AppError.io("读取技能说明失败：HTTP \(httpResponse.statusCode)")
+            throw AppError.io(L10n.tr("error.provider.skill_document_fetch_failed_format", String(httpResponse.statusCode)))
         }
 
         guard let content = String(data: data, encoding: .utf8) else {
-            throw AppError.invalidData("技能说明文件不是 UTF-8 编码")
+            throw AppError.invalidData(L10n.tr("error.provider.skill_document_not_utf8"))
         }
         return content
     }

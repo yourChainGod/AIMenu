@@ -99,7 +99,7 @@ struct MCPAppToggles: Codable, Equatable {
 
     var displayText: String {
         let names = enabledApps.map(\.displayName)
-        return names.isEmpty ? "无" : names.joined(separator: ", ")
+        return names.isEmpty ? L10n.tr("common.none") : names.joined(separator: ", ")
     }
 }
 
@@ -120,7 +120,7 @@ struct MCPServer: Codable, Equatable, Identifiable {
         if apps.claude { parts.append("Claude") }
         if apps.codex { parts.append("Codex") }
         if apps.gemini { parts.append("Gemini") }
-        return parts.isEmpty ? "无" : parts.joined(separator: ", ")
+        return parts.isEmpty ? L10n.tr("common.none") : parts.joined(separator: ", ")
     }
 }
 
@@ -364,8 +364,8 @@ enum ClaudeHookScope: String, Codable, Equatable {
 
     var displayName: String {
         switch self {
-        case .user: return "用户"
-        case .project: return "项目"
+        case .user: return L10n.tr("tools.hooks.scope.user")
+        case .project: return L10n.tr("tools.hooks.scope.project")
         }
     }
 }

@@ -38,12 +38,12 @@ enum ProviderCategory: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .official: return "官方"
-        case .cnOfficial: return "国内官方"
-        case .cloudProvider: return "云服务"
-        case .aggregator: return "聚合"
-        case .thirdParty: return "第三方"
-        case .custom: return "自定义"
+        case .official: return L10n.tr("providers.category.official")
+        case .cnOfficial: return L10n.tr("providers.category.cn_official")
+        case .cloudProvider: return L10n.tr("providers.category.cloud_provider")
+        case .aggregator: return L10n.tr("providers.category.aggregator")
+        case .thirdParty: return L10n.tr("providers.category.third_party")
+        case .custom: return L10n.tr("providers.category.custom")
         }
     }
 }
@@ -365,7 +365,7 @@ struct SpeedTestResult: Equatable, Identifiable {
     var statusText: String {
         if let error { return error }
         if let ms = latencyMs { return "\(ms)ms" }
-        return "Testing..."
+        return L10n.tr("providers.speed.testing")
     }
 
     var qualityLevel: SpeedTestQuality {

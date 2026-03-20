@@ -102,7 +102,13 @@ final class OpenAIChatGPTOAuthLoginService: ChatGPTOAuthLoginServiceProtocol, @u
             }
         }
 
-        throw lastError ?? AppError.io(L10n.tr("error.oauth.callback_server_start_failed"))
+        let portRange = "\(Configuration.preferredCallbackPort)-\(maxPort)"
+        if let lastError {
+            throw AppError.io(
+                L10n.tr("error.oauth.callback_port_range_unavailable_format", portRange, lastError.localizedDescription)
+            )
+        }
+        throw AppError.io(L10n.tr("error.oauth.callback_server_start_failed"))
     }
 
     private static func handleCallback(

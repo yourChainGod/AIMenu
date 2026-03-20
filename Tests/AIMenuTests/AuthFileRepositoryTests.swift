@@ -160,3 +160,148 @@ final class AuthFileRepositoryTests: XCTestCase {
             .replacingOccurrences(of: "=", with: "")
     }
 }
+
+final class OpencodeAuthSyncServiceTests: XCTestCase {
+    func testSyncFromCodexAuthCreatesBackupWhenOverwritingExistingAuth() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let authPath = tempDir.appendingPathComponent("auth.json")
+        try writeJSONObject([
+            "metadata": ["theme": "dawn"],
+            "openai": [
+                "type": "oauth",
+                "access": "old-access",
+                "refresh": "old-refresh",
+                "expires": 99
+            ]
+        ], to: authPath)
+
+        let service = OpencodeAuthSyncService(
+            environmentProvider: { ["OPENCODE_AUTH_PATH": authPath.path] },
+            nowProvider: { 12_345 }
+        )
+
+        try service.syncFromCodexAuth(makeCodexAuthJSON(
+            accessToken: "new-access",
+            refreshToken: "new-refresh",
+            accountID: "acct_1"
+        ))
+
+        let updated = try readJSONObject(at: authPath)
+        let updatedOpenAI = try XCTUnwrap(updated["openai"] as? [String: Any])
+        XCTAssertEqual(updatedOpenAI["access"] as? String, "new-access")
+        XCTAssertEqual(updatedOpenAI["refresh"] as? String, "new-refresh")
+        XCTAssertEqual(updatedOpenAI["accountId"] as? String, "acct_1")
+        XCTAssertEqual(updatedOpenAI["expires"] as? Int64, 3_312_345)
+        XCTAssertEqual((updated["metadata"] as? [String: Any])?["theme"] as? String, "dawn")
+
+        let backup = try readJSONObject(at: backupURL(for: authPath))
+        let backupOpenAI = try XCTUnwrap(backup["openai"] as? [String: Any])
+        XCTAssertEqual(backupOpenAI["access"] as? String, "old-access")
+        XCTAssertEqual(backupOpenAI["refresh"] as? String, "old-refresh")
+        XCTAssertEqual((backup["metadata"] as? [String: Any])?["theme"] as? String, "dawn")
+    }
+
+    func testSyncFromCodexAuthDoesNotCreateBackupOnFirstWrite() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let authPath = tempDir.appendingPathComponent("auth.json")
+        let service = OpencodeAuthSyncService(
+            environmentProvider: { ["OPENCODE_AUTH_PATH": authPath.path] },
+            nowProvider: { 1_000 }
+        )
+
+        try service.syncFromCodexAuth(makeCodexAuthJSON(
+            accessToken: "first-access",
+            refreshToken: "first-refresh",
+            accountID: "acct_first"
+        ))
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: authPath.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: backupURL(for: authPath).path))
+
+        let updated = try readJSONObject(at: authPath)
+        let updatedOpenAI = try XCTUnwrap(updated["openai"] as? [String: Any])
+        XCTAssertEqual(updatedOpenAI["access"] as? String, "first-access")
+        XCTAssertEqual(updatedOpenAI["refresh"] as? String, "first-refresh")
+        XCTAssertEqual(updatedOpenAI["accountId"] as? String, "acct_first")
+    }
+
+    func testSyncFromCodexAuthKeepsOriginalFileWhenWriteFails() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let authPath = tempDir.appendingPathComponent("auth.json")
+        try writeJSONObject([
+            "openai": [
+                "type": "oauth",
+                "access": "stable-access",
+                "refresh": "stable-refresh",
+                "expires": 88
+            ]
+        ], to: authPath)
+
+        let service = OpencodeAuthSyncService(
+            environmentProvider: { ["OPENCODE_AUTH_PATH": authPath.path] },
+            nowProvider: { 7_000 },
+            dataWriter: { _, _ in
+                throw SyncWriteError.simulatedFailure
+            }
+        )
+
+        XCTAssertThrowsError(try service.syncFromCodexAuth(makeCodexAuthJSON(
+            accessToken: "broken-access",
+            refreshToken: "broken-refresh",
+            accountID: "acct_fail"
+        ))) { error in
+            guard case let AppError.io(message) = error else {
+                return XCTFail("Expected AppError.io, got \(error)")
+            }
+            XCTAssertTrue(message.contains(authPath.path))
+        }
+
+        let current = try readJSONObject(at: authPath)
+        let currentOpenAI = try XCTUnwrap(current["openai"] as? [String: Any])
+        XCTAssertEqual(currentOpenAI["access"] as? String, "stable-access")
+        XCTAssertEqual(currentOpenAI["refresh"] as? String, "stable-refresh")
+
+        let backup = try readJSONObject(at: backupURL(for: authPath))
+        let backupOpenAI = try XCTUnwrap(backup["openai"] as? [String: Any])
+        XCTAssertEqual(backupOpenAI["access"] as? String, "stable-access")
+        XCTAssertEqual(backupOpenAI["refresh"] as? String, "stable-refresh")
+    }
+
+    private func makeCodexAuthJSON(accessToken: String, refreshToken: String, accountID: String) -> JSONValue {
+        .object([
+            "tokens": .object([
+                "access_token": .string(accessToken),
+                "refresh_token": .string(refreshToken),
+                "account_id": .string(accountID)
+            ])
+        ])
+    }
+
+    private func writeJSONObject(_ object: [String: Any], to url: URL) throws {
+        let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+        try data.write(to: url, options: .atomic)
+    }
+
+    private func readJSONObject(at url: URL) throws -> [String: Any] {
+        let data = try Data(contentsOf: url)
+        let object = try JSONSerialization.jsonObject(with: data)
+        return try XCTUnwrap(object as? [String: Any])
+    }
+
+    private func backupURL(for url: URL) -> URL {
+        url.deletingLastPathComponent().appendingPathComponent("\(url.lastPathComponent).bak")
+    }
+}
+
+private enum SyncWriteError: Error {
+    case simulatedFailure
+}

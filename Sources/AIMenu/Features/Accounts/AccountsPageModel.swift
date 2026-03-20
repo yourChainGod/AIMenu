@@ -8,6 +8,8 @@ final class AccountsPageModel: ObservableObject {
     private let onLocalAccountsChanged: (([AccountSummary]) -> Void)?
     private let noticeScheduler = NoticeAutoDismissScheduler()
     private var hasLoaded = false
+    private var importingOperationCount = 0
+    private var addingOperationCount = 0
 
     @Published var state: ViewState<[AccountSummary]>
     @Published var notice: NoticeMessage? {
@@ -54,8 +56,8 @@ final class AccountsPageModel: ObservableObject {
     }
 
     func importCurrentAuth() async {
-        isImporting = true
-        defer { isImporting = false }
+        beginImporting()
+        defer { endImporting() }
 
         do {
             let imported = try await coordinator.importCurrentAuthAccount(customLabel: nil)
@@ -69,8 +71,8 @@ final class AccountsPageModel: ObservableObject {
     }
 
     func addAccountViaLogin() async {
-        isAdding = true
-        defer { isAdding = false }
+        beginAdding()
+        defer { endAdding() }
 
         do {
             let imported = try await coordinator.addAccountViaLogin(customLabel: nil)
@@ -85,15 +87,15 @@ final class AccountsPageModel: ObservableObject {
 
     func importAuthDocument(from url: URL, setAsCurrent: Bool) async {
         if setAsCurrent {
-            isImporting = true
+            beginImporting()
         } else {
-            isAdding = true
+            beginAdding()
         }
         defer {
             if setAsCurrent {
-                isImporting = false
+                endImporting()
             } else {
-                isAdding = false
+                endAdding()
             }
         }
 
@@ -117,8 +119,8 @@ final class AccountsPageModel: ObservableObject {
 
     func importMultipleAuthDocuments(from urls: [URL]) async {
         guard !urls.isEmpty else { return }
-        isAdding = true
-        defer { isAdding = false }
+        beginAdding()
+        defer { endAdding() }
 
         var successCount = 0
         var lastError: String?
@@ -145,9 +147,12 @@ final class AccountsPageModel: ObservableObject {
         }
 
         if successCount > 0 {
-            let msg = "已导入 \(successCount) 个账号"
+            let msg = L10n.tr("accounts.notice.imported_multiple_format", String(successCount))
             if let lastError {
-                notice = NoticeMessage(style: .error, text: "\(msg)，但部分导入失败：\(lastError)")
+                notice = NoticeMessage(
+                    style: .error,
+                    text: L10n.tr("accounts.notice.imported_partial_failure_format", msg, lastError)
+                )
             } else {
                 notice = NoticeMessage(style: .success, text: msg)
             }
@@ -158,6 +163,26 @@ final class AccountsPageModel: ObservableObject {
 
     func reportImportSelectionFailure(_ error: Error) {
         notice = NoticeMessage(style: .error, text: error.localizedDescription)
+    }
+
+    private func beginImporting() {
+        importingOperationCount += 1
+        isImporting = importingOperationCount > 0
+    }
+
+    private func endImporting() {
+        importingOperationCount = max(0, importingOperationCount - 1)
+        isImporting = importingOperationCount > 0
+    }
+
+    private func beginAdding() {
+        addingOperationCount += 1
+        isAdding = addingOperationCount > 0
+    }
+
+    private func endAdding() {
+        addingOperationCount = max(0, addingOperationCount - 1)
+        isAdding = addingOperationCount > 0
     }
 
     func refreshUsage() async {

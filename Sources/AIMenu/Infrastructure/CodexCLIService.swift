@@ -3,14 +3,14 @@ import Foundation
 #if os(macOS)
 final class CodexCLIService: CodexCLIServiceProtocol, @unchecked Sendable {
     /// Returns `true` when it falls back to `codex app`.
-    func launchApp(workspacePath: String?) throws -> Bool {
-        forceStopRunningCodex()
+    func launchApp(workspacePath: String?) async throws -> Bool {
+        await forceStopRunningCodex()
 
         var appLaunchError: String?
         if let appPath = findCodexAppPath() {
             do {
                 try launchCodexBundleApp(at: appPath, workspacePath: workspacePath)
-                if waitForCodexProcess(timeoutSeconds: 2) {
+                if await waitForCodexProcess(timeoutSeconds: 2) {
                     return false
                 }
                 appLaunchError = L10n.tr("error.codex_cli.launch_app_open_failed")
@@ -35,10 +35,10 @@ final class CodexCLIService: CodexCLIServiceProtocol, @unchecked Sendable {
         return true
     }
 
-    private func forceStopRunningCodex() {
+    private func forceStopRunningCodex() async {
         _ = try? CommandRunner.run("/usr/bin/pkill", arguments: ["-9", "-x", "Codex"])
         _ = try? CommandRunner.run("/usr/bin/pkill", arguments: ["-9", "-x", "Codex Desktop"])
-        Thread.sleep(forTimeInterval: 0.22)
+        try? await Task.sleep(for: .milliseconds(220))
     }
 
     private func findCodexCLIPath() throws -> String {
@@ -147,13 +147,13 @@ final class CodexCLIService: CodexCLIServiceProtocol, @unchecked Sendable {
         }
     }
 
-    private func waitForCodexProcess(timeoutSeconds: TimeInterval) -> Bool {
+    private func waitForCodexProcess(timeoutSeconds: TimeInterval) async -> Bool {
         let deadline = Date().addingTimeInterval(timeoutSeconds)
         while Date() < deadline {
             if isCodexProcessRunning() {
                 return true
             }
-            Thread.sleep(forTimeInterval: 0.1)
+            try? await Task.sleep(for: .milliseconds(100))
         }
         return false
     }
@@ -185,7 +185,7 @@ final class CodexCLIService: CodexCLIServiceProtocol, @unchecked Sendable {
 }
 #else
 final class CodexCLIService: CodexCLIServiceProtocol, @unchecked Sendable {
-    func launchApp(workspacePath: String?) throws -> Bool {
+    func launchApp(workspacePath: String?) async throws -> Bool {
         _ = workspacePath
         throw AppError.io(PlatformCapabilities.unsupportedOperationMessage)
     }

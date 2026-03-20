@@ -37,17 +37,17 @@ actor PortManagementService: PortManagementServiceProtocol {
 
     func terminate(port: Int) async throws -> ManagedPortStatus {
         guard port > 0 else {
-            throw AppError.invalidData("端口号无效")
+            throw AppError.invalidData(L10n.tr("error.port.invalid_port"))
         }
         let pids = try listeningProcessIDs(for: port)
         guard !pids.isEmpty else { return await status(for: port) }
 
-        try send(signal: "-TERM", to: pids, errorPrefix: "结束端口进程失败")
+        try send(signal: "-TERM", to: pids, errorPrefix: L10n.tr("error.port.terminate_failed"))
         try? await Task.sleep(for: .milliseconds(250))
 
         let refreshed = await status(for: port)
         guard !refreshed.occupied else {
-            throw AppError.invalidData("端口 \(port) 仍被占用，请尝试强制解除占用")
+            throw AppError.invalidData(L10n.tr("error.port.still_occupied_format", String(port)))
         }
 
         return refreshed
@@ -55,19 +55,19 @@ actor PortManagementService: PortManagementServiceProtocol {
 
     func forceKill(port: Int) async throws -> ManagedPortStatus {
         guard port > 0 else {
-            throw AppError.invalidData("端口号无效")
+            throw AppError.invalidData(L10n.tr("error.port.invalid_port"))
         }
         let pids = try listeningProcessIDs(for: port)
         guard !pids.isEmpty else { return await status(for: port) }
 
-        try send(signal: "-KILL", to: pids, errorPrefix: "强制结束端口进程失败")
+        try send(signal: "-KILL", to: pids, errorPrefix: L10n.tr("error.port.force_kill_failed"))
         try? await Task.sleep(for: .milliseconds(250))
         return await status(for: port)
     }
 
     private func listeningProcessIDs(for port: Int) throws -> [Int] {
         guard let lsof = CommandRunner.resolveExecutable("lsof") else {
-            throw AppError.fileNotFound("系统缺少 lsof，无法释放端口")
+            throw AppError.fileNotFound(L10n.tr("error.port.lsof_missing"))
         }
 
         let pidResult = try CommandRunner.run(

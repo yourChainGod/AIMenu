@@ -76,7 +76,7 @@ final class ToolsPageModel: ObservableObject {
             try await coordinator.addMCPServer(server)
             mcpServers = try await coordinator.listMCPServers()
             localConfigBundles = try await coordinator.listLocalConfigBundles()
-            notice = NoticeMessage(style: .success, text: "已添加 MCP：\(server.name)")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.mcp_added_format", server.name))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -86,10 +86,10 @@ final class ToolsPageModel: ObservableObject {
         do {
             if mcpServers.contains(where: { $0.id == server.id }) {
                 try await coordinator.updateMCPServer(server)
-                notice = NoticeMessage(style: .success, text: "MCP 服务器已更新")
+                notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.mcp_updated"))
             } else {
                 try await coordinator.addMCPServer(server)
-                notice = NoticeMessage(style: .success, text: "MCP 服务器已添加")
+                notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.mcp_server_added"))
             }
             mcpServers = try await coordinator.listMCPServers()
             localConfigBundles = try await coordinator.listLocalConfigBundles()
@@ -103,7 +103,7 @@ final class ToolsPageModel: ObservableObject {
             try await coordinator.deleteMCPServer(id: id)
             mcpServers = try await coordinator.listMCPServers()
             localConfigBundles = try await coordinator.listLocalConfigBundles()
-            notice = NoticeMessage(style: .info, text: "MCP 服务器已移除")
+            notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.mcp_removed"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -113,7 +113,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             mcpServers = try await coordinator.importLiveMCPServers()
             localConfigBundles = try await coordinator.listLocalConfigBundles()
-            notice = NoticeMessage(style: .success, text: "已导入本地 MCP 配置")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.mcp_imported"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -135,7 +135,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             localConfigBundles = try await coordinator.listLocalConfigBundles()
             if showNotice {
-                notice = NoticeMessage(style: .success, text: "已刷新本地配置概览")
+                notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.local_config_refreshed"))
             }
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -167,7 +167,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.addPrompt(prompt)
             prompts = try await coordinator.listPrompts(for: selectedPromptApp)
-            notice = NoticeMessage(style: .success, text: "提示词已添加")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.prompt_added"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -177,7 +177,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.updatePrompt(prompt)
             prompts = try await coordinator.listPrompts(for: selectedPromptApp)
-            notice = NoticeMessage(style: .success, text: "提示词已更新")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.prompt_updated"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -188,7 +188,7 @@ final class ToolsPageModel: ObservableObject {
             try await coordinator.activatePrompt(id: id, appType: selectedPromptApp)
             prompts = try await coordinator.listPrompts(for: selectedPromptApp)
             localConfigBundles = try await coordinator.listLocalConfigBundles()
-            notice = NoticeMessage(style: .success, text: "Prompt activated \u{2192} \(selectedPromptApp.fileName)")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.prompt_activated_format", selectedPromptApp.fileName))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -198,7 +198,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.deletePrompt(id: id)
             prompts = try await coordinator.listPrompts(for: selectedPromptApp)
-            notice = NoticeMessage(style: .info, text: "提示词已删除")
+            notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.prompt_deleted"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -210,9 +210,9 @@ final class ToolsPageModel: ObservableObject {
                 try await coordinator.addPrompt(imported)
                 prompts = try await coordinator.listPrompts(for: selectedPromptApp)
                 localConfigBundles = try await coordinator.listLocalConfigBundles()
-                notice = NoticeMessage(style: .success, text: "已从 \(selectedPromptApp.fileName) 导入")
+                notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.prompt_imported_format", selectedPromptApp.fileName))
             } else {
-                notice = NoticeMessage(style: .info, text: "未找到 \(selectedPromptApp.fileName)")
+                notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.prompt_not_found_format", selectedPromptApp.fileName))
             }
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -225,7 +225,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             claudeHooks = try await coordinator.listClaudeHooks()
             localConfigBundles = try await coordinator.listLocalConfigBundles()
-            notice = NoticeMessage(style: .success, text: "已刷新 Hooks")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.hooks_refreshed"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -248,7 +248,7 @@ final class ToolsPageModel: ObservableObject {
             var skillStore = try await coordinator.loadSkillStore()
             skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
             skills = skillStore
-            notice = NoticeMessage(style: .success, text: "已同步本地技能目录")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.skills_synced"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -260,7 +260,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             discoverableSkills = try await coordinator.discoverAvailableSkills()
             refreshDiscoverableSkillPreviewIfNeeded()
-            notice = NoticeMessage(style: .success, text: "已获取可安装技能列表")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.discoverable_skills_loaded"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -276,7 +276,7 @@ final class ToolsPageModel: ObservableObject {
             skills = skillStore
             discoverableSkills = try await coordinator.discoverAvailableSkills()
             refreshDiscoverableSkillPreviewIfNeeded()
-            notice = NoticeMessage(style: .success, text: "已安装技能：\(skill.name)")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.skill_installed_format", skill.name))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -294,7 +294,7 @@ final class ToolsPageModel: ObservableObject {
         let trimmedBranch = branch.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedOwner.isEmpty, !trimmedName.isEmpty, !trimmedBranch.isEmpty else {
-            notice = NoticeMessage(style: .error, text: "请完整填写仓库信息")
+            notice = NoticeMessage(style: .error, text: L10n.tr("tools.notice.skill_repo_form_incomplete"))
             return
         }
 
@@ -308,7 +308,7 @@ final class ToolsPageModel: ObservableObject {
             )
             try await coordinator.addSkillRepo(repo)
             skills = try await coordinator.loadSkillStore()
-            notice = NoticeMessage(style: .success, text: "已添加技能仓库")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.skill_repo_added"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -322,7 +322,7 @@ final class ToolsPageModel: ObservableObject {
                 $0.repoOwner.caseInsensitiveCompare(repo.owner) == .orderedSame &&
                     $0.repoName.caseInsensitiveCompare(repo.name) == .orderedSame
             }
-            notice = NoticeMessage(style: .info, text: "技能仓库已移除")
+            notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.skill_repo_removed"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -338,8 +338,11 @@ final class ToolsPageModel: ObservableObject {
                 refreshDiscoverableSkillPreviewIfNeeded()
             }
 
-            let stateText = enabled ? "已启用" : "已停用"
-            notice = NoticeMessage(style: .success, text: "\(stateText)技能仓库：\(repo.owner)/\(repo.name)")
+            let stateText = enabled ? L10n.tr("tools.state.enabled") : L10n.tr("tools.state.disabled")
+            notice = NoticeMessage(
+                style: .success,
+                text: L10n.tr("tools.notice.skill_repo_toggled_format", stateText, repo.owner, repo.name)
+            )
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -355,7 +358,7 @@ final class ToolsPageModel: ObservableObject {
                 discoverableSkills = try await coordinator.discoverAvailableSkills()
                 refreshDiscoverableSkillPreviewIfNeeded()
             }
-            notice = NoticeMessage(style: .info, text: "技能已移除")
+            notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.skill_removed"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -401,7 +404,7 @@ final class ToolsPageModel: ObservableObject {
             var skillStore = try await coordinator.loadSkillStore()
             skillStore.installedSkills = try await coordinator.listInstalledSkills()
             skills = skillStore
-            notice = NoticeMessage(style: .success, text: "技能内容已保存")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.skill_saved"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -420,7 +423,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             cursor2APIStatus = try await cursor2APIService.install()
             await refreshTrackedPorts()
-            notice = NoticeMessage(style: .success, text: "Cursor2API 已安装")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.cursor2api_installed"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -437,7 +440,7 @@ final class ToolsPageModel: ObservableObject {
                 models: models
             )
             await refreshTrackedPorts()
-            notice = NoticeMessage(style: .success, text: "Cursor2API 已启动")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.cursor2api_started"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -448,7 +451,7 @@ final class ToolsPageModel: ObservableObject {
         defer { loading = false }
         cursor2APIStatus = await cursor2APIService.stop()
         await refreshTrackedPorts()
-        notice = NoticeMessage(style: .info, text: "Cursor2API 已停止")
+        notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.cursor2api_stopped"))
     }
 
     func applyCursor2APIToClaude() async {
@@ -456,11 +459,11 @@ final class ToolsPageModel: ObservableObject {
         defer { loading = false }
         do {
             guard cursor2APIStatus.running else {
-                throw AppError.invalidData("请先启动 Cursor2API")
+                throw AppError.invalidData(L10n.tr("error.tools.cursor2api_start_first"))
             }
             _ = try await coordinator.upsertManagedClaudeCursor2APIProvider(from: cursor2APIStatus)
             localConfigBundles = try await coordinator.listLocalConfigBundles()
-            notice = NoticeMessage(style: .success, text: "已切换 Claude Code 到 Cursor2API 本地桥接")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.cursor2api_applied"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -476,14 +479,14 @@ final class ToolsPageModel: ObservableObject {
         trackedPorts = updated
 
         if showNotice {
-            notice = NoticeMessage(style: .success, text: "端口状态已刷新")
+            notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.port_status_refreshed"))
         }
     }
 
     func addTrackedPort() async {
         guard let port = Int(customPortText.trimmingCharacters(in: .whitespacesAndNewlines)),
               (1...65535).contains(port) else {
-            notice = NoticeMessage(style: .error, text: "请输入有效端口号")
+            notice = NoticeMessage(style: .error, text: L10n.tr("tools.notice.port_invalid"))
             return
         }
 
@@ -492,12 +495,12 @@ final class ToolsPageModel: ObservableObject {
 
     func addTrackedPort(_ port: Int, clearsInput: Bool = false) async {
         guard (1...65535).contains(port) else {
-            notice = NoticeMessage(style: .error, text: "请输入有效端口号")
+            notice = NoticeMessage(style: .error, text: L10n.tr("tools.notice.port_invalid"))
             return
         }
 
         guard !trackedPortNumbers.contains(port) else {
-            notice = NoticeMessage(style: .info, text: "端口 \(port) 已在关注列表中")
+            notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.port_already_tracked_format", String(port)))
             await refreshTrackedPorts()
             return
         }
@@ -510,7 +513,7 @@ final class ToolsPageModel: ObservableObject {
         }
 
         await refreshTrackedPorts()
-        notice = NoticeMessage(style: .success, text: "已关注端口 \(port)")
+        notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.port_tracked_format", String(port)))
     }
 
     func removeTrackedPort(_ port: Int) async {
@@ -518,7 +521,7 @@ final class ToolsPageModel: ObservableObject {
         guard trackedPortNumbers.contains(port) else { return }
         trackedPortNumbers.removeAll { $0 == port }
         trackedPorts.removeAll { $0.port == port }
-        notice = NoticeMessage(style: .info, text: "已移除端口 \(port)")
+        notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.port_removed_format", String(port)))
     }
 
     func releaseTrackedPort(_ port: Int, force: Bool = false) async {
@@ -531,7 +534,9 @@ final class ToolsPageModel: ObservableObject {
                 _ = try await portService.terminate(port: port)
             }
             await refreshManagedToolStatus()
-            let message = force ? "端口 \(port) 已强制解除占用" : "端口 \(port) 已解除占用"
+            let message = force
+                ? L10n.tr("tools.notice.port_force_released_format", String(port))
+                : L10n.tr("tools.notice.port_released_format", String(port))
             notice = NoticeMessage(style: .success, text: message)
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)

@@ -68,7 +68,7 @@ protocol UpdateCheckingService: Sendable {
 }
 
 protocol CodexCLIServiceProtocol: Sendable {
-    func launchApp(workspacePath: String?) throws -> Bool
+    func launchApp(workspacePath: String?) async throws -> Bool
 }
 
 protocol ChatGPTOAuthLoginServiceProtocol: Sendable {
@@ -77,7 +77,7 @@ protocol ChatGPTOAuthLoginServiceProtocol: Sendable {
 
 protocol EditorAppServiceProtocol: Sendable {
     func listInstalledApps() -> [InstalledEditorApp]
-    func restartSelectedApps(_ targets: [EditorAppID]) -> (restarted: [EditorAppID], error: String?)
+    func restartSelectedApps(_ targets: [EditorAppID]) async -> (restarted: [EditorAppID], error: String?)
 }
 
 protocol OpencodeAuthSyncServiceProtocol: Sendable {

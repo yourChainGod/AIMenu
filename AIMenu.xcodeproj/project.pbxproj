@@ -31,6 +31,10 @@
 		46F70E216B2D9F94247190D5 /* ShellCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00E0EE08E1645AD783C2DED1 /* ShellCommandRunner.swift */; };
 		4B444A88CAFD9D0E713B7D96 /* StoreFileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0007E157CB217C0A6DD1E7 /* StoreFileRepository.swift */; };
 		4C1FBCF5ADFC0A5FB2EF814E /* SwiftNativeProxyRuntimeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E072B2DEE9973F725135D145 /* SwiftNativeProxyRuntimeService.swift */; };
+		BB000001000000000000BBB1 /* ProxyChatAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000AAA1 /* ProxyChatAdapter.swift */; };
+		BB000001000000000000BBB2 /* ProxyErrorClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000AAA2 /* ProxyErrorClassifier.swift */; };
+		BB000001000000000000BBB3 /* ProxyModelMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000AAA3 /* ProxyModelMapping.swift */; };
+		BB000001000000000000BBB4 /* ProxySSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000AAA4 /* ProxySSEParser.swift */; };
 		4C2E52A903F7EAFC222BAA3B /* ProxyRuntimeLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B63498B5FFF2C0A83946BF /* ProxyRuntimeLimits.swift */; };
 		50922F8C48CF01B728AD262F /* LiquidProgressMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6318743D5B32C4FA1244FAD /* LiquidProgressMetricsTests.swift */; };
 		53243CFFBC40F306DCE9ED45 /* AuthFileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7296C82EB9955D9DB121C940 /* AuthFileRepository.swift */; };
@@ -95,6 +99,13 @@
 		F6CD74C7A3B1D536D6773C20 /* ToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D232DAFA1A392BB5ADD78091 /* ToolModels.swift */; };
 		FA624CCECA28D7F68B1C0FF8 /* DefaultUsageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD2673A9712C55D302564FA /* DefaultUsageService.swift */; };
 		FA836AB28B6E7F72C253A49F /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38BD5BE0A332BCE32A46A463 /* AppVersion.swift */; };
+CC000001000000000000CC01 /* MCPServerEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000DD01 /* MCPServerEditorSheet.swift */; };
+CC000001000000000000CC02 /* PromptEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000DD02 /* PromptEditorSheet.swift */; };
+CC000001000000000000CC03 /* SkillSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000DD03 /* SkillSheets.swift */; };
+CC000001000000000000CC04 /* ToolsUIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000DD04 /* ToolsUIComponents.swift */; };
+CC000001000000000000CC05 /* AddProviderSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000DD05 /* AddProviderSheet.swift */; };
+CC000001000000000000CC06 /* EditProviderSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000DD06 /* EditProviderSheet.swift */; };
+CC000001000000000000CC07 /* ProviderUIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001000000000000DD07 /* ProviderUIComponents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -195,6 +206,10 @@
 		D1C2D3E4F5A60718293A4B5C /* PortManagementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortManagementService.swift; sourceTree = "<group>"; };
 		DF11B93A2C05CC3B851D671A /* StoreFileRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreFileRepositoryTests.swift; sourceTree = "<group>"; };
 		E072B2DEE9973F725135D145 /* SwiftNativeProxyRuntimeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftNativeProxyRuntimeService.swift; sourceTree = "<group>"; };
+		AA000001000000000000AAA1 /* ProxyChatAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyChatAdapter.swift; sourceTree = "<group>"; };
+		AA000001000000000000AAA2 /* ProxyErrorClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyErrorClassifier.swift; sourceTree = "<group>"; };
+		AA000001000000000000AAA3 /* ProxyModelMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyModelMapping.swift; sourceTree = "<group>"; };
+		AA000001000000000000AAA4 /* ProxySSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxySSEParser.swift; sourceTree = "<group>"; };
 		E2700A142EED2C109BC86E25 /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
 		E28E156763C3146AB652184A /* nl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/Localizable.strings; sourceTree = "<group>"; };
 		E4162DC26A19B885777C3431 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -208,6 +223,13 @@
 		F5B56AEDF3689EA6421720B2 /* ProxyPageModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyPageModelTests.swift; sourceTree = "<group>"; };
 		FAECC20A0EA2A2E024BEFA9E /* models.rs */ = {isa = PBXFileReference; path = models.rs; sourceTree = "<group>"; };
 		FEB8F849524A5B828F5C0F7F /* proxy_service.rs */ = {isa = PBXFileReference; path = proxy_service.rs; sourceTree = "<group>"; };
+DD000001000000000000DD01 /* MCPServerEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServerEditorSheet.swift; sourceTree = "<group>"; };
+DD000001000000000000DD02 /* PromptEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptEditorSheet.swift; sourceTree = "<group>"; };
+DD000001000000000000DD03 /* SkillSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillSheets.swift; sourceTree = "<group>"; };
+DD000001000000000000DD04 /* ToolsUIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsUIComponents.swift; sourceTree = "<group>"; };
+DD000001000000000000DD05 /* AddProviderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProviderSheet.swift; sourceTree = "<group>"; };
+DD000001000000000000DD06 /* EditProviderSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProviderSheet.swift; sourceTree = "<group>"; };
+DD000001000000000000DD07 /* ProviderUIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderUIComponents.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -245,6 +267,10 @@
 				1E9DBE99B4528C42CED746B8 /* SimpleHTTPServer.swift */,
 				2D0007E157CB217C0A6DD1E7 /* StoreFileRepository.swift */,
 				E072B2DEE9973F725135D145 /* SwiftNativeProxyRuntimeService.swift */,
+				AA000001000000000000AAA1 /* ProxyChatAdapter.swift */,
+				AA000001000000000000AAA2 /* ProxyErrorClassifier.swift */,
+				AA000001000000000000AAA3 /* ProxyModelMapping.swift */,
+				AA000001000000000000AAA4 /* ProxySSEParser.swift */,
 				962E931E377964D0704D3809 /* SystemDateProvider.swift */,
 			);
 			path = Infrastructure;
@@ -305,6 +331,10 @@
 			children = (
 				F0A29A83A4B7A08CF8B3CADE /* ToolsPageModel.swift */,
 				AEFA55BDFB126AF96635B8E7 /* ToolsPageView.swift */,
+				DD000001000000000000DD01 /* MCPServerEditorSheet.swift */,
+				DD000001000000000000DD02 /* PromptEditorSheet.swift */,
+				DD000001000000000000DD03 /* SkillSheets.swift */,
+				DD000001000000000000DD04 /* ToolsUIComponents.swift */,
 			);
 			path = Tools;
 			sourceTree = "<group>";
@@ -333,6 +363,9 @@
 			children = (
 				A98891331D331EAF492A366E /* ProviderPageModel.swift */,
 				0024622AE4124A8AAF8786F9 /* ProviderPageView.swift */,
+				DD000001000000000000DD05 /* AddProviderSheet.swift */,
+				DD000001000000000000DD06 /* EditProviderSheet.swift */,
+				DD000001000000000000DD07 /* ProviderUIComponents.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -668,10 +701,21 @@
 				7614A610947D7CB86C7CDF9C /* SimpleHTTPServer.swift in Sources */,
 				4B444A88CAFD9D0E713B7D96 /* StoreFileRepository.swift in Sources */,
 				4C1FBCF5ADFC0A5FB2EF814E /* SwiftNativeProxyRuntimeService.swift in Sources */,
+				BB000001000000000000BBB1 /* ProxyChatAdapter.swift in Sources */,
+				BB000001000000000000BBB2 /* ProxyErrorClassifier.swift in Sources */,
+				BB000001000000000000BBB3 /* ProxyModelMapping.swift in Sources */,
+				BB000001000000000000BBB4 /* ProxySSEParser.swift in Sources */,
 				0CC97446577263889F1C8A0C /* SystemDateProvider.swift in Sources */,
 				F6CD74C7A3B1D536D6773C20 /* ToolModels.swift in Sources */,
 				8E8A2C2234BAB2A8BA085BC5 /* ToolsPageModel.swift in Sources */,
 				1D65456D1976E95EA4D43E1E /* ToolsPageView.swift in Sources */,
+				CC000001000000000000CC01 /* MCPServerEditorSheet.swift in Sources */,
+				CC000001000000000000CC02 /* PromptEditorSheet.swift in Sources */,
+				CC000001000000000000CC03 /* SkillSheets.swift in Sources */,
+				CC000001000000000000CC04 /* ToolsUIComponents.swift in Sources */,
+				CC000001000000000000CC05 /* AddProviderSheet.swift in Sources */,
+				CC000001000000000000CC06 /* EditProviderSheet.swift in Sources */,
+				CC000001000000000000CC07 /* ProviderUIComponents.swift in Sources */,
 				D8E9A97C6D5050567CA56736 /* TrayMenuModel.swift in Sources */,
 				9F3B31646881F65BD82BC5C9 /* UpdateCoordinator.swift in Sources */,
 				8569AB77E801277DA501BD46 /* UsageWindowSelector.swift in Sources */,

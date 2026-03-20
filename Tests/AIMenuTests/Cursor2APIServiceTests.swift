@@ -53,6 +53,31 @@ final class Cursor2APIServiceTests: XCTestCase {
         XCTAssertEqual(MockCursor2APIHealthURLProtocol.lastRequestURL?.absoluteString, "http://127.0.0.1:8002/health")
     }
 
+    func testStatusSkipsHealthProbeWhenPortIsOccupiedByOtherProcess() async throws {
+        let tempRoot = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        let session = makeSession()
+        let service = Cursor2APIService(
+            paths: makePaths(root: tempRoot),
+            session: session,
+            portService: MockPortManagementService(
+                status: ManagedPortStatus(
+                    port: 8002,
+                    occupied: true,
+                    processID: 9876,
+                    command: "python3",
+                    endpoint: "TCP 127.0.0.1:8002 (LISTEN)"
+                )
+            )
+        )
+
+        let status = await service.status()
+
+        XCTAssertFalse(status.running)
+        XCTAssertEqual(MockCursor2APIHealthURLProtocol.requestCount, 0)
+    }
+
     private func makeSession() -> URLSession {
         MockCursor2APIHealthURLProtocol.reset()
         URLProtocol.registerClass(MockCursor2APIHealthURLProtocol.self)
