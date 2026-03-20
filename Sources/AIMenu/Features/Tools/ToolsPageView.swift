@@ -386,18 +386,37 @@ struct ToolsPageView: View {
     }
 
     private func workbenchMoreMenu<Content: View>(
+        title: String = "更多",
+        systemImage: String = "ellipsis",
         help text: String = "更多操作",
         @ViewBuilder content: () -> Content
     ) -> some View {
         Menu {
             content()
         } label: {
-            Image(systemName: "ellipsis.circle")
+            Label(title, systemImage: systemImage)
+                .lineLimit(1)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
-        .liquidGlassActionButtonStyle(density: .compact)
+        .aimenuActionButtonStyle(density: .compact)
         .help(text)
+    }
+
+    private func workbenchActionButton(
+        _ title: String,
+        systemImage: String,
+        tint: Color? = nil,
+        prominent: Bool = false,
+        help: String? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .lineLimit(1)
+        }
+        .aimenuActionButtonStyle(prominent: prominent, tint: tint, density: .compact)
+        .help(help ?? title)
     }
 
     private var hasSkillsSearchQuery: Bool {
@@ -1202,13 +1221,16 @@ struct ToolsPageView: View {
             headerTrailing: {
                 if isWorkbenchMode {
                     HStack(spacing: 6) {
-                        Button {
+                        workbenchActionButton(
+                            "新建",
+                            systemImage: "plus",
+                            tint: .purple,
+                            prominent: true,
+                            help: "新建提示词"
+                        ) {
                             editingPrompt = nil
                             showPromptEditor = true
-                        } label: {
-                            Image(systemName: "plus")
                         }
-                        .liquidGlassActionButtonStyle(density: .compact)
 
                         workbenchMoreMenu(help: "更多 Prompt 操作") {
                             Button("从 \(model.selectedPromptApp.fileName) 导入") {
@@ -1403,13 +1425,15 @@ struct ToolsPageView: View {
             headerTrailing: {
                 if isWorkbenchMode {
                     HStack(spacing: 6) {
-                        Button {
+                        workbenchActionButton(
+                            "刷新",
+                            systemImage: "arrow.clockwise",
+                            tint: .indigo,
+                            prominent: true,
+                            help: "刷新 Hooks"
+                        ) {
                             Task { await model.refreshClaudeHooks() }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
                         }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help("刷新 Hooks")
 
                         workbenchMoreMenu(help: "更多 Hooks 操作") {
                             Button("打开 Claude settings.json") {
@@ -1593,26 +1617,24 @@ struct ToolsPageView: View {
             headerTrailing: {
                 if isWorkbenchMode {
                     HStack(spacing: 6) {
-                        Button {
+                        workbenchActionButton(
+                            model.skillDiscoveryLoading ? "发现中" : "发现",
+                            systemImage: "sparkles",
+                            tint: .orange,
+                            prominent: true,
+                            help: "发现可安装技能"
+                        ) {
                             Task { await model.discoverSkills() }
-                        } label: {
-                            if model.skillDiscoveryLoading {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else {
-                                Image(systemName: "sparkles")
-                            }
                         }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help("发现可安装技能")
+                        .disabled(model.skillDiscoveryLoading)
 
-                        Button {
+                        workbenchActionButton(
+                            "扫描",
+                            systemImage: "arrow.clockwise",
+                            help: "扫描 ~/.claude/skills"
+                        ) {
                             Task { await model.refreshSkillsFromDisk() }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
                         }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help("扫描 ~/.claude/skills")
 
                         workbenchMoreMenu(help: "更多 Skills 操作") {
                             Button("添加技能仓库") {

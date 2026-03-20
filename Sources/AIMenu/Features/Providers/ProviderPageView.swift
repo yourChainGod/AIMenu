@@ -104,9 +104,7 @@ struct ProviderPageView: View {
                 Color.black.opacity(0.24)
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
-                    .onTapGesture {
-                        onDismiss()
-                    }
+                    .onTapGesture {}
 
                 ProviderModalPanel(accent: accent) {
                     content()
