@@ -123,7 +123,7 @@ struct ProviderPageView: View {
     }
 
     private func modalTopInset(for height: CGFloat) -> CGFloat {
-        min(52, max(16, height * 0.08))
+        min(28, max(8, height * 0.04))
     }
 
     // MARK: - Toolbar (App Picker + Actions)
@@ -660,12 +660,12 @@ private struct AddProviderSheet: View {
     private var presetSelectionView: some View {
         VStack(alignment: .leading, spacing: 0) {
             sheetHeader
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 10)
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
 
             Rectangle()
-                .fill(accentTint.opacity(0.12))
+                .fill(accentTint.opacity(0.08))
                 .frame(height: 1)
 
             presetPickerStep
@@ -676,12 +676,12 @@ private struct AddProviderSheet: View {
     private var configureView: some View {
         VStack(alignment: .leading, spacing: 0) {
             sheetHeader
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 10)
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
 
             Rectangle()
-                .fill(accentTint.opacity(0.12))
+                .fill(accentTint.opacity(0.08))
                 .frame(height: 1)
 
             configureStep
@@ -690,102 +690,61 @@ private struct AddProviderSheet: View {
     }
 
     private var sheetHeader: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accentTint.opacity(0.24),
-                                accentTint.opacity(0.10)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay {
-                        Image(systemName: step == .selectPreset ? "square.grid.2x2.fill" : (selectedPreset?.icon ?? appType.iconName))
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(accentTint)
-                    }
-                    .frame(width: 42, height: 42)
-
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 8) {
-                        Text(step == .selectPreset ? "添加供应商" : (selectedPreset?.name ?? "配置详情"))
-                            .font(.headline.weight(.semibold))
-
-                        ProviderConfigBadge(
-                            text: step == .selectPreset ? "预设选择" : appType.displayName,
-                            tint: accentTint
-                        )
-                    }
-                    Text(step == .selectPreset ? "先挑一个常用预设，再补充接口与模型。" : "补齐接口、模型和运行参数后即可写入本地配置。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+        HStack(alignment: .center, spacing: 12) {
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(accentTint.opacity(0.08))
+                .overlay {
+                    Image(systemName: step == .selectPreset ? "square.grid.2x2.fill" : (selectedPreset?.icon ?? appType.iconName))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(accentTint)
                 }
+                .frame(width: 34, height: 34)
 
-                Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 7) {
+                    Text(step == .selectPreset ? "添加供应商" : (selectedPreset?.name ?? "配置详情"))
+                        .font(.system(size: 20, weight: .semibold))
+                        .lineLimit(1)
+
+                    ProviderConfigBadge(
+                        text: step == .selectPreset ? "预设选择" : appType.displayName,
+                        tint: accentTint
+                    )
+                }
 
                 HStack(spacing: 8) {
-                    if step == .configure {
-                        Button("返回预设") {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                step = .selectPreset
-                            }
-                        }
-                        .aimenuActionButtonStyle(tint: accentTint, density: .compact)
-                    }
+                    ProviderConfigBadge(
+                        text: step == .selectPreset ? "\(filteredPresets.count) 个候选" : "写入目标",
+                        tint: step == .selectPreset ? .secondary : accentTint
+                    )
 
-                    CloseGlassButton { handleClose() }
+                    HStack(spacing: 5) {
+                        Image(systemName: step == .selectPreset ? "sparkles" : "arrow.down.doc.fill")
+                            .font(.caption2.weight(.semibold))
+                        Text(step == .selectPreset ? appType.displayName : appType.liveConfigPathsText)
+                            .font(.caption)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    .foregroundStyle(.secondary)
                 }
             }
 
-            HStack(spacing: 8) {
-                ProviderConfigBadge(
-                    text: step == .selectPreset ? "\(filteredPresets.count) 个候选" : "写入目标",
-                    tint: step == .selectPreset ? .secondary : accentTint
-                )
+            Spacer(minLength: 0)
 
-                Label(
-                    step == .selectPreset ? appType.displayName : appType.liveConfigPathsText,
-                    systemImage: step == .selectPreset ? "sparkles" : "arrow.down.doc.fill"
-                )
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(
-                    Capsule()
-                        .fill(Color.white.opacity(0.14))
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(accentTint.opacity(0.15), lineWidth: 1)
-                        )
-                )
-                .lineLimit(1)
+            HStack(spacing: 8) {
+                if step == .configure {
+                    Button("返回预设") {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            step = .selectPreset
+                        }
+                    }
+                    .aimenuActionButtonStyle(tint: accentTint, density: .compact)
+                }
+
+                CloseGlassButton { handleClose() }
             }
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            accentTint.opacity(0.16),
-                            accentTint.opacity(0.05),
-                            Color.white.opacity(0.03)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(accentTint.opacity(0.14), lineWidth: 1)
-                )
-        )
     }
 
     private func handleClose() {
@@ -885,18 +844,8 @@ private struct AddProviderSheet: View {
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.top, 14)
-            .padding(.bottom, 12)
-            .background(
-                LinearGradient(
-                    colors: [
-                        accentTint.opacity(0.08),
-                        Color.clear
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .padding(.top, 10)
+            .padding(.bottom, 10)
 
             ScrollView {
                 LazyVGrid(
@@ -968,8 +917,6 @@ private struct AddProviderSheet: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    formHeroCard
-
                     configSectionCard(title: "基本信息", subtitle: "名称、官网与备注", icon: "square.text.square") {
                         HStack(alignment: .top, spacing: 12) {
                             configField(label: "供应商名称 *", hint: nil, hintLabel: nil) {
@@ -1025,7 +972,7 @@ private struct AddProviderSheet: View {
                     billingSection
                 }
                 .padding(.horizontal, 18)
-                .padding(.vertical, 14)
+                .padding(.vertical, 10)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
@@ -1148,39 +1095,6 @@ private struct AddProviderSheet: View {
             Capsule()
                 .fill((tint == .secondary ? Color.primary : tint).opacity(0.08))
         )
-    }
-
-    @ViewBuilder
-    private var formHeroCard: some View {
-        if let preset = selectedPreset {
-            configSectionCard(emphasis: true) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: preset.icon ?? appType.iconName)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(accentTint)
-                        .frame(width: 40, height: 40)
-                        .background(accentTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(preset.name)
-                            .font(.headline)
-                        Text("写入 \(appType.liveConfigPathsText)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        HStack(spacing: 6) {
-                            ProviderConfigBadge(text: preset.category.displayName, tint: accentTint)
-                            if let host = URL(string: resolvedBaseURL)?.host {
-                                ProviderConfigBadge(text: host, tint: .secondary)
-                            }
-                            if let defaultModel = preset.defaultModel?.trimmedNonEmpty {
-                                ProviderConfigBadge(text: defaultModel, tint: accentTint)
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     @ViewBuilder
@@ -2023,99 +1937,57 @@ private struct EditProviderSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top, spacing: 12) {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    accentTint.opacity(0.24),
-                                    accentTint.opacity(0.10)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Image(systemName: provider.displayIcon)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(accentTint)
-                        }
-                        .frame(width: 42, height: 42)
+            HStack(alignment: .center, spacing: 12) {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .fill(accentTint.opacity(0.08))
+                    .overlay {
+                        Image(systemName: provider.displayIcon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(accentTint)
+                    }
+                    .frame(width: 34, height: 34)
 
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 8) {
-                            Text(provider.name)
-                                .font(.headline.weight(.semibold))
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 7) {
+                        Text(provider.name)
+                            .font(.system(size: 20, weight: .semibold))
+                            .lineLimit(1)
 
-                            ProviderConfigBadge(text: provider.appType.displayName, tint: accentTint)
-                        }
-                        Text("编辑当前 provider 的接口、模型和本地写入参数。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                        ProviderConfigBadge(text: provider.appType.displayName, tint: accentTint)
                     }
 
-                    Spacer(minLength: 0)
+                    HStack(spacing: 8) {
+                        ProviderConfigBadge(
+                            text: provider.isCurrent ? "使用中" : "未启用",
+                            tint: provider.isCurrent ? .mint : .secondary
+                        )
 
-                    CloseGlassButton { onCancel() }
-                }
-
-                HStack(spacing: 8) {
-                    ProviderConfigBadge(
-                        text: provider.isCurrent ? "使用中" : "未启用",
-                        tint: provider.isCurrent ? .mint : .secondary
-                    )
-
-                    Label(provider.appType.liveConfigPathsText, systemImage: "arrow.down.doc.fill")
-                        .font(.caption2.weight(.medium))
+                        HStack(spacing: 5) {
+                            Image(systemName: "arrow.down.doc.fill")
+                                .font(.caption2.weight(.semibold))
+                            Text(provider.appType.liveConfigPathsText)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(
-                            Capsule()
-                                .fill(Color.white.opacity(0.14))
-                                .overlay(
-                                    Capsule()
-                                        .strokeBorder(accentTint.opacity(0.15), lineWidth: 1)
-                                )
-                        )
-                        .lineLimit(1)
+                    }
                 }
+
+                Spacer(minLength: 0)
+
+                CloseGlassButton { onCancel() }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accentTint.opacity(0.16),
-                                accentTint.opacity(0.05),
-                                Color.white.opacity(0.03)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .strokeBorder(accentTint.opacity(0.14), lineWidth: 1)
-                    )
-            )
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 10)
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
 
             Rectangle()
-                .fill(accentTint.opacity(0.12))
+                .fill(accentTint.opacity(0.08))
                 .frame(height: 1)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    editHeroCard
-
                     sectionCard(title: "基础信息", subtitle: "名称与备注", icon: "square.text.square") {
                         HStack(alignment: .top, spacing: 12) {
                             editConfigField(label: "名称") {
@@ -2187,7 +2059,7 @@ private struct EditProviderSheet: View {
                     }
                 }
                 .padding(.horizontal, 18)
-                .padding(.vertical, 14)
+                .padding(.vertical, 10)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
@@ -2218,38 +2090,6 @@ private struct EditProviderSheet: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    @ViewBuilder
-    private var editHeroCard: some View {
-        sectionCard(emphasis: true) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: provider.displayIcon)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(accentTint)
-                    .frame(width: 40, height: 40)
-                    .background(accentTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(provider.name)
-                        .font(.headline)
-                    Text("同步 \(provider.appType.liveConfigPathsText)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 6) {
-                        if provider.isCurrent {
-                            ProviderConfigBadge(text: "使用中", tint: .mint)
-                        }
-                        if let host = URL(string: resolvedBaseURL)?.host {
-                            ProviderConfigBadge(text: host, tint: .secondary)
-                        }
-                        if let model = currentModelName.trimmedNonEmpty {
-                            ProviderConfigBadge(text: model, tint: accentTint)
-                        }
-                    }
-                }
-            }
-        }
     }
 
     @ViewBuilder
