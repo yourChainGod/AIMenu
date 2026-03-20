@@ -39,7 +39,9 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
         let baseURL = "http://127.0.0.1:\(port)"
         let installed = fileManager.isExecutableFile(atPath: paths.cursor2APIBinaryPath.path)
         let processAlive = process?.isRunning == true
-        let healthAlive = await isHealthy(baseURL: baseURL)
+        let portStatus = await portService.status(for: port)
+        let shouldProbeHealth = processAlive || portStatus.occupied
+        let healthAlive = shouldProbeHealth ? await isHealthy(baseURL: baseURL) : false
 
         if !(processAlive || healthAlive) {
             process = nil
