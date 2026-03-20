@@ -45,7 +45,7 @@ actor PortManagementService: PortManagementServiceProtocol {
 
         let pidResult = try CommandRunner.run(
             lsof,
-            arguments: ["-ti", "tcp:\(port)"],
+            arguments: ["-tiTCP:\(port)", "-sTCP:LISTEN"],
             timeout: 1.5
         )
 

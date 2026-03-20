@@ -466,12 +466,18 @@ final class ToolsPageModel: ObservableObject {
         }
     }
 
-    func refreshTrackedPorts() async {
+    func refreshTrackedPorts(showNotice: Bool = false) async {
+        trackedPortNumbers = Array(Set(trackedPortNumbers)).sorted()
+
         var updated: [ManagedPortStatus] = []
-        for port in trackedPortNumbers.sorted() {
+        for port in trackedPortNumbers {
             updated.append(await portService.status(for: port))
         }
         trackedPorts = updated
+
+        if showNotice {
+            notice = NoticeMessage(style: .success, text: "端口状态已刷新")
+        }
     }
 
     func addTrackedPort() async {
@@ -481,19 +487,38 @@ final class ToolsPageModel: ObservableObject {
             return
         }
 
-        if !trackedPortNumbers.contains(port) {
-            trackedPortNumbers.append(port)
-            trackedPortNumbers.sort()
+        await addTrackedPort(port, clearsInput: true)
+    }
+
+    func addTrackedPort(_ port: Int, clearsInput: Bool = false) async {
+        guard (1...65535).contains(port) else {
+            notice = NoticeMessage(style: .error, text: "请输入有效端口号")
+            return
         }
 
-        customPortText = ""
+        guard !trackedPortNumbers.contains(port) else {
+            notice = NoticeMessage(style: .info, text: "端口 \(port) 已在关注列表中")
+            await refreshTrackedPorts()
+            return
+        }
+
+        trackedPortNumbers.append(port)
+        trackedPortNumbers.sort()
+
+        if clearsInput {
+            customPortText = ""
+        }
+
         await refreshTrackedPorts()
+        notice = NoticeMessage(style: .success, text: "已关注端口 \(port)")
     }
 
     func removeTrackedPort(_ port: Int) async {
         guard !defaultTrackedPorts.contains(port) else { return }
+        guard trackedPortNumbers.contains(port) else { return }
         trackedPortNumbers.removeAll { $0 == port }
         trackedPorts.removeAll { $0.port == port }
+        notice = NoticeMessage(style: .info, text: "已移除端口 \(port)")
     }
 
     func killPort(_ port: Int) async {

@@ -695,36 +695,30 @@ struct ToolsPageView: View {
     }
 
     private var portToolsCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("端口工具")
                         .font(.headline)
-                    Text("常用端口占用、一键释放、临时关注。")
+                    Text("关注常用端口、快速刷新，并安全结束监听进程。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
+
+                HStack(spacing: 6) {
+                    ToolsStatusBadge(text: "已关注 \(model.trackedPorts.count)", tint: .secondary)
+                    ToolsStatusBadge(
+                        text: occupiedTrackedPortCount == 0 ? "全部空闲" : "占用 \(occupiedTrackedPortCount)",
+                        tint: occupiedTrackedPortCount == 0 ? .mint : .orange
+                    )
+                }
             }
 
-            HStack(spacing: 8) {
-                TextField("添加端口", text: $model.customPortText)
-                    .textFieldStyle(.plain)
-                    .font(.caption.monospaced())
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.primary.opacity(0.05))
-                    )
-                    .frame(width: 110)
+            portQuickControlStrip
 
-                Button("关注") {
-                    Task { await model.addTrackedPort() }
-                }
-                .aimenuActionButtonStyle(density: .compact)
-
-                Spacer(minLength: 0)
+            if !portSuggestionPorts.isEmpty {
+                portSuggestionStrip
             }
 
             VStack(spacing: 6) {
@@ -737,47 +731,114 @@ struct ToolsPageView: View {
         .cardSurface(cornerRadius: 14, tint: Color.orange.opacity(0.05))
     }
 
-    private func portStatusRow(_ status: ManagedPortStatus) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(status.occupied ? Color.orange : Color.mint)
-                .frame(width: 8, height: 8)
+    private var portQuickControlStrip: some View {
+        HStack(spacing: 8) {
+            TextField("端口号", text: $model.customPortText)
+                .font(.caption.monospaced())
+                .multilineTextAlignment(.center)
+                .frame(width: 92)
+                .frostedRoundedInput(cornerRadius: 10)
+                .onSubmit {
+                    Task { await model.addTrackedPort() }
+                }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(portTitle(for: status.port))
-                    .font(.subheadline.weight(.medium))
-                Text(status.occupied
-                     ? "\(status.command ?? "未知进程") · PID \(status.processID.map(String.init) ?? "—")"
-                     : "当前空闲")
-                    .font(.caption)
+            Button("关注") {
+                Task { await model.addTrackedPort() }
+            }
+            .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
+
+            Button("刷新") {
+                Task { await model.refreshTrackedPorts(showNotice: true) }
+            }
+            .aimenuActionButtonStyle(density: .compact)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var portSuggestionStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Text("快捷关注")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
+
+                ForEach(portSuggestionPorts, id: \.self) { port in
+                    Button {
+                        Task { await model.addTrackedPort(port) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.caption2.weight(.semibold))
+                            Text(portChipTitle(for: port))
+                                .font(.caption.weight(.medium))
+                        }
+                    }
+                    .aimenuActionButtonStyle(density: .compact)
+                }
+            }
+            .padding(.vertical, 1)
+        }
+    }
+
+    private func portStatusRow(_ status: ManagedPortStatus) -> some View {
+        let rowTint = status.occupied ? Color.orange : Color.mint
+
+        return HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(rowTint)
+                .frame(width: 8, height: 8)
+                .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(portTitle(for: status.port))
+                        .font(.subheadline.weight(.semibold))
+
+                    if isDefaultTrackedPort(status.port) {
+                        ToolsStatusBadge(text: "默认", tint: .secondary)
+                    }
+
+                    ToolsStatusBadge(text: status.occupied ? "占用中" : "空闲", tint: rowTint)
+                }
+
+                if status.occupied {
+                    HStack(spacing: 6) {
+                        if let command = status.command?.trimmedNonEmpty {
+                            ToolsStatusBadge(text: command, tint: .secondary)
+                        }
+
+                        if let processID = status.processID {
+                            ToolsStatusBadge(text: "PID \(processID)", tint: .orange)
+                        }
+                    }
+
+                    if let endpoint = status.endpoint?.trimmedNonEmpty {
+                        Text(endpoint)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                } else {
+                    Text("当前没有监听进程")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Spacer(minLength: 0)
 
-            if status.occupied {
-                Button("释放端口") {
-                    Task { await model.killPort(status.port) }
-                }
-                .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
-
-                if !isDefaultTrackedPort(status.port) {
-                    Button {
-                        Task { await model.removeTrackedPort(status.port) }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption2.weight(.bold))
+            HStack(spacing: 6) {
+                if status.occupied {
+                    Button("释放") {
+                        Task { await model.killPort(status.port) }
                     }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("移除此端口")
+                    .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
                 }
-            } else {
-                Text("空闲")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.mint)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.mint.opacity(0.12), in: Capsule())
 
                 if !isDefaultTrackedPort(status.port) {
                     Button {
@@ -792,8 +853,45 @@ struct ToolsPageView: View {
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(rowTint.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(rowTint.opacity(0.10), lineWidth: 1)
+                )
+        )
+    }
+
+    private var occupiedTrackedPortCount: Int {
+        model.trackedPorts.filter(\.occupied).count
+    }
+
+    private var portSuggestionPorts: [Int] {
+        [3000, 5173, 8080, 5432, 6379]
+            .filter { !model.trackedPortNumbers.contains($0) }
+    }
+
+    private func portChipTitle(for port: Int) -> String {
+        switch port {
+        case 3000:
+            return "3000"
+        case 5173:
+            return "5173"
+        case 8080:
+            return "8080"
+        case 5432:
+            return "5432"
+        case 6379:
+            return "6379"
+        default:
+            return "\(port)"
+        }
+    }
+
+    private func isDefaultTrackedPort(_ port: Int) -> Bool {
+        [8002, 8787].contains(port)
     }
 
     // MARK: - Local Config Overview
@@ -2048,10 +2146,6 @@ struct ToolsPageView: View {
         .onHover { hoveredDiscoverableSkill = $0 ? skill.id : nil }
     }
 
-    private func isDefaultTrackedPort(_ port: Int) -> Bool {
-        [8002, 8787].contains(port)
-    }
-
     private func skillRow(_ skill: InstalledSkill) -> some View {
         HStack(spacing: 10) {
             ZStack {
@@ -2295,6 +2389,16 @@ struct ToolsPageView: View {
             return "Cursor2API 默认端口"
         case 8787:
             return "AIMenu 集中代理端口"
+        case 3000:
+            return "3000 Web 开发端口"
+        case 5173:
+            return "5173 Vite 默认端口"
+        case 5432:
+            return "5432 PostgreSQL 端口"
+        case 6379:
+            return "6379 Redis 端口"
+        case 8080:
+            return "8080 通用服务端口"
         default:
             return "端口 \(port)"
         }
