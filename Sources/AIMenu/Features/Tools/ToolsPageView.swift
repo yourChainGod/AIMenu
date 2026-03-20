@@ -180,56 +180,32 @@ struct ToolsPageView: View {
     }
 
     private var workbenchSwitcherRow: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                workbenchMetaPill(
-                    icon: workbenchSectionIcon(for: activeWorkbenchSection),
-                    tint: workbenchSectionTint(for: activeWorkbenchSection)
-                )
-
-                workbenchMetaPill(
-                    text: workbenchSectionBadge(for: activeWorkbenchSection),
-                    tint: workbenchSectionTint(for: activeWorkbenchSection)
-                )
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: LayoutRules.listRowSpacing) {
-                    ForEach(workbenchSections, id: \.self) { section in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.18)) {
-                                model.activeSection = section
-                            }
-                        } label: {
-                            HStack(spacing: 7) {
-                                Image(systemName: workbenchSectionIcon(for: section))
-                                    .font(.caption.weight(.semibold))
-
-                                Text(workbenchSectionTitle(for: section))
-                                    .font(.caption.weight(.semibold))
-
-                                Text("\(workbenchSectionCount(for: section))")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(
-                                        activeWorkbenchSection == section
-                                            ? AnyShapeStyle(workbenchSectionTint(for: section))
-                                            : AnyShapeStyle(Color.secondary)
-                                    )
-                            }
-                            .lineLimit(1)
-                        }
-                        .aimenuActionButtonStyle(
-                            prominent: activeWorkbenchSection == section,
-                            tint: activeWorkbenchSection == section ? workbenchSectionTint(for: section) : nil,
-                            density: .compact
-                        )
+        HStack(spacing: LayoutRules.listRowSpacing) {
+            ForEach(workbenchSections, id: \.self) { section in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        model.activeSection = section
                     }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: workbenchSectionIcon(for: section))
+                            .font(.caption.weight(.semibold))
+
+                        Text(workbenchSectionTitle(for: section))
+                            .font(.caption.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity)
+                .aimenuActionButtonStyle(
+                    prominent: activeWorkbenchSection == section,
+                    tint: activeWorkbenchSection == section ? workbenchSectionTint(for: section) : nil,
+                    density: .compact
+                )
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     @ViewBuilder
@@ -262,30 +238,6 @@ struct ToolsPageView: View {
         }
     }
 
-    @ViewBuilder
-    private func workbenchMetaPill(
-        icon: String? = nil,
-        text: String? = nil,
-        tint: Color
-    ) -> some View {
-        HStack(spacing: 6) {
-            if let icon {
-                Image(systemName: icon)
-                    .font(.callout.weight(.semibold))
-            }
-
-            if let text {
-                Text(text)
-                    .font(.callout.weight(.semibold))
-                    .lineLimit(1)
-            }
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, icon != nil && text == nil ? 11 : 12)
-        .padding(.vertical, 7)
-        .frostedCapsuleSurface(prominent: true, tint: tint)
-    }
-
     private func workbenchSectionIcon(for section: ToolsPageModel.ToolsSection) -> String {
         switch section {
         case .configs, .mcp:
@@ -309,34 +261,6 @@ struct ToolsPageView: View {
             return .indigo
         case .skills:
             return .orange
-        }
-    }
-
-    private func workbenchSectionCount(for section: ToolsPageModel.ToolsSection) -> Int {
-        switch section {
-        case .configs, .mcp:
-            return model.mcpServers.count
-        case .prompts:
-            return model.prompts.count
-        case .hooks:
-            return model.claudeHooks.count
-        case .skills:
-            return model.skills.installedSkills.count
-        }
-    }
-
-    private func workbenchSectionBadge(for section: ToolsPageModel.ToolsSection) -> String {
-        switch section {
-        case .configs, .mcp:
-            let enabled = model.mcpServers.filter(\.isEnabled).count
-            return "\(enabled)/\(model.mcpServers.count) 已启用"
-        case .prompts:
-            let active = model.prompts.filter(\.isActive).count
-            return active > 0 ? "\(active) 已写入" : "\(model.prompts.count) 条"
-        case .hooks:
-            return "\(groupedClaudeHooks.count) 组 / \(model.claudeHooks.count) 条"
-        case .skills:
-            return "\(model.skills.installedSkills.count) 已装"
         }
     }
 
