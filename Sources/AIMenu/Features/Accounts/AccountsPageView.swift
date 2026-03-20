@@ -6,10 +6,6 @@ struct AccountsPageView: View {
     @State private var areCardsPresented = false
     @State private var didRunInitialCardEntrance = false
     @State private var activeProxySettings: ProxySettingsFocus?
-    @State private var showImportPanel = false
-    @State private var importSelectionURLs: [URL] = []
-    @State private var importPathInput = ""
-    @State private var importDropTargeted = false
 
     @ObservedObject var model: AccountsPageModel
     @ObservedObject var proxyModel: ProxyPageModel
@@ -51,37 +47,7 @@ struct AccountsPageView: View {
             .blur(radius: hasActiveOverlay ? 2 : 0)
             .allowsHitTesting(!hasActiveOverlay)
 
-            if showImportPanel {
-                GeometryReader { geometry in
-                    ZStack {
-                        Color.black.opacity(0.24)
-                            .ignoresSafeArea()
-                            .contentShape(Rectangle())
-                            .onTapGesture {}
-
-                        AccountsImportPanel(
-                            pathInput: $importPathInput,
-                            selectionURLs: importSelectionURLs,
-                            jsonCount: resolvedImportJSONURLs.count,
-                            isDropTargeted: importDropTargeted,
-                            isImporting: model.isAdding,
-                            onAddPath: addImportPath,
-                            onRemoveURL: removeImportSelection,
-                            onClear: clearImportSelection,
-                            onImport: startImportSelection,
-                            onClose: closeImportPanel
-                        )
-                        .onDrop(of: [UTType.fileURL], isTargeted: $importDropTargeted, perform: handleDroppedItems)
-                        .frame(maxWidth: 620, maxHeight: max(420, geometry.size.height - 44))
-                        .padding(.horizontal, 26)
-                        .padding(.top, modalTopInset(for: geometry.size.height))
-                        .padding(.bottom, 22)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .transition(.move(edge: .top).combined(with: .scale(scale: 0.97)).combined(with: .opacity))
-                    }
-                    .zIndex(10)
-                }
-            } else if let focus = activeProxySettings {
+            if let focus = activeProxySettings {
                 GeometryReader { geometry in
                     ZStack {
                         Color.black.opacity(0.24)
@@ -126,7 +92,7 @@ struct AccountsPageView: View {
     }
 
     private var hasActiveOverlay: Bool {
-        showImportPanel || activeProxySettings != nil
+        activeProxySettings != nil
     }
 
     private var actionBar: some View {
@@ -351,103 +317,35 @@ struct AccountsPageView: View {
         min(54, max(18, height * 0.09))
     }
 
-    private var resolvedImportJSONURLs: [URL] {
-        collectJSONFiles(from: importSelectionURLs)
-    }
-
     private func openImportPanel() {
         activeProxySettings = nil
-        importPathInput = ""
-        importSelectionURLs = []
-        showImportPanel = true
-    }
-
-    private func closeImportPanel() {
-        showImportPanel = false
-        importDropTargeted = false
-        importPathInput = ""
-        importSelectionURLs = []
-    }
-
-    private func clearImportSelection() {
-        importPathInput = ""
-        importSelectionURLs = []
-    }
-
-    private func removeImportSelection(_ url: URL) {
-        let target = url.standardizedFileURL.path
-        importSelectionURLs.removeAll { $0.standardizedFileURL.path == target }
-    }
-
-    private func addImportPath() {
-        let trimmed = importPathInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        let expanded = (trimmed as NSString).expandingTildeInPath
-        let url = URL(fileURLWithPath: expanded)
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            model.reportImportSelectionFailure(AppError.fileNotFound("未找到该路径"))
-            return
-        }
-
-        appendImportSelection([url])
-        importPathInput = ""
-    }
-
-    private func startImportSelection() {
-        let jsonURLs = resolvedImportJSONURLs
+        guard let selectedURLs = presentImportOpenPanel() else { return }
+        let jsonURLs = collectJSONFiles(from: selectedURLs)
         guard !jsonURLs.isEmpty else {
-            model.reportImportSelectionFailure(AppError.invalidData("请先添加 JSON 文件或包含 JSON 的目录"))
+            model.reportImportSelectionFailure(AppError.invalidData("未找到可导入的 JSON 文件"))
             return
         }
 
-        closeImportPanel()
         Task {
             await model.importMultipleAuthDocuments(from: jsonURLs)
         }
     }
 
-    private func handleDroppedItems(_ providers: [NSItemProvider]) -> Bool {
-        let acceptedProviders = providers.filter {
-            $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
-        }
-        guard !acceptedProviders.isEmpty else { return false }
+    private func presentImportOpenPanel() -> [URL]? {
+        let panel = NSOpenPanel()
+        panel.title = "导入账号 JSON"
+        panel.message = "可多选 JSON 文件，也可选择目录批量导入。"
+        panel.prompt = "导入"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.resolvesAliases = true
+        panel.allowedContentTypes = [UTType.json, UTType.folder]
 
-        for provider in acceptedProviders {
-            provider.loadDataRepresentation(forTypeIdentifier: UTType.fileURL.identifier) { data, error in
-                if let error {
-                    Task { @MainActor in
-                        model.reportImportSelectionFailure(error)
-                    }
-                    return
-                }
-
-                guard let data else { return }
-                guard let url = URL(dataRepresentation: data, relativeTo: nil) else {
-                    Task { @MainActor in
-                        model.reportImportSelectionFailure(AppError.invalidData("无法识别拖入的文件路径"))
-                    }
-                    return
-                }
-                Task { @MainActor in
-                    appendImportSelection([url])
-                }
-            }
-        }
-
-        return true
-    }
-
-    private func appendImportSelection(_ urls: [URL]) {
-        var merged = importSelectionURLs
-        var existing = Set(merged.map { $0.standardizedFileURL.path })
-        for url in urls {
-            let standardized = url.standardizedFileURL
-            if existing.insert(standardized.path).inserted {
-                merged.append(standardized)
-            }
-        }
-        importSelectionURLs = merged
+        NSApp.activate(ignoringOtherApps: true)
+        let response = panel.runModal()
+        guard response == .OK else { return nil }
+        return panel.urls
     }
 
     private func collectJSONFiles(from urls: [URL]) -> [URL] {
@@ -491,197 +389,6 @@ struct AccountsPageView: View {
             proxyModel.publicAccessEnabled = proxyModel.cloudflaredStatus.running || proxyModel.publicAccessEnabled
         }
         activeProxySettings = focus
-        showImportPanel = false
-    }
-}
-
-private struct AccountsImportPanel: View {
-    @Binding var pathInput: String
-    let selectionURLs: [URL]
-    let jsonCount: Int
-    let isDropTargeted: Bool
-    let isImporting: Bool
-    let onAddPath: () -> Void
-    let onRemoveURL: (URL) -> Void
-    let onClear: () -> Void
-    let onImport: () -> Void
-    let onClose: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(Color.blue.opacity(0.16))
-                    .overlay {
-                        Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(.blue)
-                    }
-                    .frame(width: 38, height: 38)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text("导入 JSON")
-                            .font(.headline.weight(.semibold))
-                        if jsonCount > 0 {
-                            Text("\(jsonCount) 个文件")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.blue)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 3)
-                                .background(Color.blue.opacity(0.12), in: Capsule())
-                        }
-                    }
-                    Text("拖入文件或目录，也可以手动填路径。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-
-                if !selectionURLs.isEmpty {
-                    Button("清空") {
-                        onClear()
-                    }
-                    .aimenuActionButtonStyle(density: .compact)
-                }
-
-                CloseGlassButton {
-                    onClose()
-                }
-            }
-            .padding(.horizontal, 18)
-            .padding(.top, 16)
-            .padding(.bottom, 14)
-
-            Divider()
-                .overlay(Color.white.opacity(0.08))
-
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
-                    TextField("输入 JSON 或目录路径", text: $pathInput)
-                        .frostedRoundedInput(cornerRadius: 12)
-
-                    Button("添加") {
-                        onAddPath()
-                    }
-                    .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
-                    .disabled(pathInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-
-                VStack(spacing: 8) {
-                    Image(systemName: isDropTargeted ? "arrow.down.doc.fill" : "tray.and.arrow.down")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(isDropTargeted ? .blue : .secondary)
-
-                    Text(selectionURLs.isEmpty ? "把文件或目录拖到这里" : "继续拖入可追加导入项")
-                        .font(.subheadline.weight(.semibold))
-
-                    Text(selectionURLs.isEmpty ? "支持 JSON 文件和文件夹" : "目录会自动递归扫描 JSON")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, minHeight: 118)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(isDropTargeted ? Color.blue.opacity(0.10) : Color.primary.opacity(0.04))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(
-                                    isDropTargeted ? Color.blue.opacity(0.28) : Color.primary.opacity(0.08),
-                                    style: StrokeStyle(lineWidth: 1.2, dash: [7, 5])
-                                )
-                        )
-                )
-
-                if !selectionURLs.isEmpty {
-                    ScrollView {
-                        VStack(spacing: 6) {
-                            ForEach(selectionURLs, id: \.path) { url in
-                                HStack(spacing: 10) {
-                                    Image(systemName: url.hasDirectoryPath ? "folder" : "doc.text")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(url.hasDirectoryPath ? .orange : .blue)
-                                        .frame(width: 18)
-
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(url.lastPathComponent)
-                                            .font(.subheadline.weight(.medium))
-                                            .lineLimit(1)
-                                        Text(tildePath(url.path))
-                                            .font(.caption2.monospaced())
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                            .truncationMode(.middle)
-                                    }
-
-                                    Spacer(minLength: 0)
-
-                                    Button {
-                                        onRemoveURL(url)
-                                    } label: {
-                                        Image(systemName: "xmark")
-                                    }
-                                    .liquidGlassActionButtonStyle(density: .compact)
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            }
-                        }
-                    }
-                    .frame(maxHeight: 180)
-                }
-
-                HStack {
-                    Text(jsonCount == 0 ? "还没有可导入的 JSON" : "将导入 \(jsonCount) 个 JSON 文件")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Spacer(minLength: 0)
-
-                    Button("取消") {
-                        onClose()
-                    }
-                    .aimenuActionButtonStyle(density: .compact)
-
-                    Button("导入") {
-                        onImport()
-                    }
-                    .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
-                    .disabled(jsonCount == 0 || isImporting)
-                }
-            }
-            .padding(14)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.regularMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.32), lineWidth: 1)
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Color.blue.opacity(0.08))
-                        .blur(radius: 18)
-                )
-        }
-        .overlay(alignment: .top) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(Color.blue.opacity(0.9))
-                .frame(width: 72, height: 4)
-                .padding(.top, 8)
-        }
-        .shadow(color: .black.opacity(0.24), radius: 28, x: 0, y: 14)
-    }
-
-    private func tildePath(_ path: String) -> String {
-        let home = NSHomeDirectory()
-        guard path.hasPrefix(home) else { return path }
-        return "~" + path.dropFirst(home.count)
     }
 }
 

@@ -145,9 +145,9 @@ final class AccountsPageModel: ObservableObject {
         }
 
         if successCount > 0 {
-            let msg = "Imported \(successCount) account\(successCount > 1 ? "s" : "")"
+            let msg = "已导入 \(successCount) 个账号"
             if let lastError {
-                notice = NoticeMessage(style: .error, text: "\(msg), but some failed: \(lastError)")
+                notice = NoticeMessage(style: .error, text: "\(msg)，但部分导入失败：\(lastError)")
             } else {
                 notice = NoticeMessage(style: .success, text: msg)
             }
