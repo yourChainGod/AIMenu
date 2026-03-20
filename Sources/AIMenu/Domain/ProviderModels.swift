@@ -76,6 +76,8 @@ struct ClaudeSettingsConfig: Codable, Equatable {
     var hideAttribution: Bool?
     var alwaysThinkingEnabled: Bool?
     var enableTeammates: Bool?
+    var applyCommonConfig: Bool? = nil
+    var commonConfigJSON: String? = nil
     var apiFormat: ClaudeApiFormat?
     var apiKeyField: ClaudeApiKeyField?
     // AWS Bedrock fields
@@ -216,6 +218,12 @@ struct ProviderDraft {
                 }
                 if let value = extraConfig["claudeEnableTeammates"] {
                     provider.claudeConfig?.enableTeammates = value == "true"
+                }
+                if let value = extraConfig["claudeApplyCommonConfig"] {
+                    provider.claudeConfig?.applyCommonConfig = value == "true"
+                }
+                if let value = extraConfig["claudeCommonConfigJSON"]?.trimmedNonEmpty {
+                    provider.claudeConfig?.commonConfigJSON = value
                 }
                 if let value = extraConfig["claudeAwsRegion"]?.trimmedNonEmpty {
                     provider.claudeConfig?.awsRegion = value

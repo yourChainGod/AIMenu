@@ -139,6 +139,63 @@ final class ProviderIntegrationTests: XCTestCase {
         XCTAssertEqual(attribution["pr"] as? String, "")
     }
 
+    func testWriteClaudeConfigMergesCommonJSONConfig() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+
+        var provider = ProviderPresets.claudePresets[0].makeProvider(apiKey: "sk-claude")
+        provider.id = "claude-common"
+        provider.name = "Claude Common"
+        provider.claudeConfig?.baseUrl = "https://api.example.com"
+        provider.claudeConfig?.model = "claude-sonnet-4-20250514"
+        provider.claudeConfig?.applyCommonConfig = true
+        provider.claudeConfig?.commonConfigJSON = """
+        {
+          "hooks": {
+            "PreToolUse": [
+              {
+                "hooks": [
+                  {
+                    "command": "echo ok",
+                    "type": "command"
+                  }
+                ],
+                "matcher": "Bash"
+              }
+            ]
+          },
+          "includeCoAuthoredBy": false,
+          "outputStyle": "abyss-cultivator",
+          "skipDangerousModePermissionPrompt": true,
+          "statusLine": {
+            "command": "~/.claude/ccline/ccline",
+            "padding": 0,
+            "type": "command"
+          }
+        }
+        """
+
+        _ = try await coordinator.addProvider(provider)
+
+        let settingsPath = tempHome.appendingPathComponent(".claude/settings.json")
+        let data = try Data(contentsOf: settingsPath)
+        let object = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let env = try XCTUnwrap(object["env"] as? [String: Any])
+        let hooks = try XCTUnwrap(object["hooks"] as? [String: Any])
+        let statusLine = try XCTUnwrap(object["statusLine"] as? [String: Any])
+
+        XCTAssertEqual(env["ANTHROPIC_AUTH_TOKEN"] as? String, "sk-claude")
+        XCTAssertEqual(object["includeCoAuthoredBy"] as? Bool, false)
+        XCTAssertEqual(object["outputStyle"] as? String, "abyss-cultivator")
+        XCTAssertEqual(object["skipDangerousModePermissionPrompt"] as? Bool, true)
+        XCTAssertNotNil(hooks["PreToolUse"])
+        XCTAssertEqual(statusLine["command"] as? String, "~/.claude/ccline/ccline")
+        XCTAssertEqual(statusLine["padding"] as? Int, 0)
+    }
+
     func testDeleteCurrentProviderFallsBackAndRewritesLiveConfig() async throws {
         let tempHome = try makeTemporaryHome()
         defer { try? FileManager.default.removeItem(at: tempHome) }

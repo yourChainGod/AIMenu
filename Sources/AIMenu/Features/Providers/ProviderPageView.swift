@@ -522,7 +522,10 @@ private struct AddProviderSheet: View {
     @State private var claudeHideAttribution = false
     @State private var claudeAlwaysThinking = false
     @State private var claudeEnableTeammates = false
+    @State private var claudeApplyCommonConfig = false
+    @State private var claudeCommonConfigJSON = ""
     @State private var showClaudeAdvanced = false
+    @State private var showClaudeCommonConfigEditor = false
 
     @State private var wireApi = "responses"
     @State private var reasoningEffort = "medium"
@@ -946,7 +949,9 @@ private struct AddProviderSheet: View {
                         "claudeDisableNonessential": claudeDisableNonessential ? "true" : "false",
                         "claudeHideAttribution": claudeHideAttribution ? "true" : "false",
                         "claudeAlwaysThinking": claudeAlwaysThinking ? "true" : "false",
-                        "claudeEnableTeammates": claudeEnableTeammates ? "true" : "false"
+                        "claudeEnableTeammates": claudeEnableTeammates ? "true" : "false",
+                        "claudeApplyCommonConfig": claudeApplyCommonConfig ? "true" : "false",
+                        "claudeCommonConfigJSON": claudeApplyCommonConfig ? normalizedClaudeCommonConfigJSON : ""
                     ]
                     let draft = ProviderDraft(
                         preset: preset,
@@ -1245,19 +1250,23 @@ private struct AddProviderSheet: View {
 
             if showConfigPreview {
                 if appType == .claude {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("常用开关")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Toggle("隐藏 Attribution（清空 commit / pr）", isOn: $claudeHideAttribution)
-                                .toggleStyle(.checkbox)
-                            Toggle("始终开启 Thinking", isOn: $claudeAlwaysThinking)
-                                .toggleStyle(.checkbox)
-                            Toggle("启用 Teammates", isOn: $claudeEnableTeammates)
-                                .toggleStyle(.checkbox)
-                        }
-                        .font(.subheadline)
+                    ClaudeCommonConfigControls(
+                        hideAttribution: $claudeHideAttribution,
+                        alwaysThinking: $claudeAlwaysThinking,
+                        enableTeammates: $claudeEnableTeammates,
+                        applyCommonConfig: $claudeApplyCommonConfig,
+                        showCommonConfigEditor: $showClaudeCommonConfigEditor,
+                        accent: accentTint
+                    )
+
+                    if claudeApplyCommonConfig && showClaudeCommonConfigEditor {
+                        ProviderConfigPreviewBlock(
+                            title: "通用配置 (JSON)",
+                            subtitle: "合并写入 `~/.claude/settings.json` 顶层；`hooks` 与 Hooks 页共用字段",
+                            content: buildClaudeCommonConfigPreview(),
+                            accent: accentTint,
+                            onApply: applyClaudeCommonConfigPreview
+                        )
                     }
                 }
 
@@ -1426,6 +1435,10 @@ private struct AddProviderSheet: View {
         }
     }
 
+    private var normalizedClaudeCommonConfigJSON: String {
+        normalizedJSONObjectString(claudeCommonConfigJSON) ?? "{}"
+    }
+
     @ViewBuilder
     private var modelFetchStatusView: some View {
         if let modelFetchStatus {
@@ -1489,6 +1502,15 @@ private struct AddProviderSheet: View {
         claudeEnableTeammates = previewBool(env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
         claudeHideAttribution = payload["attribution"] != nil
         claudeAlwaysThinking = previewBool(payload["alwaysThinkingEnabled"])
+        let commonConfig = extractClaudeCommonConfig(from: payload)
+        claudeApplyCommonConfig = !commonConfig.isEmpty
+        claudeCommonConfigJSON = commonConfig.isEmpty ? "" : prettyJSONString(commonConfig)
+    }
+
+    private func applyClaudeCommonConfigPreview(_ text: String) throws {
+        let payload = try parsePreviewJSONObject(text)
+        claudeApplyCommonConfig = !payload.isEmpty
+        claudeCommonConfigJSON = payload.isEmpty ? "" : prettyJSONString(payload)
     }
 
     private func applyCodexAuthPreview(_ text: String) throws {
@@ -1539,6 +1561,9 @@ private struct AddProviderSheet: View {
         claudeHideAttribution = false
         claudeAlwaysThinking = false
         claudeEnableTeammates = false
+        claudeApplyCommonConfig = false
+        claudeCommonConfigJSON = ""
+        showClaudeCommonConfigEditor = false
         wireApi = preset.wireApi ?? "responses"
         reasoningEffort = "medium"
         fetchedModels = []
@@ -1547,6 +1572,7 @@ private struct AddProviderSheet: View {
     }
 
     private func buildClaudePreview() -> String {
+        var settings = claudeApplyCommonConfig ? (parsedJSONObjectString(claudeCommonConfigJSON) ?? [:]) : [:]
         var env: [String: Any] = [
             claudeApiKeyField.rawValue: apiKey.trimmedNonEmpty ?? "<API_KEY>"
         ]
@@ -1576,14 +1602,22 @@ private struct AddProviderSheet: View {
             env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
         }
 
-        var settings: [String: Any] = ["env": env]
+        settings["env"] = env
         if claudeHideAttribution {
             settings["attribution"] = ["commit": "", "pr": ""]
+        } else {
+            settings.removeValue(forKey: "attribution")
         }
         if claudeAlwaysThinking {
             settings["alwaysThinkingEnabled"] = true
+        } else {
+            settings.removeValue(forKey: "alwaysThinkingEnabled")
         }
         return prettyJSONString(settings)
+    }
+
+    private func buildClaudeCommonConfigPreview() -> String {
+        normalizedClaudeCommonConfigJSON
     }
 
     private func buildCodexAuthPreview() -> String {
@@ -1729,7 +1763,10 @@ private struct EditProviderSheet: View {
     @State private var claudeHideAttribution: Bool
     @State private var claudeAlwaysThinking: Bool
     @State private var claudeEnableTeammates: Bool
+    @State private var claudeApplyCommonConfig: Bool
+    @State private var claudeCommonConfigJSON: String
     @State private var showClaudeAdvanced = false
+    @State private var showClaudeCommonConfigEditor = false
 
     @State private var codexApiKey: String
     @State private var codexBaseUrl: String
@@ -1764,6 +1801,8 @@ private struct EditProviderSheet: View {
         _claudeHideAttribution = State(initialValue: provider.claudeConfig?.hideAttribution ?? false)
         _claudeAlwaysThinking = State(initialValue: provider.claudeConfig?.alwaysThinkingEnabled ?? false)
         _claudeEnableTeammates = State(initialValue: provider.claudeConfig?.enableTeammates ?? false)
+        _claudeApplyCommonConfig = State(initialValue: provider.claudeConfig?.applyCommonConfig ?? false)
+        _claudeCommonConfigJSON = State(initialValue: provider.claudeConfig?.commonConfigJSON ?? "")
 
         _codexApiKey = State(initialValue: provider.codexConfig?.apiKey ?? "")
         _codexBaseUrl = State(initialValue: provider.codexConfig?.baseUrl ?? "")
@@ -2166,19 +2205,23 @@ private struct EditProviderSheet: View {
 
             if showConfigPreview {
                 if provider.appType == .claude {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("常用开关")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Toggle("隐藏 Attribution（清空 commit / pr）", isOn: $claudeHideAttribution)
-                                .toggleStyle(.checkbox)
-                            Toggle("始终开启 Thinking", isOn: $claudeAlwaysThinking)
-                                .toggleStyle(.checkbox)
-                            Toggle("启用 Teammates", isOn: $claudeEnableTeammates)
-                                .toggleStyle(.checkbox)
-                        }
-                        .font(.subheadline)
+                    ClaudeCommonConfigControls(
+                        hideAttribution: $claudeHideAttribution,
+                        alwaysThinking: $claudeAlwaysThinking,
+                        enableTeammates: $claudeEnableTeammates,
+                        applyCommonConfig: $claudeApplyCommonConfig,
+                        showCommonConfigEditor: $showClaudeCommonConfigEditor,
+                        accent: accentTint
+                    )
+
+                    if claudeApplyCommonConfig && showClaudeCommonConfigEditor {
+                        ProviderConfigPreviewBlock(
+                            title: "通用配置 (JSON)",
+                            subtitle: "合并写入 `~/.claude/settings.json` 顶层；`hooks` 与 Hooks 页共用字段",
+                            content: buildClaudeCommonConfigPreview(),
+                            accent: accentTint,
+                            onApply: applyClaudeCommonConfigPreview
+                        )
                     }
                 }
 
@@ -2244,6 +2287,10 @@ private struct EditProviderSheet: View {
         }
     }
 
+    private var normalizedClaudeCommonConfigJSON: String {
+        normalizedJSONObjectString(claudeCommonConfigJSON) ?? "{}"
+    }
+
     @ViewBuilder
     private var modelFetchStatusView: some View {
         if let modelFetchStatus {
@@ -2307,6 +2354,15 @@ private struct EditProviderSheet: View {
         claudeEnableTeammates = previewBool(env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
         claudeHideAttribution = payload["attribution"] != nil
         claudeAlwaysThinking = previewBool(payload["alwaysThinkingEnabled"])
+        let commonConfig = extractClaudeCommonConfig(from: payload)
+        claudeApplyCommonConfig = !commonConfig.isEmpty
+        claudeCommonConfigJSON = commonConfig.isEmpty ? "" : prettyJSONString(commonConfig)
+    }
+
+    private func applyClaudeCommonConfigPreview(_ text: String) throws {
+        let payload = try parsePreviewJSONObject(text)
+        claudeApplyCommonConfig = !payload.isEmpty
+        claudeCommonConfigJSON = payload.isEmpty ? "" : prettyJSONString(payload)
     }
 
     private func applyCodexAuthPreview(_ text: String) throws {
@@ -2331,6 +2387,7 @@ private struct EditProviderSheet: View {
     }
 
     private func buildClaudePreview() -> String {
+        var settings = claudeApplyCommonConfig ? (parsedJSONObjectString(claudeCommonConfigJSON) ?? [:]) : [:]
         var env: [String: Any] = [
             claudeApiKeyField.rawValue: claudeApiKey.trimmedNonEmpty ?? "<API_KEY>"
         ]
@@ -2360,14 +2417,22 @@ private struct EditProviderSheet: View {
             env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
         }
 
-        var settings: [String: Any] = ["env": env]
+        settings["env"] = env
         if claudeHideAttribution {
             settings["attribution"] = ["commit": "", "pr": ""]
+        } else {
+            settings.removeValue(forKey: "attribution")
         }
         if claudeAlwaysThinking {
             settings["alwaysThinkingEnabled"] = true
+        } else {
+            settings.removeValue(forKey: "alwaysThinkingEnabled")
         }
         return prettyJSONString(settings)
+    }
+
+    private func buildClaudeCommonConfigPreview() -> String {
+        normalizedClaudeCommonConfigJSON
     }
 
     private func buildCodexAuthPreview() -> String {
@@ -2454,6 +2519,8 @@ private struct EditProviderSheet: View {
             updated.claudeConfig?.hideAttribution = claudeHideAttribution
             updated.claudeConfig?.alwaysThinkingEnabled = claudeAlwaysThinking
             updated.claudeConfig?.enableTeammates = claudeEnableTeammates
+            updated.claudeConfig?.applyCommonConfig = claudeApplyCommonConfig
+            updated.claudeConfig?.commonConfigJSON = claudeApplyCommonConfig ? normalizedClaudeCommonConfigJSON : nil
         case .codex:
             updated.codexConfig?.apiKey = codexApiKey
             updated.codexConfig?.baseUrl = codexBaseUrl.isEmpty ? nil : codexBaseUrl
@@ -2700,6 +2767,60 @@ private struct ProviderConfigBadge: View {
                 Capsule()
                     .fill((tint == .secondary ? Color.primary : tint).opacity(0.1))
             )
+    }
+}
+
+private struct ClaudeCommonConfigControls: View {
+    @Binding var hideAttribution: Bool
+    @Binding var alwaysThinking: Bool
+    @Binding var enableTeammates: Bool
+    @Binding var applyCommonConfig: Bool
+    @Binding var showCommonConfigEditor: Bool
+    let accent: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("常用开关")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .top, spacing: 12) {
+                claudeQuickToggle("隐藏 Attribution", isOn: $hideAttribution)
+                claudeQuickToggle("开启 Thinking", isOn: $alwaysThinking)
+                claudeQuickToggle("启用 Teammates", isOn: $enableTeammates)
+            }
+            .font(.subheadline)
+
+            HStack(alignment: .center, spacing: 12) {
+                Toggle("写入通用配置", isOn: $applyCommonConfig)
+                    .toggleStyle(.checkbox)
+                    .font(.subheadline)
+
+                Button(showCommonConfigEditor ? "收起通用配置" : "编辑通用配置") {
+                    if !applyCommonConfig {
+                        applyCommonConfig = true
+                    }
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        showCommonConfigEditor.toggle()
+                    }
+                }
+                .aimenuActionButtonStyle(density: .compact)
+
+                Spacer(minLength: 0)
+            }
+
+            Text("`hooks` 会和 Hooks 页面共用同一字段，谁最后写入就以谁为准。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .cardSurface(cornerRadius: 12, tint: accent.opacity(0.025))
+    }
+
+    private func claudeQuickToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .toggleStyle(.checkbox)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -2953,6 +3074,28 @@ private func prettyJSONString(_ object: [String: Any]) -> String {
         return "{}"
     }
     return string
+}
+
+private func parsedJSONObjectString(_ text: String) -> [String: Any]? {
+    guard let normalized = text.trimmedNonEmpty,
+          let data = normalized.data(using: .utf8),
+          let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        return nil
+    }
+    return object
+}
+
+private func normalizedJSONObjectString(_ text: String) -> String? {
+    guard let object = parsedJSONObjectString(text) else { return nil }
+    return prettyJSONString(object)
+}
+
+private func extractClaudeCommonConfig(from payload: [String: Any]) -> [String: Any] {
+    var common = payload
+    common.removeValue(forKey: "env")
+    common.removeValue(forKey: "attribution")
+    common.removeValue(forKey: "alwaysThinkingEnabled")
+    return common
 }
 
 private func tomlQuoted(_ value: String) -> String {

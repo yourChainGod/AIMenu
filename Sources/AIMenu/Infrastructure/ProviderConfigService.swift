@@ -94,6 +94,11 @@ actor ProviderConfigService {
         try fileManager.createDirectory(at: settingsPath.deletingLastPathComponent(), withIntermediateDirectories: true)
 
         var settings = loadJSONObject(from: settingsPath)
+        if config.applyCommonConfig == true,
+           let commonConfigJSON = config.commonConfigJSON?.trimmedNonEmpty {
+            let commonObject = try parseJSONObjectString(commonConfigJSON)
+            settings = mergingJSONObject(settings, with: commonObject)
+        }
         var env = (settings["env"] as? [String: Any]) ?? [:]
 
         let claudeKeys = [
@@ -1141,6 +1146,24 @@ actor ProviderConfigService {
         return object
     }
 
+    private func parseJSONObjectString(_ text: String) throws -> [String: Any] {
+        guard let data = text.data(using: .utf8) else {
+            throw AppError.invalidData("Claude 通用配置 JSON 无法读取")
+        }
+
+        let object: Any
+        do {
+            object = try JSONSerialization.jsonObject(with: data)
+        } catch {
+            throw AppError.invalidData("Claude 通用配置 JSON 解析失败")
+        }
+
+        guard let dictionary = object as? [String: Any] else {
+            throw AppError.invalidData("Claude 通用配置需要顶层对象")
+        }
+        return dictionary
+    }
+
     private func writeJSONObject(_ object: [String: Any], to path: URL) throws {
         try fileManager.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
         let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
@@ -1425,6 +1448,14 @@ actor ProviderConfigService {
         } else {
             object.removeValue(forKey: key)
         }
+    }
+
+    private func mergingJSONObject(_ base: [String: Any], with overlay: [String: Any]) -> [String: Any] {
+        var result = base
+        for (key, value) in overlay {
+            result[key] = value
+        }
+        return result
     }
 
     private func readTOML(at path: URL) -> String {
