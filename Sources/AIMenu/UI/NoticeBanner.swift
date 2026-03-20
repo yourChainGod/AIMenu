@@ -6,23 +6,30 @@ struct NoticeBanner: View {
     var body: some View {
         if let notice {
             HStack(spacing: 8) {
-                Image(systemName: iconName(for: notice.style))
-                    .foregroundStyle(accentColor(for: notice.style))
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(accentColor(for: notice.style).opacity(0.12))
+                    .overlay {
+                        Image(systemName: iconName(for: notice.style))
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(accentColor(for: notice.style))
+                    }
+                    .frame(width: 24, height: 24)
                 Text(notice.text)
-                    .font(.subheadline)
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .cardSurface(cornerRadius: 10)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 7)
+            .cardSurface(cornerRadius: 12, tint: accentColor(for: notice.style).opacity(0.04))
             .overlay(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 1.5, style: .continuous)
                     .fill(noticeAccentColor(notice.style))
-                    .frame(width: 3)
-                    .padding(.vertical, 8)
+                    .frame(width: 2.5)
+                    .padding(.vertical, 7)
                     .padding(.leading, 7)
             }
+            .shadow(color: accentColor(for: notice.style).opacity(0.10), radius: 10, x: 0, y: 5)
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }

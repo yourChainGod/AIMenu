@@ -208,10 +208,20 @@ struct AccountsPageView: View {
                 ProgressView(L10n.tr("accounts.loading.message"))
                     .frame(maxWidth: .infinity, minHeight: 180)
             case .empty(let message):
-                EmptyStateView(title: L10n.tr("accounts.empty.title"), message: message)
+                EmptyStateView(
+                    title: L10n.tr("accounts.empty.title"),
+                    message: message,
+                    icon: "person.crop.rectangle.stack",
+                    tint: .mint
+                )
                     .padding(.horizontal, LayoutRules.pagePadding)
             case .error(let message):
-                EmptyStateView(title: L10n.tr("accounts.error.load_failed"), message: message)
+                EmptyStateView(
+                    title: L10n.tr("accounts.error.load_failed"),
+                    message: message,
+                    icon: "exclamationmark.triangle",
+                    tint: .red
+                )
                     .padding(.horizontal, LayoutRules.pagePadding)
             case .content(let accounts):
                 let isOverviewMode = model.areAllAccountsCollapsed

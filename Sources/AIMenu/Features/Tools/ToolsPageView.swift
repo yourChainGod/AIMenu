@@ -424,6 +424,53 @@ struct ToolsPageView: View {
         .help(help ?? title)
     }
 
+    private func workbenchStrip<Content: View>(
+        tint: Color? = nil,
+        minHeight: CGFloat = 0,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 8) {
+            content()
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, minHeight: minHeight == 0 ? nil : minHeight, alignment: .leading)
+        .cardSurface(cornerRadius: 12, tint: tint?.opacity(0.05))
+    }
+
+    private func compactEmptyState(
+        icon: String,
+        title: String,
+        message: String? = nil,
+        tint: Color
+    ) -> some View {
+        VStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(tint.opacity(0.12))
+                .overlay {
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(tint)
+                }
+                .frame(width: 36, height: 36)
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            if let message, !message.isEmpty {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, minHeight: 104)
+        .cardSurface(cornerRadius: 14, tint: tint.opacity(0.05))
+    }
+
     private var hasSkillsSearchQuery: Bool {
         skillsSearchText.trimmedNonEmpty != nil
     }
@@ -773,15 +820,12 @@ struct ToolsPageView: View {
     @ViewBuilder
     private var localConfigContent: some View {
         if model.localConfigBundles.isEmpty {
-            VStack(spacing: 8) {
-                Image(systemName: "folder.badge.gearshape")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.secondary.opacity(0.4))
-                Text("暂无本地配置概览")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+            compactEmptyState(
+                icon: "folder.badge.gearshape",
+                title: "暂无本地配置概览",
+                message: "扫描到配置文件后会在这里汇总显示。",
+                tint: .green
+            )
         } else {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 10)], spacing: 10) {
                 ForEach(model.localConfigBundles) { bundle in
@@ -968,18 +1012,12 @@ struct ToolsPageView: View {
     }
 
     private var mcpEmptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "server.rack")
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary.opacity(0.4))
-            Text("暂未配置 MCP 服务器")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text("可从上方预设、导入或添加自定义服务。")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+        compactEmptyState(
+            icon: "server.rack",
+            title: "暂未配置 MCP 服务器",
+            message: "可从上方预设、导入或添加自定义服务。",
+            tint: .blue
+        )
     }
 
     private var mcpPresetsGrid: some View {
@@ -1293,30 +1331,21 @@ struct ToolsPageView: View {
     @ViewBuilder
     private var promptsContent: some View {
         if isWorkbenchMode {
-            HStack(spacing: 10) {
+            workbenchStrip(tint: .purple) {
                 promptAppPicker
                 ToolsStatusBadge(text: "\(model.prompts.count) 条", tint: .purple)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(Color.purple.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
 
         promptLiveFileBar
 
         if model.prompts.isEmpty {
-            VStack(spacing: 8) {
-                Image(systemName: "text.bubble")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.secondary.opacity(0.4))
-                Text("暂无提示词")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text("点击 + 新建，或点击 ↓ 从文件导入")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+            compactEmptyState(
+                icon: "text.bubble",
+                title: "暂无提示词",
+                message: "点击新建，或从当前应用的文件直接导入。",
+                tint: .purple
+            )
         } else {
             VStack(spacing: 2) {
                 ForEach(model.prompts) { prompt in
@@ -1327,7 +1356,7 @@ struct ToolsPageView: View {
     }
 
     private var promptLiveFileBar: some View {
-        HStack(spacing: 8) {
+        workbenchStrip {
             Label(model.selectedPromptApp.fileName, systemImage: "doc.text")
                 .font(.caption.weight(.medium))
             Text(model.selectedPromptApp.filePath.path)
@@ -1337,9 +1366,6 @@ struct ToolsPageView: View {
                 .truncationMode(.middle)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private func promptRow(_ prompt: Prompt) -> some View {
@@ -1487,7 +1513,7 @@ struct ToolsPageView: View {
     private var hooksContent: some View {
         let hookGroups = groupedClaudeHooks
 
-        HStack(spacing: 8) {
+        workbenchStrip(tint: .indigo) {
             Label("已挂载", systemImage: "point.3.connected.trianglepath.dotted")
                 .font(.caption.weight(.medium))
             ForEach(ProviderAppType.allCases) { app in
@@ -1511,20 +1537,14 @@ struct ToolsPageView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
         if model.claudeHooks.isEmpty {
-            VStack(spacing: 8) {
-                Image(systemName: "point.3.connected.trianglepath.dotted")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.secondary.opacity(0.4))
-                Text("未扫描到 Hooks")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+            compactEmptyState(
+                icon: "point.3.connected.trianglepath.dotted",
+                title: "未扫描到 Hooks",
+                message: "刷新后会读取 Claude、Codex 与 Gemini 的本地 Hooks。",
+                tint: .indigo
+            )
         } else {
             VStack(spacing: 8) {
                 ForEach(hookGroups, id: \.event) { group in
@@ -1721,25 +1741,19 @@ struct ToolsPageView: View {
             }
 
             if hasSkillsSearchQuery && installed.isEmpty && discoverable.isEmpty && !model.skillDiscoveryLoading {
-                VStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 24))
-                        .foregroundStyle(.secondary.opacity(0.45))
-                    Text("没有匹配的技能")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+                compactEmptyState(
+                    icon: "magnifyingglass",
+                    title: "没有匹配的技能",
+                    message: "换个关键词，或者切换到其他筛选试试。",
+                    tint: .orange
+                )
             } else if selectedSkillsFilter == .installed && model.skills.installedSkills.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.secondary.opacity(0.4))
-                    Text("暂未安装技能")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
+                compactEmptyState(
+                    icon: "wand.and.stars",
+                    title: "暂未安装技能",
+                    message: "可以先发现可安装技能，再按应用挂载。",
+                    tint: .orange
+                )
             } else if !installed.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -1910,27 +1924,21 @@ struct ToolsPageView: View {
             }
 
             if model.skillDiscoveryLoading {
-                HStack(spacing: 8) {
+                workbenchStrip(tint: .blue) {
                     ProgressView()
                         .controlSize(.small)
                     Text("正在读取技能仓库…")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             } else if skills.isEmpty {
-                HStack(spacing: 8) {
+                workbenchStrip {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                         .foregroundStyle(.secondary)
                     Text("当前筛选下没有可安装技能")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             } else {
                 VStack(spacing: 2) {
                     ForEach(skills) { skill in

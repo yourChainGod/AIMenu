@@ -42,18 +42,45 @@ struct SectionCard<Content: View, HeaderTrailing: View>: View {
                     Image(systemName: icon)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(iconColor)
-                        .frame(width: 22, height: 22)
-                        .background(iconColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .frame(width: 26, height: 26)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(iconColor.opacity(0.14))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .strokeBorder(iconColor.opacity(0.16), lineWidth: 1)
+                                )
+                        )
                 }
                 Text(title)
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
                 Spacer(minLength: 0)
                 headerTrailing
             }
             content
         }
-        .padding(16)
-        .cardSurface(cornerRadius: LayoutRules.cardRadius)
+        .padding(14)
+        .cardSurface(
+            cornerRadius: LayoutRules.cardRadius,
+            tint: icon == nil ? nil : iconColor.opacity(0.03)
+        )
+        .overlay(alignment: .topLeading) {
+            Circle()
+                .fill(iconColor.opacity(icon == nil ? 0 : 0.12))
+                .frame(width: 84, height: 84)
+                .blur(radius: 24)
+                .offset(x: -16, y: -20)
+                .allowsHitTesting(false)
+        }
+        .overlay(alignment: .top) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(iconColor.opacity(icon == nil ? 0 : 0.32))
+                .frame(height: 2)
+                .padding(.horizontal, 16)
+                .padding(.top, 7)
+                .allowsHitTesting(false)
+        }
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
 }
 

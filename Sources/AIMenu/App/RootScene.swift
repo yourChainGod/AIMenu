@@ -76,14 +76,17 @@ struct RootScene: View {
             panelChromeBackground
 
             VStack(spacing: 0) {
+                panelWindowHandle
+                    .padding(.top, 10)
+
                 panelHeader
                     .padding(.horizontal, 12)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
 
-                activePage
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .padding(.bottom, 8)
+                pageStage
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 10)
             }
         }
         .padding(8)
@@ -131,71 +134,133 @@ struct RootScene: View {
         .animation(.spring(response: 0.26, dampingFraction: 0.86), value: selectedTab)
     }
 
+    private var panelWindowHandle: some View {
+        Capsule()
+            .fill(Color.white.opacity(0.52))
+            .frame(width: 68, height: 3.5)
+            .overlay {
+                Capsule()
+                    .strokeBorder(currentTabAccent.opacity(0.18), lineWidth: 0.8)
+            }
+    }
+
     private var panelHeader: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    currentTabAccent.opacity(0.28),
-                                    currentTabAccent.opacity(0.12)
+                                    currentTabAccent.opacity(0.24),
+                                    currentTabAccent.opacity(0.10)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
                     Image(systemName: "drop.halffull")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(currentTabAccent)
                 }
-                .frame(width: 42, height: 42)
+                .frame(width: 38, height: 38)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("AIMenu")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
-                    Text(selectedTab.toolbarTitle)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.primary)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text("AIMenu")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+
+                        Text(selectedTab.toolbarTitle)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                    }
+
                     Text(currentTabSubtitle)
-                        .font(.caption)
+                        .font(.caption2.weight(.medium))
                         .foregroundStyle(.secondary)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(Color.primary.opacity(0.05), in: Capsule())
                         .lineLimit(1)
                 }
 
                 Spacer(minLength: 0)
 
-                Text("\(AppTab.allCases.firstIndex(of: selectedTab).map { $0 + 1 } ?? 1)/\(AppTab.allCases.count)")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(currentTabAccent)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(currentTabAccent.opacity(0.12), in: Capsule())
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("\(AppTab.allCases.firstIndex(of: selectedTab).map { $0 + 1 } ?? 1)/\(AppTab.allCases.count)")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(currentTabAccent)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(currentTabAccent.opacity(0.12), in: Capsule())
+
+                    Circle()
+                        .fill(currentTabAccent)
+                        .frame(width: 6, height: 6)
+                        .shadow(color: currentTabAccent.opacity(0.45), radius: 8, x: 0, y: 0)
+                }
             }
 
             AppTabToolbarSwitcher(selection: $selectedTab, tabs: AppTab.allCases, tint: currentTabAccent)
                 .frame(maxWidth: LayoutRules.tabSwitcherMaxWidth)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
-        .padding(14)
+        .padding(12)
         .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.regularMaterial)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .strokeBorder(Color.white.opacity(0.20), lineWidth: 1)
                 )
                 .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(currentTabAccent.opacity(0.08))
-                        .blur(radius: 18)
+                        .blur(radius: 16)
                 )
         }
+    }
+
+    private var pageStage: some View {
+        ZStack(alignment: .top) {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.thinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                )
+
+            Circle()
+                .fill(currentTabAccent.opacity(0.10))
+                .frame(width: 180, height: 180)
+                .blur(radius: 40)
+                .offset(x: -120, y: -90)
+
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            currentTabAccent.opacity(0.72),
+                            currentTabAccent.opacity(0.08),
+                            Color.clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 3)
+                .padding(.top, 10)
+                .padding(.horizontal, 24)
+
+            activePage
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
     }
 
     private var panelChromeBackground: some View {
@@ -230,6 +295,21 @@ struct RootScene: View {
 
             RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .inset(by: 1.5)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.30),
+                            Color.clear,
+                            currentTabAccent.opacity(0.12)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
         }
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .shadow(color: .black.opacity(0.16), radius: 26, x: 0, y: 16)

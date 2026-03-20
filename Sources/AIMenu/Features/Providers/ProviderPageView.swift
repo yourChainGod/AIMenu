@@ -74,7 +74,9 @@ struct ProviderPageView: View {
                 } else if model.providers.isEmpty {
                     EmptyStateView(
                         title: "暂无提供商",
-                        message: "添加提供商以开始使用 \(model.selectedApp.displayName)。"
+                        message: "添加提供商以开始使用 \(model.selectedApp.displayName)。",
+                        icon: model.selectedApp.iconName,
+                        tint: pageAccent
                     )
                     .padding(.horizontal, LayoutRules.pagePadding)
                 } else {
