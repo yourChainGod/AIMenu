@@ -234,21 +234,7 @@ final class AccountsCoordinatorTests: XCTestCase {
     }
 }
 
-private final class InMemoryAccountsStoreRepository: AccountsStoreRepository, @unchecked Sendable {
-    private var store: AccountsStore
-
-    init(store: AccountsStore) {
-        self.store = store
-    }
-
-    func loadStore() throws -> AccountsStore {
-        store
-    }
-
-    func saveStore(_ store: AccountsStore) throws {
-        self.store = store
-    }
-}
+// InMemoryAccountsStoreRepository is defined in Helpers/SharedTestDoubles.swift
 
 private final class CountingUsageService: UsageService, @unchecked Sendable {
     private(set) var callCount = 0
@@ -403,13 +389,7 @@ private final class RecordingCodexCLIService: CodexCLIServiceProtocol, @unchecke
     }
 }
 
-private final class StubEditorAppService: EditorAppServiceProtocol, @unchecked Sendable {
-    func listInstalledApps() -> [InstalledEditorApp] { [] }
-    func restartSelectedApps(_ targets: [EditorAppID]) async -> (restarted: [EditorAppID], error: String?) {
-        _ = targets
-        return ([], nil)
-    }
-}
+// StubEditorAppService is defined in Helpers/SharedTestDoubles.swift
 
 private final class RecordingEditorAppService: EditorAppServiceProtocol, @unchecked Sendable {
     private(set) var restartCallCount = 0

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(Darwin)
+import Darwin
+#endif
 
 #if os(macOS)
 actor CloudflaredService: CloudflaredServiceProtocol {
@@ -174,11 +177,11 @@ actor CloudflaredService: CloudflaredServiceProtocol {
         cleanupTunnelID = createdNamedTunnel?.id
 
         if input.mode == .quick {
-            for _ in 0..<20 {
+            for _ in 0..<NetworkConfig.serviceReadyMaxRetries {
                 if parseQuickTunnelPublicURL(from: logFile) != nil {
                     break
                 }
-                try? await Task.sleep(for: .milliseconds(300))
+                try? await Task.sleep(for: .milliseconds(NetworkConfig.cloudflaredRetryIntervalMs))
             }
         }
 
@@ -207,11 +210,22 @@ actor CloudflaredService: CloudflaredServiceProtocol {
         if let process {
             if process.isRunning {
                 process.terminate()
-                for _ in 0..<20 where process.isRunning {
-                    try? await Task.sleep(for: .milliseconds(100))
+                for _ in 0..<NetworkConfig.serviceReadyMaxRetries where process.isRunning {
+                    try? await Task.sleep(for: .milliseconds(NetworkConfig.processTermPollIntervalMs))
                 }
                 if process.isRunning {
                     process.interrupt()
+                    // Wait up to 5 more seconds for interrupt to take effect
+                    for _ in 0..<50 where process.isRunning {
+                        try? await Task.sleep(for: .milliseconds(100))
+                    }
+                }
+                if process.isRunning {
+                    // Last resort: SIGKILL and reap to prevent zombie
+                    #if canImport(Darwin)
+                    _ = kill(process.processIdentifier, SIGKILL)
+                    #endif
+                    process.waitUntilExit()
                 }
             }
         }

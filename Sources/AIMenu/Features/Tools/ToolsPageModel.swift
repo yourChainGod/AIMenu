@@ -4,7 +4,10 @@ import Combine
 @MainActor
 final class ToolsPageModel: ObservableObject {
     private let defaultTrackedPorts = [8002, 8787]
-    private let coordinator: ProviderCoordinator
+    private let providerCoordinator: ProviderCoordinator
+    private let mcpCoordinator: MCPCoordinator
+    private let promptCoordinator: PromptCoordinator
+    private let skillCoordinator: SkillCoordinator
     private let cursor2APIService: Cursor2APIServiceProtocol
     private let portService: PortManagementServiceProtocol
     private let noticeScheduler = NoticeAutoDismissScheduler()
@@ -33,11 +36,17 @@ final class ToolsPageModel: ObservableObject {
     }
 
     init(
-        coordinator: ProviderCoordinator,
+        providerCoordinator: ProviderCoordinator,
+        mcpCoordinator: MCPCoordinator,
+        promptCoordinator: PromptCoordinator,
+        skillCoordinator: SkillCoordinator,
         cursor2APIService: Cursor2APIServiceProtocol,
         portService: PortManagementServiceProtocol
     ) {
-        self.coordinator = coordinator
+        self.providerCoordinator = providerCoordinator
+        self.mcpCoordinator = mcpCoordinator
+        self.promptCoordinator = promptCoordinator
+        self.skillCoordinator = skillCoordinator
         self.cursor2APIService = cursor2APIService
         self.portService = portService
     }
@@ -46,7 +55,7 @@ final class ToolsPageModel: ObservableObject {
         loading = true
         defer { loading = false }
         do {
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
             await refreshManagedToolStatus()
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -57,11 +66,11 @@ final class ToolsPageModel: ObservableObject {
         loading = true
         defer { loading = false }
         do {
-            mcpServers = try await coordinator.listMCPServers()
-            prompts = try await coordinator.listPrompts(for: selectedPromptApp)
-            claudeHooks = try await coordinator.listClaudeHooks()
-            var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.listInstalledSkills()
+            mcpServers = try await mcpCoordinator.listMCPServers()
+            prompts = try await promptCoordinator.listPrompts(for: selectedPromptApp)
+            claudeHooks = try await providerCoordinator.listClaudeHooks()
+            var skillStore = try await skillCoordinator.loadSkillStore()
+            skillStore.installedSkills = try await skillCoordinator.listInstalledSkills()
             skills = skillStore
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -73,9 +82,9 @@ final class ToolsPageModel: ObservableObject {
     func addMCPFromPreset(_ preset: MCPPreset) async {
         let server = preset.makeServer()
         do {
-            try await coordinator.addMCPServer(server)
-            mcpServers = try await coordinator.listMCPServers()
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            try await mcpCoordinator.addMCPServer(server)
+            mcpServers = try await mcpCoordinator.listMCPServers()
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.mcp_added_format", server.name))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -85,14 +94,14 @@ final class ToolsPageModel: ObservableObject {
     func saveMCPServer(_ server: MCPServer) async {
         do {
             if mcpServers.contains(where: { $0.id == server.id }) {
-                try await coordinator.updateMCPServer(server)
+                try await mcpCoordinator.updateMCPServer(server)
                 notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.mcp_updated"))
             } else {
-                try await coordinator.addMCPServer(server)
+                try await mcpCoordinator.addMCPServer(server)
                 notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.mcp_server_added"))
             }
-            mcpServers = try await coordinator.listMCPServers()
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            mcpServers = try await mcpCoordinator.listMCPServers()
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -100,9 +109,9 @@ final class ToolsPageModel: ObservableObject {
 
     func deleteMCPServer(id: String) async {
         do {
-            try await coordinator.deleteMCPServer(id: id)
-            mcpServers = try await coordinator.listMCPServers()
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            try await mcpCoordinator.deleteMCPServer(id: id)
+            mcpServers = try await mcpCoordinator.listMCPServers()
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.mcp_removed"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -111,8 +120,8 @@ final class ToolsPageModel: ObservableObject {
 
     func importLiveMCPServers() async {
         do {
-            mcpServers = try await coordinator.importLiveMCPServers()
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            mcpServers = try await mcpCoordinator.importLiveMCPServers()
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.mcp_imported"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -121,9 +130,9 @@ final class ToolsPageModel: ObservableObject {
 
     func toggleMCPApp(serverId: String, app: ProviderAppType, enabled: Bool) async {
         do {
-            try await coordinator.toggleMCPApp(serverId: serverId, app: app, enabled: enabled)
-            mcpServers = try await coordinator.listMCPServers()
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            try await mcpCoordinator.toggleMCPApp(serverId: serverId, app: app, enabled: enabled)
+            mcpServers = try await mcpCoordinator.listMCPServers()
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -133,7 +142,7 @@ final class ToolsPageModel: ObservableObject {
 
     func refreshLocalConfigBundles(showNotice: Bool = true) async {
         do {
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
             if showNotice {
                 notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.local_config_refreshed"))
             }
@@ -147,7 +156,7 @@ final class ToolsPageModel: ObservableObject {
     func switchPromptApp(_ app: PromptAppType) async {
         selectedPromptApp = app
         do {
-            prompts = try await coordinator.listPrompts(for: app)
+            prompts = try await promptCoordinator.listPrompts(for: app)
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -165,8 +174,8 @@ final class ToolsPageModel: ObservableObject {
             updatedAt: now
         )
         do {
-            try await coordinator.addPrompt(prompt)
-            prompts = try await coordinator.listPrompts(for: selectedPromptApp)
+            try await promptCoordinator.addPrompt(prompt)
+            prompts = try await promptCoordinator.listPrompts(for: selectedPromptApp)
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.prompt_added"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -175,8 +184,8 @@ final class ToolsPageModel: ObservableObject {
 
     func updatePrompt(_ prompt: Prompt) async {
         do {
-            try await coordinator.updatePrompt(prompt)
-            prompts = try await coordinator.listPrompts(for: selectedPromptApp)
+            try await promptCoordinator.updatePrompt(prompt)
+            prompts = try await promptCoordinator.listPrompts(for: selectedPromptApp)
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.prompt_updated"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -185,9 +194,9 @@ final class ToolsPageModel: ObservableObject {
 
     func activatePrompt(id: String) async {
         do {
-            try await coordinator.activatePrompt(id: id, appType: selectedPromptApp)
-            prompts = try await coordinator.listPrompts(for: selectedPromptApp)
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            try await promptCoordinator.activatePrompt(id: id, appType: selectedPromptApp)
+            prompts = try await promptCoordinator.listPrompts(for: selectedPromptApp)
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.prompt_activated_format", selectedPromptApp.fileName))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -196,8 +205,8 @@ final class ToolsPageModel: ObservableObject {
 
     func deletePrompt(id: String) async {
         do {
-            try await coordinator.deletePrompt(id: id)
-            prompts = try await coordinator.listPrompts(for: selectedPromptApp)
+            try await promptCoordinator.deletePrompt(id: id)
+            prompts = try await promptCoordinator.listPrompts(for: selectedPromptApp)
             notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.prompt_deleted"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -206,10 +215,10 @@ final class ToolsPageModel: ObservableObject {
 
     func importLivePrompt() async {
         do {
-            if let imported = try await coordinator.importLivePrompt(for: selectedPromptApp) {
-                try await coordinator.addPrompt(imported)
-                prompts = try await coordinator.listPrompts(for: selectedPromptApp)
-                localConfigBundles = try await coordinator.listLocalConfigBundles()
+            if let imported = try await promptCoordinator.importLivePrompt(for: selectedPromptApp) {
+                try await promptCoordinator.addPrompt(imported)
+                prompts = try await promptCoordinator.listPrompts(for: selectedPromptApp)
+                localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
                 notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.prompt_imported_format", selectedPromptApp.fileName))
             } else {
                 notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.prompt_not_found_format", selectedPromptApp.fileName))
@@ -223,8 +232,8 @@ final class ToolsPageModel: ObservableObject {
 
     func refreshClaudeHooks() async {
         do {
-            claudeHooks = try await coordinator.listClaudeHooks()
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            claudeHooks = try await providerCoordinator.listClaudeHooks()
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.hooks_refreshed"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -233,9 +242,9 @@ final class ToolsPageModel: ObservableObject {
 
     func toggleHookApp(hookIdentity: String, app: ProviderAppType, enabled: Bool) async {
         do {
-            try await coordinator.toggleHookApp(hookIdentity: hookIdentity, app: app, enabled: enabled)
-            claudeHooks = try await coordinator.listClaudeHooks()
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            try await providerCoordinator.toggleHookApp(hookIdentity: hookIdentity, app: app, enabled: enabled)
+            claudeHooks = try await providerCoordinator.listClaudeHooks()
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -245,8 +254,8 @@ final class ToolsPageModel: ObservableObject {
 
     func refreshSkillsFromDisk() async {
         do {
-            var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
+            var skillStore = try await skillCoordinator.loadSkillStore()
+            skillStore.installedSkills = try await skillCoordinator.syncInstalledSkillsFromDisk()
             skills = skillStore
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.skills_synced"))
         } catch {
@@ -258,7 +267,7 @@ final class ToolsPageModel: ObservableObject {
         skillDiscoveryLoading = true
         defer { skillDiscoveryLoading = false }
         do {
-            discoverableSkills = try await coordinator.discoverAvailableSkills()
+            discoverableSkills = try await skillCoordinator.discoverAvailableSkills()
             refreshDiscoverableSkillPreviewIfNeeded()
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.discoverable_skills_loaded"))
         } catch {
@@ -270,11 +279,11 @@ final class ToolsPageModel: ObservableObject {
         loading = true
         defer { loading = false }
         do {
-            try await coordinator.installSkill(skill)
-            var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.listInstalledSkills()
+            try await skillCoordinator.installSkill(skill)
+            var skillStore = try await skillCoordinator.loadSkillStore()
+            skillStore.installedSkills = try await skillCoordinator.listInstalledSkills()
             skills = skillStore
-            discoverableSkills = try await coordinator.discoverAvailableSkills()
+            discoverableSkills = try await skillCoordinator.discoverAvailableSkills()
             refreshDiscoverableSkillPreviewIfNeeded()
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.skill_installed_format", skill.name))
         } catch {
@@ -306,8 +315,8 @@ final class ToolsPageModel: ObservableObject {
                 isEnabled: true,
                 isDefault: false
             )
-            try await coordinator.addSkillRepo(repo)
-            skills = try await coordinator.loadSkillStore()
+            try await skillCoordinator.addSkillRepo(repo)
+            skills = try await skillCoordinator.loadSkillStore()
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.skill_repo_added"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
@@ -316,8 +325,8 @@ final class ToolsPageModel: ObservableObject {
 
     func removeSkillRepo(_ repo: SkillRepo) async {
         do {
-            try await coordinator.removeSkillRepo(owner: repo.owner, name: repo.name)
-            skills = try await coordinator.loadSkillStore()
+            try await skillCoordinator.removeSkillRepo(owner: repo.owner, name: repo.name)
+            skills = try await skillCoordinator.loadSkillStore()
             discoverableSkills.removeAll {
                 $0.repoOwner.caseInsensitiveCompare(repo.owner) == .orderedSame &&
                     $0.repoName.caseInsensitiveCompare(repo.name) == .orderedSame
@@ -330,11 +339,11 @@ final class ToolsPageModel: ObservableObject {
 
     func setSkillRepoEnabled(_ repo: SkillRepo, enabled: Bool) async {
         do {
-            try await coordinator.setSkillRepoEnabled(owner: repo.owner, name: repo.name, enabled: enabled)
-            skills = try await coordinator.loadSkillStore()
+            try await skillCoordinator.setSkillRepoEnabled(owner: repo.owner, name: repo.name, enabled: enabled)
+            skills = try await skillCoordinator.loadSkillStore()
 
             if !discoverableSkills.isEmpty || !enabled {
-                discoverableSkills = try await coordinator.discoverAvailableSkills()
+                discoverableSkills = try await skillCoordinator.discoverAvailableSkills()
                 refreshDiscoverableSkillPreviewIfNeeded()
             }
 
@@ -350,12 +359,12 @@ final class ToolsPageModel: ObservableObject {
 
     func uninstallSkill(directory: String) async {
         do {
-            try await coordinator.uninstallSkill(directory: directory)
-            var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.listInstalledSkills()
+            try await skillCoordinator.uninstallSkill(directory: directory)
+            var skillStore = try await skillCoordinator.loadSkillStore()
+            skillStore.installedSkills = try await skillCoordinator.listInstalledSkills()
             skills = skillStore
             if !discoverableSkills.isEmpty {
-                discoverableSkills = try await coordinator.discoverAvailableSkills()
+                discoverableSkills = try await skillCoordinator.discoverAvailableSkills()
                 refreshDiscoverableSkillPreviewIfNeeded()
             }
             notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.skill_removed"))
@@ -366,12 +375,12 @@ final class ToolsPageModel: ObservableObject {
 
     func toggleInstalledSkillApp(directory: String, app: ProviderAppType, enabled: Bool) async {
         do {
-            try await coordinator.toggleSkillApp(directory: directory, app: app, enabled: enabled)
-            var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.listInstalledSkills()
+            try await skillCoordinator.toggleSkillApp(directory: directory, app: app, enabled: enabled)
+            var skillStore = try await skillCoordinator.loadSkillStore()
+            skillStore.installedSkills = try await skillCoordinator.listInstalledSkills()
             skills = skillStore
             if !discoverableSkills.isEmpty {
-                discoverableSkills = try await coordinator.discoverAvailableSkills()
+                discoverableSkills = try await skillCoordinator.discoverAvailableSkills()
                 refreshDiscoverableSkillPreviewIfNeeded()
             }
         } catch {
@@ -384,7 +393,7 @@ final class ToolsPageModel: ObservableObject {
         defer { previewingDiscoverableSkillKey = nil }
 
         do {
-            previewingDiscoverableSkillDocument = try await coordinator.readDiscoverableSkillDocument(skill)
+            previewingDiscoverableSkillDocument = try await skillCoordinator.readDiscoverableSkillDocument(skill)
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -392,7 +401,7 @@ final class ToolsPageModel: ObservableObject {
 
     func openInstalledSkill(directory: String) async {
         do {
-            editingInstalledSkillDocument = try await coordinator.readInstalledSkillDocument(directory: directory)
+            editingInstalledSkillDocument = try await skillCoordinator.readInstalledSkillDocument(directory: directory)
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
@@ -400,9 +409,9 @@ final class ToolsPageModel: ObservableObject {
 
     func saveInstalledSkill(directory: String, content: String) async {
         do {
-            editingInstalledSkillDocument = try await coordinator.updateInstalledSkillContent(directory: directory, content: content)
-            var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.listInstalledSkills()
+            editingInstalledSkillDocument = try await skillCoordinator.updateInstalledSkillContent(directory: directory, content: content)
+            var skillStore = try await skillCoordinator.loadSkillStore()
+            skillStore.installedSkills = try await skillCoordinator.listInstalledSkills()
             skills = skillStore
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.skill_saved"))
         } catch {
@@ -461,8 +470,8 @@ final class ToolsPageModel: ObservableObject {
             guard cursor2APIStatus.running else {
                 throw AppError.invalidData(L10n.tr("error.tools.cursor2api_start_first"))
             }
-            _ = try await coordinator.upsertManagedClaudeCursor2APIProvider(from: cursor2APIStatus)
-            localConfigBundles = try await coordinator.listLocalConfigBundles()
+            _ = try await providerCoordinator.upsertManagedClaudeCursor2APIProvider(from: cursor2APIStatus)
+            localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.cursor2api_applied"))
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)

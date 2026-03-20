@@ -26,7 +26,7 @@ struct PublicAccessSection: View {
                 Spacer(minLength: 0)
 
                 CollapseChevronButton(isExpanded: model.cloudflaredExpanded) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AnimationPreset.quick) {
                         model.cloudflaredSectionExpanded.toggle()
                     }
                 }

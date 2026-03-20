@@ -18,7 +18,7 @@ struct ProviderPageView: View {
                 .allowsHitTesting(!hasActiveModal)
 
             if let addingPreset {
-                providerModal(accent: model.selectedApp.formAccent) {
+                ModalOverlay(accent: model.selectedApp.formAccent, onDismiss: closeAddProviderSheet) {
                     AddProviderSheet(
                         appType: model.selectedApp,
                         initialPreset: addingPreset,
@@ -29,7 +29,7 @@ struct ProviderPageView: View {
                     )
                 }
             } else if let editing = model.editingProvider {
-                providerModal(accent: editing.appType.formAccent) {
+                ModalOverlay(accent: editing.appType.formAccent, onDismiss: { model.editingProvider = nil }) {
                     EditProviderSheet(
                         provider: editing,
                         onSave: { updated in
@@ -51,7 +51,7 @@ struct ProviderPageView: View {
                 addingPreset = nil
             }
         }
-        .animation(.spring(response: 0.28, dampingFraction: 0.84), value: hasActiveModal)
+        .animation(AnimationPreset.sheet, value: hasActiveModal)
     }
 
     private var pageContent: some View {
@@ -93,39 +93,6 @@ struct ProviderPageView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    @ViewBuilder
-    private func providerModal<Content: View>(
-        accent: Color,
-        @ViewBuilder content: @escaping () -> Content
-    ) -> some View {
-        GeometryReader { geometry in
-            ZStack {
-                Color.black.opacity(0.24)
-                    .ignoresSafeArea()
-                    .contentShape(Rectangle())
-                    .onTapGesture {}
-
-                ProviderModalPanel(accent: accent) {
-                    content()
-                }
-                .frame(
-                    width: min(max(420, geometry.size.width - 28), 540),
-                    height: max(460, geometry.size.height - 28)
-                )
-                .padding(.horizontal, 14)
-                .padding(.top, modalTopInset(for: geometry.size.height))
-                .padding(.bottom, 14)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .transition(.move(edge: .top).combined(with: .scale(scale: 0.97)).combined(with: .opacity))
-            }
-            .zIndex(20)
-        }
-    }
-
-    private func modalTopInset(for height: CGFloat) -> CGFloat {
-        min(28, max(8, height * 0.04))
-    }
-
     // MARK: - Toolbar (App Picker + Actions)
 
     private var currentProvider: Provider? {
@@ -141,7 +108,7 @@ struct ProviderPageView: View {
             if let currentProvider {
                 HStack(spacing: 12) {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(pageAccent.opacity(0.10))
+                        .fill(pageAccent.opacity(OpacityScale.muted))
                         .overlay {
                             Image(systemName: model.selectedApp.iconName)
                                 .font(.system(size: 17, weight: .semibold))
@@ -153,7 +120,7 @@ struct ProviderPageView: View {
                         HStack(spacing: 8) {
                             Text(model.selectedApp.displayName)
                                 .font(.headline.weight(.semibold))
-                            ProviderConfigBadge(text: L10n.tr("providers.badge.managed"), tint: .mint)
+                            UnifiedBadge(text: L10n.tr("providers.badge.managed"), tint: .mint)
                         }
 
                         Text(currentProvider.name)
@@ -163,11 +130,11 @@ struct ProviderPageView: View {
 
                         HStack(spacing: 6) {
                             if let host = providerEndpointHost(currentProvider) {
-                                providerFeatureChip(text: host, tint: .secondary)
+                                UnifiedBadge(text: host, tint: .secondary, density: .compact)
                             }
 
                             if let modelName = providerModelName(currentProvider) {
-                                providerFeatureChip(text: modelName, tint: .accentColor)
+                                UnifiedBadge(text: modelName, tint: .accentColor, density: .compact)
                             }
                         }
                     }
@@ -175,7 +142,7 @@ struct ProviderPageView: View {
             }
         }
         .padding(12)
-        .cardSurface(cornerRadius: 14, tint: pageAccent.opacity(0.035))
+        .cardSurface(cornerRadius: 14, tint: pageAccent.opacity(OpacityScale.faint))
     }
 
     // MARK: - Provider Row
@@ -187,7 +154,7 @@ struct ProviderPageView: View {
 
         HStack(alignment: .center, spacing: 10) {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill((provider.isCurrent ? rowAccent : Color.primary).opacity(provider.isCurrent ? 0.16 : 0.05))
+                .fill((provider.isCurrent ? rowAccent : Color.primary).opacity(provider.isCurrent ? OpacityScale.medium : OpacityScale.subtle))
                 .overlay {
                     Image(systemName: provider.displayIcon)
                         .font(.system(size: 13, weight: .semibold))
@@ -207,22 +174,22 @@ struct ProviderPageView: View {
                             .foregroundStyle(.mint)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(Color.mint.opacity(0.12), in: Capsule())
+                            .background(Color.mint.opacity(OpacityScale.muted), in: Capsule())
                     }
                 }
 
                 HStack(spacing: 6) {
                     if let modelName = providerModelName(provider) {
-                        providerFeatureChip(text: modelName, tint: .accentColor)
+                        UnifiedBadge(text: modelName, tint: .accentColor, density: .compact)
                     }
                     if let host = providerEndpointHost(provider) {
-                        providerFeatureChip(text: host, tint: .secondary)
+                        UnifiedBadge(text: host, tint: .secondary, density: .compact)
                     }
                     if provider.proxyConfig?.enabled == true {
-                        providerFeatureChip(text: L10n.tr("providers.badge.proxy"), tint: .orange)
+                        UnifiedBadge(text: L10n.tr("providers.badge.proxy"), tint: .orange, density: .compact)
                     }
                     if let billing = providerBillingSummary(provider) {
-                        providerFeatureChip(text: billing, tint: .purple)
+                        UnifiedBadge(text: billing, tint: .purple, density: .compact)
                     }
                 }
             }
@@ -269,22 +236,22 @@ struct ProviderPageView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(
                     provider.isCurrent
-                        ? rowAccent.opacity(isHovered ? 0.10 : 0.065)
-                        : Color.primary.opacity(isHovered ? 0.04 : 0.018)
+                        ? rowAccent.opacity(isHovered ? OpacityScale.muted : OpacityScale.subtle)
+                        : Color.primary.opacity(isHovered ? OpacityScale.faint : OpacityScale.ghost)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .strokeBorder(
                             provider.isCurrent
-                                ? rowAccent.opacity(0.16)
-                                : Color.primary.opacity(isHovered ? 0.08 : 0.04),
+                                ? rowAccent.opacity(OpacityScale.medium)
+                                : Color.primary.opacity(isHovered ? OpacityScale.muted : OpacityScale.faint),
                             lineWidth: 1
                         )
                 )
         )
         .contentShape(Rectangle())
         .onHover { hoveredProvider = $0 ? provider.id : nil }
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .animation(AnimationPreset.snappy, value: isHovered)
     }
 
     private func providerTinyButton(icon: String, tint: Color, tooltip: String, action: @escaping () -> Void) -> some View {
@@ -295,28 +262,15 @@ struct ProviderPageView: View {
                 .frame(width: 22, height: 22)
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(tint == .secondary ? Color.primary.opacity(0.05) : tint.opacity(0.08))
+                        .fill(tint == .secondary ? Color.primary.opacity(OpacityScale.subtle) : tint.opacity(OpacityScale.muted))
                         .overlay(
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.10), lineWidth: 1)
+                                .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(OpacityScale.muted), lineWidth: 1)
                         )
                 )
         }
         .buttonStyle(.plain)
         .help(tooltip)
-    }
-
-    private func providerFeatureChip(text: String, tint: Color) -> some View {
-        Text(text)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(tint == .secondary ? .secondary : tint)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(
-                Capsule()
-                    .fill((tint == .secondary ? Color.primary : tint).opacity(0.06))
-            )
-            .lineLimit(1)
     }
 
     private func providerDetailRow(label: String, value: String) -> some View {
@@ -446,67 +400,5 @@ struct ProviderPageView: View {
     private func closeAddProviderSheet() {
         model.isAddingProvider = false
         addingPreset = nil
-    }
-}
-
-private struct ProviderModalPanel<Content: View>: View {
-    let accent: Color
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(spacing: 0) {
-            content
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color(nsColor: .windowBackgroundColor).opacity(0.97))
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.14),
-                                accent.opacity(0.045),
-                                Color.white.opacity(0.02)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                VStack(spacing: 0) {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.24),
-                                    Color.white.opacity(0.02),
-                                    Color.clear
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(height: 110)
-                    Spacer(minLength: 0)
-                }
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.28),
-                                Color.white.opacity(0.14),
-                                Color.black.opacity(0.06)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: accent.opacity(0.12), radius: 16, x: 0, y: 6)
-        .shadow(color: .black.opacity(0.14), radius: 28, x: 0, y: 14)
     }
 }

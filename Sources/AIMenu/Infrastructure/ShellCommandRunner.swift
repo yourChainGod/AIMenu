@@ -58,7 +58,7 @@ enum CommandRunner {
                 if Date() >= deadline {
                     process.terminate()
 
-                    let forceKillDeadline = Date().addingTimeInterval(1.2)
+                    let forceKillDeadline = Date().addingTimeInterval(NetworkConfig.processKillGraceSeconds)
                     while process.isRunning, Date() < forceKillDeadline {
                         Thread.sleep(forTimeInterval: 0.05)
                     }
@@ -72,6 +72,8 @@ enum CommandRunner {
                         while process.isRunning, Date() < settleDeadline {
                             Thread.sleep(forTimeInterval: 0.05)
                         }
+                        // Reap child process to prevent zombies after SIGKILL
+                        process.waitUntilExit()
                     }
 
                     let command = "\(launchPath) \(arguments.joined(separator: " "))"

@@ -259,7 +259,7 @@ final class OpencodeAuthSyncServiceTests: XCTestCase {
             refreshToken: "broken-refresh",
             accountID: "acct_fail"
         ))) { error in
-            guard case let AppError.io(message) = error else {
+            guard case let AppError.io(message, _) = error else {
                 return XCTFail("Expected AppError.io, got \(error)")
             }
             XCTAssertTrue(message.contains(authPath.path))

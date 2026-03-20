@@ -335,6 +335,32 @@ struct ApiProxyStatus: Codable, Equatable {
     )
 }
 
+extension ApiProxyStatus {
+    enum ProxyState: Equatable {
+        case idle
+        case running(port: Int, baseURL: String)
+        case error(String)
+    }
+
+    var state: ProxyState {
+        if let error = lastError?.trimmedNonEmpty, !running {
+            return .error(error)
+        }
+        if running, let port = port, let baseURL = baseURL?.trimmedNonEmpty {
+            return .running(port: port, baseURL: baseURL)
+        }
+        return .idle
+    }
+
+    var isReady: Bool {
+        running && port != nil && baseURL != nil && apiKey != nil
+    }
+
+    var hasError: Bool {
+        lastError?.trimmedNonEmpty != nil
+    }
+}
+
 enum CloudflaredTunnelMode: String, Codable, CaseIterable {
     case quick
     case named
@@ -376,6 +402,36 @@ struct CloudflaredStatus: Codable, Equatable {
     )
 }
 
+extension CloudflaredStatus {
+    enum TunnelState: Equatable {
+        case notInstalled
+        case installed
+        case running(publicURL: String?, mode: CloudflaredTunnelMode)
+        case error(String)
+    }
+
+    var state: TunnelState {
+        if let error = lastError?.trimmedNonEmpty, !running {
+            return .error(error)
+        }
+        if running {
+            return .running(publicURL: publicURL, mode: tunnelMode ?? .quick)
+        }
+        if installed {
+            return .installed
+        }
+        return .notInstalled
+    }
+
+    var isReadyToStart: Bool {
+        installed && !running
+    }
+
+    var hasError: Bool {
+        lastError?.trimmedNonEmpty != nil
+    }
+}
+
 struct RemoteProxyStatus: Codable, Equatable {
     var installed: Bool
     var serviceInstalled: Bool
@@ -386,6 +442,36 @@ struct RemoteProxyStatus: Codable, Equatable {
     var baseURL: String
     var apiKey: String?
     var lastError: String?
+}
+
+extension RemoteProxyStatus {
+    enum RemoteState: Equatable {
+        case notInstalled
+        case installed
+        case serviceReady
+        case running(pid: Int?, baseURL: String)
+        case error(String)
+    }
+
+    var state: RemoteState {
+        if let error = lastError?.trimmedNonEmpty, !running {
+            return .error(error)
+        }
+        if running {
+            return .running(pid: pid, baseURL: baseURL)
+        }
+        if serviceInstalled {
+            return .serviceReady
+        }
+        if installed {
+            return .installed
+        }
+        return .notInstalled
+    }
+
+    var hasError: Bool {
+        lastError?.trimmedNonEmpty != nil
+    }
 }
 
 struct ProxyControlSnapshot: Codable, Equatable {
@@ -404,6 +490,19 @@ struct ProxyControlSnapshot: Codable, Equatable {
     var remoteLogs: [String: String]
     var lastHandledCommandID: String?
     var lastCommandError: String?
+}
+
+extension ProxyControlSnapshot {
+    var hasAnyError: Bool {
+        proxyStatus.hasError
+            || cloudflaredStatus.hasError
+            || lastCommandError?.trimmedNonEmpty != nil
+            || remoteStatuses.values.contains(where: \.hasError)
+    }
+
+    var allRunning: Bool {
+        proxyStatus.running && cloudflaredStatus.running
+    }
 }
 
 enum ProxyControlCommandKind: String, Codable {

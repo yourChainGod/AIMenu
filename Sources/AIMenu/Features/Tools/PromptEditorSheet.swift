@@ -66,10 +66,10 @@ struct PromptEditorSheet: View {
                         .frame(minHeight: 320)
                         .background(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color.primary.opacity(0.05))
+                                .fill(Color.primary.opacity(OpacityScale.subtle))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                                        .strokeBorder(Color.primary.opacity(OpacityScale.muted), lineWidth: 1)
                                 )
                         )
                 }

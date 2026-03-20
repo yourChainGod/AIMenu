@@ -8,10 +8,7 @@ struct SettingsPageView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: LayoutRules.sectionSpacing) {
-                settingsHeroCard
                 launchSection
-                behaviorSection
-                routingSection
                 languageSection
                 aboutSection
 
@@ -44,41 +41,6 @@ struct SettingsPageView: View {
         }
     }
 
-    private var settingsHeroCard: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.indigo.opacity(0.10))
-                .overlay {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.indigo)
-                }
-                .frame(width: 40, height: 40)
-
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 8) {
-                    Text("全局设置")
-                        .font(.headline.weight(.semibold))
-                    settingsBadge(text: "AIMenu", tint: .indigo)
-                }
-
-                Text("启动、代理与界面偏好统一在这里收口。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 0)
-
-            VStack(alignment: .trailing, spacing: 6) {
-                settingsBadge(text: model.settings.autoStartApiProxy ? "代理自启" : "代理手动", tint: model.settings.autoStartApiProxy ? .mint : .secondary)
-                settingsBadge(text: L10n.tr(AppLocale.resolve(model.settings.locale).displayNameKey), tint: .blue)
-            }
-        }
-        .padding(14)
-        .cardSurface(cornerRadius: LayoutRules.cardRadius, tint: .indigo.opacity(0.03))
-    }
-
     private var launchSection: some View {
         SectionCard(title: "启动与代理", icon: "bolt.badge.clock", iconColor: .teal) {
             VStack(spacing: 10) {
@@ -101,83 +63,6 @@ struct SettingsPageView: View {
                         set: { model.setAutoStartProxy($0) }
                     )
                 )
-            }
-        }
-    }
-
-    private var routingSection: some View {
-        SectionCard(title: "智能接入", icon: "point.3.connected.trianglepath.dotted", iconColor: .blue) {
-            VStack(spacing: 10) {
-                settingsInfoRow(
-                    icon: "arrow.triangle.branch",
-                    title: "集中代理接管",
-                    subtitle: "启用 API 代理后，Codex 自动切到 AIMenu 生成的代理提供商。",
-                    tint: .blue
-                )
-
-                settingsInfoRow(
-                    icon: "doc.badge.gearshape",
-                    title: "配置自动同步",
-                    subtitle: "`.codex/auth.json` 与 `config.toml` 会跟随代理状态更新。",
-                    tint: .indigo
-                )
-
-                settingsInfoRow(
-                    icon: "bolt.horizontal.circle",
-                    title: "智能切换账号",
-                    subtitle: "代理按额度、模型兼容性和失败重试自动选择可用账号。",
-                    tint: .mint
-                )
-            }
-        }
-    }
-
-    private var behaviorSection: some View {
-        SectionCard(title: "切换联动", icon: "arrow.triangle.branch", iconColor: .mint) {
-            VStack(spacing: 10) {
-                settingsToggleRow(
-                    title: "自动智能切换",
-                    subtitle: "检测到当前账号额度耗尽时，自动切到可用账号。",
-                    tint: .mint,
-                    isOn: Binding(
-                        get: { model.settings.autoSmartSwitch },
-                        set: { model.setAutoSmartSwitch($0) }
-                    )
-                )
-
-                settingsToggleRow(
-                    title: "切换后打开 Codex",
-                    subtitle: "账号切换完成后自动拉起 Codex CLI。",
-                    tint: .blue,
-                    isOn: Binding(
-                        get: { model.settings.launchCodexAfterSwitch },
-                        set: { model.setLaunchAfterSwitch($0) }
-                    )
-                )
-
-                settingsToggleRow(
-                    title: "同步 OpenCode 认证",
-                    subtitle: "切换账号时，同步刷新 OpenCode 的 OpenAI 认证。",
-                    tint: .orange,
-                    isOn: Binding(
-                        get: { model.settings.syncOpencodeOpenaiAuth },
-                        set: { model.setSyncOpencodeOpenaiAuth($0) }
-                    )
-                )
-
-                settingsToggleRow(
-                    title: "切换后重启编辑器",
-                    subtitle: "自动重启指定编辑器，让新账号与配置立即生效。",
-                    tint: .indigo,
-                    isOn: Binding(
-                        get: { model.settings.restartEditorsOnSwitch },
-                        set: { model.setRestartEditorsOnSwitch($0) }
-                    )
-                )
-
-                if model.settings.restartEditorsOnSwitch {
-                    restartTargetRow
-                }
             }
         }
     }
@@ -206,65 +91,6 @@ struct SettingsPageView: View {
                 .pickerStyle(.menu)
             }
         }
-    }
-
-    @ViewBuilder
-    private var restartTargetRow: some View {
-        if model.installedEditorApps.isEmpty {
-            settingsInfoRow(
-                icon: "desktopcomputer",
-                title: "未发现可重启编辑器",
-                subtitle: "安装 Cursor、VS Code 等桌面编辑器后，这里会出现目标选择。",
-                tint: .secondary
-            )
-        } else {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("重启目标")
-                        .font(.subheadline.weight(.semibold))
-                    Text("当前: \(selectedRestartEditorLabel)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 0)
-
-                Menu {
-                    ForEach(model.installedEditorApps) { app in
-                        Button {
-                            model.setRestartEditorTarget(app.id)
-                        } label: {
-                            HStack {
-                                Text(app.label)
-                                if app.id == model.settings.restartEditorTargets.first {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    Label(selectedRestartEditorLabel, systemImage: "desktopcomputer")
-                        .lineLimit(1)
-                }
-                .aimenuActionButtonStyle(density: .compact)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-    }
-
-    private var selectedRestartEditorLabel: String {
-        if let target = model.settings.restartEditorTargets.first,
-           let label = model.installedEditorApps.first(where: { $0.id == target })?.label {
-            return label
-        }
-
-        if let fallback = model.installedEditorApps.first?.label {
-            return "\(fallback)（默认）"
-        }
-
-        return "未发现编辑器"
     }
 
     private var aboutSection: some View {
@@ -322,10 +148,10 @@ struct SettingsPageView: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(tint.opacity(0.08))
+                .fill(tint.opacity(OpacityScale.muted))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(tint.opacity(0.10), lineWidth: 1)
+                        .strokeBorder(tint.opacity(OpacityScale.muted), lineWidth: 1)
                 )
         )
     }
@@ -338,7 +164,7 @@ struct SettingsPageView: View {
     ) -> some View {
         HStack(spacing: 10) {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(tint.opacity(0.12))
+                .fill(tint.opacity(OpacityScale.muted))
                 .overlay {
                     Image(systemName: icon)
                         .font(.system(size: 13, weight: .semibold))
@@ -359,7 +185,7 @@ struct SettingsPageView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(Color.primary.opacity(OpacityScale.faint), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func settingsBadge(text: String, tint: Color) -> some View {
@@ -368,7 +194,7 @@ struct SettingsPageView: View {
             .foregroundStyle(tint == .secondary ? .secondary : tint)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background((tint == .secondary ? Color.primary : tint).opacity(0.08), in: Capsule())
+            .background((tint == .secondary ? Color.primary : tint).opacity(OpacityScale.muted), in: Capsule())
     }
 
     private func quitApp() {

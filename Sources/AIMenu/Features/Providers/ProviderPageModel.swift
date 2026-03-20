@@ -3,6 +3,7 @@ import Combine
 
 @MainActor
 final class ProviderPageModel: ObservableObject {
+
     private let coordinator: ProviderCoordinator
     private let noticeScheduler = NoticeAutoDismissScheduler()
 

@@ -37,6 +37,9 @@ struct AppContainer {
             // cc-switch provider config service
             let providerConfigService = ProviderConfigService()
             let providerCoordinator = ProviderCoordinator(configService: providerConfigService)
+            let mcpCoordinator = MCPCoordinator(configService: providerConfigService)
+            let promptCoordinator = PromptCoordinator(configService: providerConfigService)
+            let skillCoordinator = SkillCoordinator(configService: providerConfigService)
 
             let settingsCoordinator = SettingsCoordinator(
                 storeRepository: storeRepository,
@@ -98,7 +101,10 @@ struct AppContainer {
                     settingsCoordinator: settingsCoordinator
                 ),
                 toolsModel: ToolsPageModel(
-                    coordinator: providerCoordinator,
+                    providerCoordinator: providerCoordinator,
+                    mcpCoordinator: mcpCoordinator,
+                    promptCoordinator: promptCoordinator,
+                    skillCoordinator: skillCoordinator,
                     cursor2APIService: cursor2APIService,
                     portService: portManagementService
                 ),

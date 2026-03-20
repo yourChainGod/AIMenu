@@ -21,7 +21,7 @@ final class StoreFileRepository: AccountsStoreRepository, @unchecked Sendable {
         do {
             data = try Data(contentsOf: path)
         } catch {
-            throw AppError.io(L10n.tr("error.store.read_failed_format", error.localizedDescription))
+            throw AppError.io(L10n.tr("error.store.read_failed_format", error.localizedDescription), underlying: error)
         }
 
         do {
@@ -50,7 +50,7 @@ final class StoreFileRepository: AccountsStoreRepository, @unchecked Sendable {
         do {
             data = try encoder.encode(store)
         } catch {
-            throw AppError.invalidData(L10n.tr("error.store.serialize_failed_format", error.localizedDescription))
+            throw AppError.invalidData(L10n.tr("error.store.serialize_failed_format", error.localizedDescription), detail: "JSONEncoder failure")
         }
 
         try writeAtomically(data: data, to: paths.accountStorePath)
@@ -61,7 +61,7 @@ final class StoreFileRepository: AccountsStoreRepository, @unchecked Sendable {
         do {
             return try decoder.decode(AccountsStore.self, from: data)
         } catch {
-            throw AppError.invalidData(L10n.tr("error.store.invalid_format_format", error.localizedDescription))
+            throw AppError.invalidData(L10n.tr("error.store.invalid_format_format", error.localizedDescription), detail: "JSONDecoder failure")
         }
     }
 
@@ -97,10 +97,10 @@ final class StoreFileRepository: AccountsStoreRepository, @unchecked Sendable {
                     Self.setPrivatePermissions(at: destination)
                     return
                 } catch {
-                    throw AppError.io(L10n.tr("error.store.write_failed_format", error.localizedDescription))
+                    throw AppError.io(L10n.tr("error.store.write_failed_format", error.localizedDescription), underlying: error)
                 }
             }
-            throw AppError.io(L10n.tr("error.store.atomic_write_failed_format", error.localizedDescription))
+            throw AppError.io(L10n.tr("error.store.atomic_write_failed_format", error.localizedDescription), underlying: error)
         }
     }
 

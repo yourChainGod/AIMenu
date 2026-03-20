@@ -12,7 +12,7 @@ final class CommandRunnerTimeoutTests: XCTestCase {
                 timeout: 1
             )
         ) { error in
-            guard case let AppError.io(message) = error else {
+            guard case let AppError.io(message, _) = error else {
                 return XCTFail("Expected AppError.io, got: \(error)")
             }
             XCTAssertFalse(message.isEmpty)

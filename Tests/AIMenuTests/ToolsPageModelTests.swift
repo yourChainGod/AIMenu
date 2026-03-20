@@ -61,12 +61,13 @@ final class ToolsPageModelTests: XCTestCase {
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
 
-        let coordinator = ProviderCoordinator(
-            configService: ProviderConfigService(homeDirectory: home)
-        )
+        let configService = ProviderConfigService(homeDirectory: home)
 
         return ToolsPageModel(
-            coordinator: coordinator,
+            providerCoordinator: ProviderCoordinator(configService: configService),
+            mcpCoordinator: MCPCoordinator(configService: configService),
+            promptCoordinator: PromptCoordinator(configService: configService),
+            skillCoordinator: SkillCoordinator(configService: configService),
             cursor2APIService: StubCursor2APIService(),
             portService: portService
         )

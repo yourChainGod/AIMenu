@@ -7,7 +7,7 @@ struct NoticeBanner: View {
         if let notice {
             HStack(spacing: 8) {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(accentColor(for: notice.style).opacity(0.12))
+                    .fill(accentColor(for: notice.style).opacity(OpacityScale.muted))
                     .overlay {
                         Image(systemName: iconName(for: notice.style))
                             .font(.system(size: 12, weight: .bold))
@@ -21,7 +21,7 @@ struct NoticeBanner: View {
             }
             .padding(.horizontal, 11)
             .padding(.vertical, 7)
-            .cardSurface(cornerRadius: 12, tint: accentColor(for: notice.style).opacity(0.04))
+            .cardSurface(cornerRadius: 12, tint: accentColor(for: notice.style).opacity(OpacityScale.faint))
             .overlay(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 1.5, style: .continuous)
                     .fill(noticeAccentColor(notice.style))
@@ -29,7 +29,7 @@ struct NoticeBanner: View {
                     .padding(.vertical, 7)
                     .padding(.leading, 7)
             }
-            .shadow(color: accentColor(for: notice.style).opacity(0.10), radius: 10, x: 0, y: 5)
+            .shadow(color: accentColor(for: notice.style).opacity(OpacityScale.muted), radius: 10, x: 0, y: 5)
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }

@@ -47,7 +47,7 @@ struct ProviderConfigPreviewBlock: View {
                         Text(title)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.primary)
-                        ProviderConfigBadge(text: L10n.tr("providers.preview.badge.editable"), tint: accent)
+                        UnifiedBadge(text: L10n.tr("providers.preview.badge.editable"), tint: accent)
                     }
                     Text(subtitle)
                         .font(.caption2)
@@ -94,12 +94,12 @@ struct ProviderConfigPreviewBlock: View {
 
                 Spacer(minLength: 0)
 
-                ProviderConfigBadge(text: L10n.tr("providers.preview.badge.live_editable"), tint: accent)
+                UnifiedBadge(text: L10n.tr("providers.preview.badge.live_editable"), tint: accent)
             }
 
             TextEditor(text: $draft)
                 .font(.system(size: 12, weight: .regular, design: .monospaced))
-                .foregroundStyle(.primary.opacity(0.92))
+                .foregroundStyle(.primary.opacity(OpacityScale.dense))
                 .scrollContentBackground(.hidden)
                 .padding(11)
                 .frame(minHeight: 360, alignment: .topLeading)
@@ -108,8 +108,8 @@ struct ProviderConfigPreviewBlock: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.black.opacity(0.009),
-                                    accent.opacity(0.022)
+                                    Color.black.opacity(OpacityScale.ghost),
+                                    accent.opacity(OpacityScale.ghost)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -117,7 +117,7 @@ struct ProviderConfigPreviewBlock: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                .strokeBorder(accent.opacity(0.065), lineWidth: 1)
+                                .strokeBorder(accent.opacity(OpacityScale.subtle), lineWidth: 1)
                         )
                 )
         }
@@ -127,8 +127,8 @@ struct ProviderConfigPreviewBlock: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(0.96),
-                            accent.opacity(0.024)
+                            Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
+                            accent.opacity(OpacityScale.ghost)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -136,7 +136,7 @@ struct ProviderConfigPreviewBlock: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .strokeBorder(accent.opacity(0.055), lineWidth: 1)
+                        .strokeBorder(accent.opacity(OpacityScale.subtle), lineWidth: 1)
                 )
         )
         .onChange(of: content) { _, newValue in
@@ -208,7 +208,7 @@ struct ProviderModelInputRow: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            accent.opacity(0.036),
+                            accent.opacity(OpacityScale.faint),
                             accent.opacity(0.012)
                         ],
                         startPoint: .topLeading,
@@ -217,32 +217,9 @@ struct ProviderModelInputRow: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(accent.opacity(0.06), lineWidth: 1)
+                        .strokeBorder(accent.opacity(OpacityScale.subtle), lineWidth: 1)
                 )
         )
-    }
-}
-
-// MARK: - Provider Config Badge
-
-struct ProviderConfigBadge: View {
-    let text: String
-    let tint: Color
-
-    var body: some View {
-        Text(text)
-            .font(.system(size: 9.5, weight: .semibold))
-            .foregroundStyle(tint == .secondary ? .secondary : tint)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(
-                Capsule()
-                    .fill((tint == .secondary ? Color.primary : tint).opacity(0.05))
-                    .overlay(
-                        Capsule()
-                            .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.065), lineWidth: 1)
-                    )
-            )
     }
 }
 
@@ -278,7 +255,7 @@ struct ClaudeCommonConfigControls: View {
                     if !applyCommonConfig {
                         applyCommonConfig = true
                     }
-                    withAnimation(.easeInOut(duration: 0.18)) {
+                    withAnimation(AnimationPreset.quick) {
                         showCommonConfigEditor.toggle()
                     }
                 }
@@ -297,8 +274,8 @@ struct ClaudeCommonConfigControls: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(0.93),
-                            accent.opacity(0.028)
+                            Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
+                            accent.opacity(OpacityScale.ghost)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -306,7 +283,7 @@ struct ClaudeCommonConfigControls: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(accent.opacity(0.07), lineWidth: 1)
+                        .strokeBorder(accent.opacity(OpacityScale.subtle), lineWidth: 1)
                 )
         )
     }
@@ -749,7 +726,7 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
                 let isSelected = selection == option.value
 
                 Button {
-                    withAnimation(.easeInOut(duration: 0.18)) {
+                    withAnimation(AnimationPreset.quick) {
                         selection = option.value
                     }
                 } label: {
@@ -764,11 +741,11 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
                         .padding(.horizontal, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(isSelected ? accent.opacity(0.10) : Color.clear)
+                                .fill(isSelected ? accent.opacity(OpacityScale.muted) : Color.clear)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .strokeBorder(
-                                            isSelected ? accent.opacity(0.20) : Color.primary.opacity(0.05),
+                                            isSelected ? accent.opacity(OpacityScale.accent) : Color.primary.opacity(OpacityScale.subtle),
                                             lineWidth: 1
                                         )
                                 )
@@ -784,8 +761,8 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(0.96),
-                            accent.opacity(0.045)
+                            Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
+                            accent.opacity(OpacityScale.faint)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -793,7 +770,7 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .strokeBorder(accent.opacity(0.09), lineWidth: 1)
+                        .strokeBorder(accent.opacity(OpacityScale.muted), lineWidth: 1)
                 )
         )
     }
@@ -836,8 +813,8 @@ struct PresetRow: View {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(
                                 isSelected
-                                    ? rowTint.opacity(0.16)
-                                    : Color.primary.opacity(0.05)
+                                    ? rowTint.opacity(OpacityScale.medium)
+                                    : Color.primary.opacity(OpacityScale.subtle)
                             )
                     )
 
@@ -861,7 +838,7 @@ struct PresetRow: View {
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 3)
-                                .background(Color.primary.opacity(0.05), in: Capsule())
+                                .background(Color.primary.opacity(OpacityScale.subtle), in: Capsule())
                         }
                     }
                 }
@@ -870,7 +847,7 @@ struct PresetRow: View {
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "arrow.up.right.circle")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(isSelected ? rowTint : Color.secondary.opacity(0.7))
+                    .foregroundStyle(isSelected ? rowTint : Color.secondary.opacity(OpacityScale.solid))
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -890,7 +867,7 @@ struct PresetRow: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            isSelected ? rowTint.opacity(0.17) : Color.primary.opacity(0.05),
+                            isSelected ? rowTint.opacity(OpacityScale.medium) : Color.primary.opacity(OpacityScale.subtle),
                             Color.primary.opacity(isSelected ? 0.028 : 0.02)
                         ],
                         startPoint: .topLeading,
@@ -899,7 +876,7 @@ struct PresetRow: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(isSelected ? rowTint.opacity(0.42) : Color.primary.opacity(0.08), lineWidth: 1)
+                        .strokeBorder(isSelected ? rowTint.opacity(OpacityScale.overlay) : Color.primary.opacity(OpacityScale.muted), lineWidth: 1)
                 )
         )
         .contentShape(RoundedRectangle(cornerRadius: 14))
@@ -909,7 +886,7 @@ struct PresetRow: View {
         HStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(isSelected ? rowTint : Color.secondary.opacity(0.7))
+                .foregroundStyle(isSelected ? rowTint : Color.secondary.opacity(OpacityScale.solid))
             Text(text)
                 .font(.caption2)
                 .foregroundStyle(.secondary)

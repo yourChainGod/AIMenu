@@ -61,6 +61,39 @@ enum ClaudeApiKeyField: String, Codable {
     case apiKey = "ANTHROPIC_API_KEY"
 }
 
+// MARK: - Provider Extra Config Keys
+
+enum ProviderConfigKey: String {
+    // Claude-specific
+    case claudeApiFormat = "claudeApiFormat"
+    case claudeApiKeyField = "claudeApiKeyField"
+    case claudeHaikuModel = "claudeHaikuModel"
+    case claudeSonnetModel = "claudeSonnetModel"
+    case claudeOpusModel = "claudeOpusModel"
+    case claudeMaxOutputTokens = "claudeMaxOutputTokens"
+    case claudeApiTimeoutMs = "claudeApiTimeoutMs"
+    case claudeDisableNonessential = "claudeDisableNonessential"
+    case claudeHideAttribution = "claudeHideAttribution"
+    case claudeAlwaysThinking = "claudeAlwaysThinking"
+    case claudeEnableTeammates = "claudeEnableTeammates"
+    case claudeApplyCommonConfig = "claudeApplyCommonConfig"
+    case claudeCommonConfigJSON = "claudeCommonConfigJSON"
+    // AWS Bedrock
+    case claudeAwsRegion = "claudeAwsRegion"
+    case claudeAwsAccessKeyId = "claudeAwsAccessKeyId"
+    case claudeAwsSecretAccessKey = "claudeAwsSecretAccessKey"
+    // Codex-specific
+    case wireApi = "wireApi"
+    case reasoningEffort = "reasoningEffort"
+}
+
+extension Dictionary where Key == String, Value == String {
+    subscript(_ key: ProviderConfigKey) -> String? {
+        get { self[key.rawValue] }
+        set { self[key.rawValue] = newValue }
+    }
+}
+
 // MARK: - Provider Settings Config (per app type)
 
 struct ClaudeSettingsConfig: Codable, Equatable {
@@ -186,52 +219,52 @@ struct ProviderDraft {
             if provider.claudeConfig != nil {
                 provider.claudeConfig?.baseUrl = trimmedBaseUrl.isEmpty ? nil : trimmedBaseUrl
                 provider.claudeConfig?.model = trimmedModel.isEmpty ? nil : trimmedModel
-                if let value = extraConfig["claudeApiFormat"], let format = ClaudeApiFormat(rawValue: value) {
+                if let value = extraConfig[.claudeApiFormat], let format = ClaudeApiFormat(rawValue: value) {
                     provider.claudeConfig?.apiFormat = format
                 }
-                if let value = extraConfig["claudeApiKeyField"], let field = ClaudeApiKeyField(rawValue: value) {
+                if let value = extraConfig[.claudeApiKeyField], let field = ClaudeApiKeyField(rawValue: value) {
                     provider.claudeConfig?.apiKeyField = field
                 }
-                if let value = extraConfig["claudeHaikuModel"]?.trimmedNonEmpty {
+                if let value = extraConfig[.claudeHaikuModel]?.trimmedNonEmpty {
                     provider.claudeConfig?.haikuModel = value
                 }
-                if let value = extraConfig["claudeSonnetModel"]?.trimmedNonEmpty {
+                if let value = extraConfig[.claudeSonnetModel]?.trimmedNonEmpty {
                     provider.claudeConfig?.sonnetModel = value
                 }
-                if let value = extraConfig["claudeOpusModel"]?.trimmedNonEmpty {
+                if let value = extraConfig[.claudeOpusModel]?.trimmedNonEmpty {
                     provider.claudeConfig?.opusModel = value
                 }
-                if let value = extraConfig["claudeMaxOutputTokens"], let intValue = Int(value) {
+                if let value = extraConfig[.claudeMaxOutputTokens], let intValue = Int(value) {
                     provider.claudeConfig?.maxOutputTokens = intValue
                 }
-                if let value = extraConfig["claudeApiTimeoutMs"], let intValue = Int(value) {
+                if let value = extraConfig[.claudeApiTimeoutMs], let intValue = Int(value) {
                     provider.claudeConfig?.apiTimeoutMs = intValue
                 }
-                if let value = extraConfig["claudeDisableNonessential"] {
+                if let value = extraConfig[.claudeDisableNonessential] {
                     provider.claudeConfig?.disableNonessentialTraffic = value == "true"
                 }
-                if let value = extraConfig["claudeHideAttribution"] {
+                if let value = extraConfig[.claudeHideAttribution] {
                     provider.claudeConfig?.hideAttribution = value == "true"
                 }
-                if let value = extraConfig["claudeAlwaysThinking"] {
+                if let value = extraConfig[.claudeAlwaysThinking] {
                     provider.claudeConfig?.alwaysThinkingEnabled = value == "true"
                 }
-                if let value = extraConfig["claudeEnableTeammates"] {
+                if let value = extraConfig[.claudeEnableTeammates] {
                     provider.claudeConfig?.enableTeammates = value == "true"
                 }
-                if let value = extraConfig["claudeApplyCommonConfig"] {
+                if let value = extraConfig[.claudeApplyCommonConfig] {
                     provider.claudeConfig?.applyCommonConfig = value == "true"
                 }
-                if let value = extraConfig["claudeCommonConfigJSON"]?.trimmedNonEmpty {
+                if let value = extraConfig[.claudeCommonConfigJSON]?.trimmedNonEmpty {
                     provider.claudeConfig?.commonConfigJSON = value
                 }
-                if let value = extraConfig["claudeAwsRegion"]?.trimmedNonEmpty {
+                if let value = extraConfig[.claudeAwsRegion]?.trimmedNonEmpty {
                     provider.claudeConfig?.awsRegion = value
                 }
-                if let value = extraConfig["claudeAwsAccessKeyId"]?.trimmedNonEmpty {
+                if let value = extraConfig[.claudeAwsAccessKeyId]?.trimmedNonEmpty {
                     provider.claudeConfig?.awsAccessKeyId = value
                 }
-                if let value = extraConfig["claudeAwsSecretAccessKey"]?.trimmedNonEmpty {
+                if let value = extraConfig[.claudeAwsSecretAccessKey]?.trimmedNonEmpty {
                     provider.claudeConfig?.awsSecretAccessKey = value
                 }
             }
@@ -239,10 +272,10 @@ struct ProviderDraft {
             if provider.codexConfig != nil {
                 provider.codexConfig?.baseUrl = trimmedBaseUrl.isEmpty ? nil : trimmedBaseUrl
                 provider.codexConfig?.model = trimmedModel.isEmpty ? nil : trimmedModel
-                if let value = extraConfig["wireApi"]?.trimmedNonEmpty {
+                if let value = extraConfig[.wireApi]?.trimmedNonEmpty {
                     provider.codexConfig?.wireApi = value
                 }
-                if let value = extraConfig["reasoningEffort"]?.trimmedNonEmpty {
+                if let value = extraConfig[.reasoningEffort]?.trimmedNonEmpty {
                     provider.codexConfig?.reasoningEffort = value
                 }
             }

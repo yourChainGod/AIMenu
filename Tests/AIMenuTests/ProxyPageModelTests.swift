@@ -122,31 +122,8 @@ final class ProxyPageModelTests: XCTestCase {
     }
 }
 
-private final class InMemoryAccountsStoreRepository: AccountsStoreRepository, @unchecked Sendable {
-    private var store: AccountsStore
-
-    init(store: AccountsStore) {
-        self.store = store
-    }
-
-    func loadStore() throws -> AccountsStore {
-        store
-    }
-
-    func saveStore(_ store: AccountsStore) throws {
-        self.store = store
-    }
-}
-
-private struct StubLaunchAtStartupService: LaunchAtStartupServiceProtocol {
-    func setEnabled(_ enabled: Bool) throws {
-        _ = enabled
-    }
-
-    func syncWithStoreValue(_ enabled: Bool) throws {
-        _ = enabled
-    }
-}
+// InMemoryAccountsStoreRepository is defined in Helpers/SharedTestDoubles.swift
+// StubLaunchAtStartupService is defined in Helpers/SharedTestDoubles.swift
 
 private struct StubProxyRuntimeService: ProxyRuntimeService {
     func status() async -> ApiProxyStatus { .idle }

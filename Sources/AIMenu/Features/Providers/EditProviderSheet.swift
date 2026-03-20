@@ -22,27 +22,12 @@ struct EditProviderSheet: View {
     @State private var claudeApiKey: String
     @State private var claudeBaseUrl: String
     @State private var claudeModel: String
-    @State private var claudeHaikuModel: String
-    @State private var claudeSonnetModel: String
-    @State private var claudeOpusModel: String
-    @State private var claudeMaxOutputTokens: String
-    @State private var claudeApiTimeoutMs: String
-    @State private var claudeApiFormat: ClaudeApiFormat
-    @State private var claudeApiKeyField: ClaudeApiKeyField
-    @State private var claudeDisableNonessential: Bool
-    @State private var claudeHideAttribution: Bool
-    @State private var claudeAlwaysThinking: Bool
-    @State private var claudeEnableTeammates: Bool
-    @State private var claudeApplyCommonConfig: Bool
-    @State private var claudeCommonConfigJSON: String
-    @State private var showClaudeAdvanced = false
-    @State private var showClaudeCommonConfigEditor = false
+    @State private var claude = ClaudeFormState()
 
     @State private var codexApiKey: String
     @State private var codexBaseUrl: String
     @State private var codexModel: String
-    @State private var codexWireApi: String
-    @State private var codexReasoningEffort: String
+    @State private var codex = CodexFormState()
 
     @State private var geminiApiKey: String
     @State private var geminiBaseUrl: String
@@ -60,25 +45,33 @@ struct EditProviderSheet: View {
         _claudeApiKey = State(initialValue: provider.claudeConfig?.apiKey ?? "")
         _claudeBaseUrl = State(initialValue: provider.claudeConfig?.baseUrl ?? "")
         _claudeModel = State(initialValue: provider.claudeConfig?.model ?? "")
-        _claudeHaikuModel = State(initialValue: provider.claudeConfig?.haikuModel ?? "")
-        _claudeSonnetModel = State(initialValue: provider.claudeConfig?.sonnetModel ?? "")
-        _claudeOpusModel = State(initialValue: provider.claudeConfig?.opusModel ?? "")
-        _claudeMaxOutputTokens = State(initialValue: provider.claudeConfig?.maxOutputTokens.map(String.init) ?? "")
-        _claudeApiTimeoutMs = State(initialValue: provider.claudeConfig?.apiTimeoutMs.map(String.init) ?? "")
-        _claudeApiFormat = State(initialValue: provider.claudeConfig?.apiFormat ?? .anthropic)
-        _claudeApiKeyField = State(initialValue: provider.claudeConfig?.apiKeyField ?? .authToken)
-        _claudeDisableNonessential = State(initialValue: provider.claudeConfig?.disableNonessentialTraffic ?? false)
-        _claudeHideAttribution = State(initialValue: provider.claudeConfig?.hideAttribution ?? false)
-        _claudeAlwaysThinking = State(initialValue: provider.claudeConfig?.alwaysThinkingEnabled ?? false)
-        _claudeEnableTeammates = State(initialValue: provider.claudeConfig?.enableTeammates ?? false)
-        _claudeApplyCommonConfig = State(initialValue: provider.claudeConfig?.applyCommonConfig ?? false)
-        _claudeCommonConfigJSON = State(initialValue: provider.claudeConfig?.commonConfigJSON ?? "")
+        var claudeState = ClaudeFormState()
+        if let cc = provider.claudeConfig {
+            claudeState.apiFormat = cc.apiFormat ?? .anthropic
+            claudeState.apiKeyField = cc.apiKeyField ?? .authToken
+            claudeState.haikuModel = cc.haikuModel ?? ""
+            claudeState.sonnetModel = cc.sonnetModel ?? ""
+            claudeState.opusModel = cc.opusModel ?? ""
+            claudeState.maxOutputTokens = cc.maxOutputTokens.map(String.init) ?? ""
+            claudeState.apiTimeoutMs = cc.apiTimeoutMs.map(String.init) ?? ""
+            claudeState.disableNonessential = cc.disableNonessentialTraffic ?? false
+            claudeState.hideAttribution = cc.hideAttribution ?? false
+            claudeState.alwaysThinking = cc.alwaysThinkingEnabled ?? false
+            claudeState.enableTeammates = cc.enableTeammates ?? false
+            claudeState.applyCommonConfig = cc.applyCommonConfig ?? false
+            claudeState.commonConfigJSON = cc.commonConfigJSON ?? ""
+        }
+        _claude = State(initialValue: claudeState)
 
         _codexApiKey = State(initialValue: provider.codexConfig?.apiKey ?? "")
         _codexBaseUrl = State(initialValue: provider.codexConfig?.baseUrl ?? "")
         _codexModel = State(initialValue: provider.codexConfig?.model ?? "")
-        _codexWireApi = State(initialValue: provider.codexConfig?.wireApi ?? "responses")
-        _codexReasoningEffort = State(initialValue: provider.codexConfig?.reasoningEffort ?? "medium")
+        var codexState = CodexFormState()
+        if let xc = provider.codexConfig {
+            codexState.wireApi = xc.wireApi ?? "responses"
+            codexState.reasoningEffort = xc.reasoningEffort ?? "medium"
+        }
+        _codex = State(initialValue: codexState)
 
         _geminiApiKey = State(initialValue: provider.geminiConfig?.apiKey ?? "")
         _geminiBaseUrl = State(initialValue: provider.geminiConfig?.baseUrl ?? "")
@@ -125,7 +118,7 @@ struct EditProviderSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 10) {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(accentTint.opacity(0.07))
+                    .fill(accentTint.opacity(OpacityScale.subtle))
                     .overlay {
                         Image(systemName: provider.displayIcon)
                             .font(.system(size: 13, weight: .semibold))
@@ -139,11 +132,11 @@ struct EditProviderSheet: View {
                             .font(.system(size: 18, weight: .semibold))
                             .lineLimit(1)
 
-                        ProviderConfigBadge(text: provider.appType.displayName, tint: accentTint)
+                        UnifiedBadge(text: provider.appType.displayName, tint: accentTint)
                     }
 
                     HStack(spacing: 8) {
-                        ProviderConfigBadge(
+                        UnifiedBadge(
                             text: provider.isCurrent ? L10n.tr("providers.status.current") : L10n.tr("providers.status.inactive"),
                             tint: provider.isCurrent ? .mint : .secondary
                         )
@@ -169,7 +162,7 @@ struct EditProviderSheet: View {
             .padding(.bottom, 6)
 
             Rectangle()
-                .fill(accentTint.opacity(0.06))
+                .fill(accentTint.opacity(OpacityScale.subtle))
                 .frame(height: 1)
 
             ScrollView {
@@ -262,7 +255,7 @@ struct EditProviderSheet: View {
             .background(
                 LinearGradient(
                     colors: [
-                        accentTint.opacity(0.05),
+                        accentTint.opacity(OpacityScale.subtle),
                         Color.clear
                     ],
                     startPoint: .topLeading,
@@ -271,7 +264,7 @@ struct EditProviderSheet: View {
             )
             .overlay(alignment: .top) {
                 Rectangle()
-                    .fill(accentTint.opacity(0.08))
+                    .fill(accentTint.opacity(OpacityScale.muted))
                     .frame(height: 1)
             }
         }
@@ -295,7 +288,7 @@ struct EditProviderSheet: View {
             sectionCard(title: L10n.tr("providers.section.claude.title"), subtitle: L10n.tr("providers.section.claude.subtitle"), icon: "sparkles.rectangle.stack.fill") {
                 editConfigField(label: L10n.tr("providers.field.api_format")) {
                     ProviderSegmentedControl(
-                        selection: $claudeApiFormat,
+                        selection: $claude.apiFormat,
                         options: [
                             .init(title: L10n.tr("providers.option.anthropic_native"), value: .anthropic),
                             .init(title: "OpenAI Chat", value: .openaiChat),
@@ -306,7 +299,7 @@ struct EditProviderSheet: View {
                 }
                 editConfigField(label: L10n.tr("providers.field.auth_field")) {
                     ProviderSegmentedControl(
-                        selection: $claudeApiKeyField,
+                        selection: $claude.apiKeyField,
                         options: [
                             .init(title: "ANTHROPIC_AUTH_TOKEN", value: .authToken),
                             .init(title: "ANTHROPIC_API_KEY", value: .apiKey)
@@ -329,7 +322,7 @@ struct EditProviderSheet: View {
 
             sectionCard(title: L10n.tr("providers.section.advanced.title"), subtitle: L10n.tr("providers.section.advanced.subtitle"), icon: "dial.medium.fill") {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { showClaudeAdvanced.toggle() }
+                    withAnimation(AnimationPreset.quick) { claude.showAdvanced.toggle() }
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
@@ -344,44 +337,44 @@ struct EditProviderSheet: View {
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.tertiary)
-                            .rotationEffect(.degrees(showClaudeAdvanced ? 90 : 0))
+                            .rotationEffect(.degrees(claude.showAdvanced ? 90 : 0))
                     }
                 }
                 .buttonStyle(.plain)
 
-                if showClaudeAdvanced {
+                if claude.showAdvanced {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(alignment: .top, spacing: 12) {
                             editConfigField(label: L10n.tr("providers.field.haiku_default_model")) {
-                                TextField(L10n.tr("providers.placeholder.optional_override"), text: $claudeHaikuModel)
+                                TextField(L10n.tr("providers.placeholder.optional_override"), text: $claude.haikuModel)
                                     .frostedRoundedInput(cornerRadius: 10)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                             editConfigField(label: L10n.tr("providers.field.sonnet_default_model")) {
-                                TextField(L10n.tr("providers.placeholder.optional_override"), text: $claudeSonnetModel)
+                                TextField(L10n.tr("providers.placeholder.optional_override"), text: $claude.sonnetModel)
                                     .frostedRoundedInput(cornerRadius: 10)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         HStack(alignment: .top, spacing: 12) {
                             editConfigField(label: L10n.tr("providers.field.opus_default_model")) {
-                                TextField(L10n.tr("providers.placeholder.optional_override"), text: $claudeOpusModel)
+                                TextField(L10n.tr("providers.placeholder.optional_override"), text: $claude.opusModel)
                                     .frostedRoundedInput(cornerRadius: 10)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                             editConfigField(label: L10n.tr("providers.field.max_output_tokens")) {
-                                TextField(L10n.tr("providers.placeholder.use_default"), text: $claudeMaxOutputTokens)
+                                TextField(L10n.tr("providers.placeholder.use_default"), text: $claude.maxOutputTokens)
                                     .frostedRoundedInput(cornerRadius: 10)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         editConfigField(label: L10n.tr("providers.field.timeout_ms")) {
-                            TextField(L10n.tr("providers.placeholder.use_default"), text: $claudeApiTimeoutMs)
+                            TextField(L10n.tr("providers.placeholder.use_default"), text: $claude.apiTimeoutMs)
                                 .frostedRoundedInput(cornerRadius: 10)
                         }
-                        Toggle(L10n.tr("providers.toggle.disable_nonessential"), isOn: $claudeDisableNonessential)
+                        Toggle(L10n.tr("providers.toggle.disable_nonessential"), isOn: $claude.disableNonessential)
                             .toggleStyle(.checkbox)
                             .font(.subheadline)
                     }
@@ -411,7 +404,7 @@ struct EditProviderSheet: View {
                 HStack(alignment: .top, spacing: 12) {
                     editConfigField(label: L10n.tr("providers.field.wire_api")) {
                         ProviderSegmentedControl(
-                            selection: $codexWireApi,
+                            selection: $codex.wireApi,
                             options: [
                                 .init(title: "responses", value: "responses"),
                                 .init(title: "chat", value: "chat")
@@ -423,7 +416,7 @@ struct EditProviderSheet: View {
 
                     editConfigField(label: L10n.tr("providers.field.reasoning_effort")) {
                         ProviderSegmentedControl(
-                            selection: $codexReasoningEffort,
+                            selection: $codex.reasoningEffort,
                             options: [
                                 .init(title: "low", value: "low"),
                                 .init(title: "medium", value: "medium"),
@@ -457,7 +450,7 @@ struct EditProviderSheet: View {
     private var previewSection: some View {
         sectionCard(title: L10n.tr("providers.preview.section_title"), subtitle: previewSubtitle, icon: "doc.text.magnifyingglass") {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) { showConfigPreview.toggle() }
+                withAnimation(AnimationPreset.quick) { showConfigPreview.toggle() }
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
@@ -480,15 +473,15 @@ struct EditProviderSheet: View {
             if showConfigPreview {
                 if provider.appType == .claude {
                     ClaudeCommonConfigControls(
-                        hideAttribution: $claudeHideAttribution,
-                        alwaysThinking: $claudeAlwaysThinking,
-                        enableTeammates: $claudeEnableTeammates,
-                        applyCommonConfig: $claudeApplyCommonConfig,
-                        showCommonConfigEditor: $showClaudeCommonConfigEditor,
+                        hideAttribution: $claude.hideAttribution,
+                        alwaysThinking: $claude.alwaysThinking,
+                        enableTeammates: $claude.enableTeammates,
+                        applyCommonConfig: $claude.applyCommonConfig,
+                        showCommonConfigEditor: $claude.showCommonConfigEditor,
                         accent: accentTint
                     )
 
-                    if claudeApplyCommonConfig && showClaudeCommonConfigEditor {
+                    if claude.applyCommonConfig && claude.showCommonConfigEditor {
                         ProviderConfigPreviewBlock(
                             title: L10n.tr("providers.preview.common_config_title"),
                             subtitle: L10n.tr("providers.preview.common_config_subtitle"),
@@ -562,7 +555,7 @@ struct EditProviderSheet: View {
     }
 
     private var normalizedClaudeCommonConfigJSON: String {
-        normalizedJSONObjectString(claudeCommonConfigJSON) ?? "{}"
+        normalizedJSONObjectString(claude.commonConfigJSON) ?? "{}"
     }
 
     @ViewBuilder
@@ -589,10 +582,10 @@ struct EditProviderSheet: View {
                                 .padding(.vertical, 5)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(selection.wrappedValue == modelID ? accentTint.opacity(0.11) : Color.primary.opacity(0.04))
+                                        .fill(selection.wrappedValue == modelID ? accentTint.opacity(OpacityScale.muted) : Color.primary.opacity(OpacityScale.faint))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                .strokeBorder(selection.wrappedValue == modelID ? accentTint.opacity(0.22) : Color.primary.opacity(0.06), lineWidth: 1)
+                                                .strokeBorder(selection.wrappedValue == modelID ? accentTint.opacity(OpacityScale.accent) : Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
                                         )
                                 )
                                 .foregroundStyle(selection.wrappedValue == modelID ? accentTint : .secondary)
@@ -610,33 +603,33 @@ struct EditProviderSheet: View {
         let env = payload["env"] as? [String: Any] ?? [:]
 
         if let token = previewString(env["ANTHROPIC_AUTH_TOKEN"]) {
-            claudeApiKeyField = .authToken
+            claude.apiKeyField = .authToken
             claudeApiKey = token
         } else if let key = previewString(env["ANTHROPIC_API_KEY"]) {
-            claudeApiKeyField = .apiKey
+            claude.apiKeyField = .apiKey
             claudeApiKey = key
         }
 
         if let value = previewString(env["ANTHROPIC_BASE_URL"]) { claudeBaseUrl = value }
         claudeModel = previewString(env["ANTHROPIC_MODEL"]) ?? ""
-        claudeHaikuModel = previewString(env["ANTHROPIC_DEFAULT_HAIKU_MODEL"]) ?? ""
-        claudeSonnetModel = previewString(env["ANTHROPIC_DEFAULT_SONNET_MODEL"]) ?? ""
-        claudeOpusModel = previewString(env["ANTHROPIC_DEFAULT_OPUS_MODEL"]) ?? ""
-        claudeMaxOutputTokens = previewString(env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"]) ?? ""
-        claudeApiTimeoutMs = previewString(env["API_TIMEOUT_MS"]) ?? ""
-        claudeDisableNonessential = previewBool(env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"])
-        claudeEnableTeammates = previewBool(env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
-        claudeHideAttribution = payload["attribution"] != nil
-        claudeAlwaysThinking = previewBool(payload["alwaysThinkingEnabled"])
+        claude.haikuModel = previewString(env["ANTHROPIC_DEFAULT_HAIKU_MODEL"]) ?? ""
+        claude.sonnetModel = previewString(env["ANTHROPIC_DEFAULT_SONNET_MODEL"]) ?? ""
+        claude.opusModel = previewString(env["ANTHROPIC_DEFAULT_OPUS_MODEL"]) ?? ""
+        claude.maxOutputTokens = previewString(env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"]) ?? ""
+        claude.apiTimeoutMs = previewString(env["API_TIMEOUT_MS"]) ?? ""
+        claude.disableNonessential = previewBool(env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"])
+        claude.enableTeammates = previewBool(env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
+        claude.hideAttribution = payload["attribution"] != nil
+        claude.alwaysThinking = previewBool(payload["alwaysThinkingEnabled"])
         let commonConfig = extractClaudeCommonConfig(from: payload)
-        claudeApplyCommonConfig = !commonConfig.isEmpty
-        claudeCommonConfigJSON = commonConfig.isEmpty ? "" : prettyJSONString(commonConfig)
+        claude.applyCommonConfig = !commonConfig.isEmpty
+        claude.commonConfigJSON = commonConfig.isEmpty ? "" : prettyJSONString(commonConfig)
     }
 
     private func applyClaudeCommonConfigPreview(_ text: String) throws {
         let payload = try parsePreviewJSONObject(text)
-        claudeApplyCommonConfig = !payload.isEmpty
-        claudeCommonConfigJSON = payload.isEmpty ? "" : prettyJSONString(payload)
+        claude.applyCommonConfig = !payload.isEmpty
+        claude.commonConfigJSON = payload.isEmpty ? "" : prettyJSONString(payload)
     }
 
     private func applyCodexAuthPreview(_ text: String) throws {
@@ -648,9 +641,9 @@ struct EditProviderSheet: View {
     private func applyCodexTomlPreview(_ text: String) throws {
         let payload = try parsePreviewTOML(text)
         if let value = payload["model"] { codexModel = value }
-        if let value = payload["wire_api"] { codexWireApi = value }
+        if let value = payload["wire_api"] { codex.wireApi = value }
         if let value = payload["base_url"] { codexBaseUrl = value }
-        if let value = payload["reasoning_effort"] { codexReasoningEffort = value }
+        if let value = payload["reasoning_effort"] { codex.reasoningEffort = value }
     }
 
     private func applyGeminiPreview(_ text: String) throws {
@@ -661,43 +654,43 @@ struct EditProviderSheet: View {
     }
 
     private func buildClaudePreview() -> String {
-        var settings = claudeApplyCommonConfig ? (parsedJSONObjectString(claudeCommonConfigJSON) ?? [:]) : [:]
+        var settings = claude.applyCommonConfig ? (parsedJSONObjectString(claude.commonConfigJSON) ?? [:]) : [:]
         var env: [String: Any] = [
-            claudeApiKeyField.rawValue: claudeApiKey.trimmedNonEmpty ?? "<API_KEY>"
+            claude.apiKeyField.rawValue: claudeApiKey.trimmedNonEmpty ?? "<API_KEY>"
         ]
         env["ANTHROPIC_BASE_URL"] = resolvedBaseURL
         if let model = claudeModel.trimmedNonEmpty {
             env["ANTHROPIC_MODEL"] = model
         }
-        if let model = claudeHaikuModel.trimmedNonEmpty {
+        if let model = claude.haikuModel.trimmedNonEmpty {
             env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = model
         }
-        if let model = claudeSonnetModel.trimmedNonEmpty {
+        if let model = claude.sonnetModel.trimmedNonEmpty {
             env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = model
         }
-        if let model = claudeOpusModel.trimmedNonEmpty {
+        if let model = claude.opusModel.trimmedNonEmpty {
             env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = model
         }
-        if let tokens = claudeMaxOutputTokens.trimmedNonEmpty {
+        if let tokens = claude.maxOutputTokens.trimmedNonEmpty {
             env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = tokens
         }
-        if let timeout = claudeApiTimeoutMs.trimmedNonEmpty {
+        if let timeout = claude.apiTimeoutMs.trimmedNonEmpty {
             env["API_TIMEOUT_MS"] = timeout
         }
-        if claudeDisableNonessential {
+        if claude.disableNonessential {
             env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
         }
-        if claudeEnableTeammates {
+        if claude.enableTeammates {
             env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
         }
 
         settings["env"] = env
-        if claudeHideAttribution {
+        if claude.hideAttribution {
             settings["attribution"] = ["commit": "", "pr": ""]
         } else {
             settings.removeValue(forKey: "attribution")
         }
-        if claudeAlwaysThinking {
+        if claude.alwaysThinking {
             settings["alwaysThinkingEnabled"] = true
         } else {
             settings.removeValue(forKey: "alwaysThinkingEnabled")
@@ -720,9 +713,9 @@ struct EditProviderSheet: View {
         if let model = codexModel.trimmedNonEmpty {
             lines.append("model = \(tomlQuoted(model))")
         }
-        lines.append("wire_api = \(tomlQuoted(codexWireApi))")
+        lines.append("wire_api = \(tomlQuoted(codex.wireApi))")
         lines.append("base_url = \(tomlQuoted(resolvedBaseURL))")
-        lines.append("reasoning_effort = \(tomlQuoted(codexReasoningEffort))")
+        lines.append("reasoning_effort = \(tomlQuoted(codex.reasoningEffort))")
         lines.append("")
         lines.append(L10n.tr("providers.toml.comment_preserved_sections"))
         return lines.joined(separator: "\n")
@@ -751,7 +744,7 @@ struct EditProviderSheet: View {
                     appType: provider.appType,
                     baseUrl: base,
                     apiKey: key,
-                    claudeApiFormat: provider.appType == .claude ? claudeApiFormat : nil
+                    claudeApiFormat: provider.appType == .claude ? claude.apiFormat : nil
                 )
                 await MainActor.run {
                     fetchedModels = models
@@ -784,25 +777,25 @@ struct EditProviderSheet: View {
             updated.claudeConfig?.apiKey = claudeApiKey
             updated.claudeConfig?.baseUrl = claudeBaseUrl.isEmpty ? nil : claudeBaseUrl
             updated.claudeConfig?.model = claudeModel.isEmpty ? nil : claudeModel
-            updated.claudeConfig?.haikuModel = claudeHaikuModel.isEmpty ? nil : claudeHaikuModel
-            updated.claudeConfig?.sonnetModel = claudeSonnetModel.isEmpty ? nil : claudeSonnetModel
-            updated.claudeConfig?.opusModel = claudeOpusModel.isEmpty ? nil : claudeOpusModel
-            updated.claudeConfig?.maxOutputTokens = Int(claudeMaxOutputTokens)
-            updated.claudeConfig?.apiTimeoutMs = Int(claudeApiTimeoutMs)
-            updated.claudeConfig?.apiFormat = claudeApiFormat
-            updated.claudeConfig?.apiKeyField = claudeApiKeyField
-            updated.claudeConfig?.disableNonessentialTraffic = claudeDisableNonessential
-            updated.claudeConfig?.hideAttribution = claudeHideAttribution
-            updated.claudeConfig?.alwaysThinkingEnabled = claudeAlwaysThinking
-            updated.claudeConfig?.enableTeammates = claudeEnableTeammates
-            updated.claudeConfig?.applyCommonConfig = claudeApplyCommonConfig
-            updated.claudeConfig?.commonConfigJSON = claudeApplyCommonConfig ? normalizedClaudeCommonConfigJSON : nil
+            updated.claudeConfig?.haikuModel = claude.haikuModel.isEmpty ? nil : claude.haikuModel
+            updated.claudeConfig?.sonnetModel = claude.sonnetModel.isEmpty ? nil : claude.sonnetModel
+            updated.claudeConfig?.opusModel = claude.opusModel.isEmpty ? nil : claude.opusModel
+            updated.claudeConfig?.maxOutputTokens = Int(claude.maxOutputTokens)
+            updated.claudeConfig?.apiTimeoutMs = Int(claude.apiTimeoutMs)
+            updated.claudeConfig?.apiFormat = claude.apiFormat
+            updated.claudeConfig?.apiKeyField = claude.apiKeyField
+            updated.claudeConfig?.disableNonessentialTraffic = claude.disableNonessential
+            updated.claudeConfig?.hideAttribution = claude.hideAttribution
+            updated.claudeConfig?.alwaysThinkingEnabled = claude.alwaysThinking
+            updated.claudeConfig?.enableTeammates = claude.enableTeammates
+            updated.claudeConfig?.applyCommonConfig = claude.applyCommonConfig
+            updated.claudeConfig?.commonConfigJSON = claude.applyCommonConfig ? normalizedClaudeCommonConfigJSON : nil
         case .codex:
             updated.codexConfig?.apiKey = codexApiKey
             updated.codexConfig?.baseUrl = codexBaseUrl.isEmpty ? nil : codexBaseUrl
             updated.codexConfig?.model = codexModel.isEmpty ? nil : codexModel
-            updated.codexConfig?.wireApi = codexWireApi
-            updated.codexConfig?.reasoningEffort = codexReasoningEffort
+            updated.codexConfig?.wireApi = codex.wireApi
+            updated.codexConfig?.reasoningEffort = codex.reasoningEffort
         case .gemini:
             updated.geminiConfig?.apiKey = geminiApiKey
             updated.geminiConfig?.baseUrl = geminiBaseUrl.isEmpty ? nil : geminiBaseUrl
@@ -817,60 +810,16 @@ struct EditProviderSheet: View {
         subtitle: String? = nil,
         icon: String? = nil,
         emphasis: Bool = false,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let title {
-                HStack(alignment: .top, spacing: 10) {
-                    if let icon {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(accentTint.opacity(0.065))
-                            .overlay {
-                                Image(systemName: icon)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(accentTint)
-                            }
-                            .frame(width: 26, height: 26)
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(title)
-                            .font(.callout.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        if let subtitle {
-                            Text(subtitle)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-                }
-            }
-            content()
-        }
-        .padding(13)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(0.97),
-                            accentTint.opacity(emphasis ? 0.038 : 0.018)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(
-                            accentTint.opacity(emphasis ? 0.1 : 0.06),
-                            lineWidth: 1
-                        )
-                )
+        FormSectionCard(
+            title: title,
+            subtitle: subtitle,
+            icon: icon,
+            accent: accentTint,
+            emphasis: emphasis,
+            content: content
         )
-        .shadow(color: accentTint.opacity(emphasis ? 0.028 : 0.01), radius: emphasis ? 10 : 4, x: 0, y: emphasis ? 4 : 2)
     }
 
     @ViewBuilder

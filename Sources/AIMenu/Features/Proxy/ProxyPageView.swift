@@ -48,7 +48,7 @@ struct ProxyPanelSections: View {
                 HStack(spacing: 8) {
                     statusDot
                     CollapseChevronButton(isExpanded: model.apiProxySectionExpanded) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AnimationPreset.quick) {
                             model.apiProxySectionExpanded.toggle()
                         }
                     }
@@ -324,7 +324,7 @@ private struct CopyDetailCard<Trailing: View>: View {
                 }
                 .liquidGlassActionButtonStyle()
                 .disabled(!canCopy)
-                .animation(.easeInOut(duration: 0.15), value: didCopy)
+                .animation(AnimationPreset.hover, value: didCopy)
             }
             Text(value)
                 .font(.caption.monospaced())

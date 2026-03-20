@@ -169,10 +169,10 @@ struct MCPServerEditorSheet: View {
 
     private var editorBackground: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.primary.opacity(0.05))
+            .fill(Color.primary.opacity(OpacityScale.subtle))
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                    .strokeBorder(Color.primary.opacity(OpacityScale.muted), lineWidth: 1)
             )
     }
 
@@ -183,7 +183,7 @@ struct MCPServerEditorSheet: View {
             content()
         }
         .padding(14)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Color.primary.opacity(OpacityScale.faint), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func labeledField<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -211,7 +211,7 @@ struct MCPServerEditorSheet: View {
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(isOn.wrappedValue ? Color.mint.opacity(0.12) : Color.primary.opacity(0.05))
+                    .fill(isOn.wrappedValue ? Color.mint.opacity(OpacityScale.muted) : Color.primary.opacity(OpacityScale.subtle))
             )
         }
         .buttonStyle(.plain)

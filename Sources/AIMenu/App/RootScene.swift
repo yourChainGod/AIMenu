@@ -59,14 +59,14 @@ struct RootScene: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.985))
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(OpacityScale.opaque))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(currentTabAccent.opacity(0.018))
+                        .fill(currentTabAccent.opacity(OpacityScale.ghost))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.14), lineWidth: 1)
+                        .strokeBorder(Color(nsColor: .separatorColor).opacity(OpacityScale.medium), lineWidth: 1)
                 )
 
             VStack(spacing: 0) {
@@ -78,7 +78,7 @@ struct RootScene: View {
                     .padding(.bottom, 8)
 
                 Rectangle()
-                    .fill(Color(nsColor: .separatorColor).opacity(0.12))
+                    .fill(Color(nsColor: .separatorColor).opacity(OpacityScale.muted))
                     .frame(height: 1)
                     .padding(.horizontal, 14)
 
@@ -88,7 +88,7 @@ struct RootScene: View {
                     .padding(.bottom, 4)
             }
         }
-        .shadow(color: .black.opacity(0.08), radius: 14, x: 0, y: 8)
+        .shadow(color: .black.opacity(OpacityScale.muted), radius: 14, x: 0, y: 8)
         .padding(6)
         .environment(\.locale, runtimeLocale)
         .onAppear {
@@ -131,7 +131,7 @@ struct RootScene: View {
             maxWidth: LayoutRules.maximumPanelWidth,
             minHeight: LayoutRules.minimumPanelHeight
         )
-        .animation(.spring(response: 0.26, dampingFraction: 0.86), value: selectedTab)
+        .animation(AnimationPreset.quick, value: selectedTab)
     }
 
     @ViewBuilder
@@ -224,11 +224,11 @@ private struct AppTabToolbarSwitcher: View {
             .padding(2)
             .background(
                 RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(Color.primary.opacity(0.028))
+                    .fill(Color.primary.opacity(OpacityScale.ghost))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.10), lineWidth: 1)
+                    .strokeBorder(Color(nsColor: .separatorColor).opacity(OpacityScale.muted), lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             .accessibilityLabel(Text("导航分区"))
@@ -279,7 +279,7 @@ private struct AppTabButtonBar: NSViewRepresentable {
         func tabPressed(_ sender: NSButton) {
             let index = sender.tag
             guard parent.tabs.indices.contains(index) else { return }
-            withAnimation(.easeInOut(duration: 0.18)) {
+            withAnimation(AnimationPreset.quick) {
                 parent.selection = parent.tabs[index]
             }
         }

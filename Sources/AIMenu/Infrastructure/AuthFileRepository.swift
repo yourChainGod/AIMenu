@@ -11,7 +11,7 @@ final class AuthFileRepository: AuthRepository, @unchecked Sendable {
 
     func readCurrentAuth() throws -> JSONValue {
         guard fileManager.fileExists(atPath: paths.codexAuthPath.path) else {
-            throw AppError.fileNotFound(L10n.tr("error.auth.auth_file_not_found"))
+            throw AppError.fileNotFound(L10n.tr("error.auth.auth_file_not_found"), path: paths.codexAuthPath.path)
         }
         return try readJSONValue(from: paths.codexAuthPath)
     }
@@ -135,7 +135,7 @@ final class AuthFileRepository: AuthRepository, @unchecked Sendable {
         do {
             data = try Data(contentsOf: path)
         } catch {
-            throw AppError.io(L10n.tr("error.auth.read_auth_json_failed_format", error.localizedDescription))
+            throw AppError.io(L10n.tr("error.auth.read_auth_json_failed_format", error.localizedDescription), underlying: error)
         }
 
         let object: Any

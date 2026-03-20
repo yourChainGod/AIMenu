@@ -11,7 +11,7 @@ actor PortManagementService: PortManagementServiceProtocol {
         let result = try? CommandRunner.run(
             lsof,
             arguments: ["-nP", "-iTCP:\(port)", "-sTCP:LISTEN"],
-            timeout: 1.5
+            timeout: NetworkConfig.portCheckTimeoutSeconds
         )
 
         guard let stdout = result?.stdout, !(stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) else {
@@ -73,7 +73,7 @@ actor PortManagementService: PortManagementServiceProtocol {
         let pidResult = try CommandRunner.run(
             lsof,
             arguments: ["-tiTCP:\(port)", "-sTCP:LISTEN"],
-            timeout: 1.5
+            timeout: NetworkConfig.portCheckTimeoutSeconds
         )
 
         return pidResult.stdout
@@ -86,7 +86,7 @@ actor PortManagementService: PortManagementServiceProtocol {
         _ = try CommandRunner.runChecked(
             "/bin/kill",
             arguments: [signal] + pidStrings,
-            timeout: 1.5,
+            timeout: NetworkConfig.portCheckTimeoutSeconds,
             errorPrefix: errorPrefix
         )
     }

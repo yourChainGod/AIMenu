@@ -2,6 +2,22 @@ import CoreGraphics
 
 /// Centralized layout inputs to avoid duplicated sizing logic across pages.
 enum LayoutRules {
+    // Spacing system
+    static let spacing2: CGFloat = 2
+    static let spacing4: CGFloat = 4
+    static let spacing6: CGFloat = 6
+    static let spacing8: CGFloat = 8
+    static let spacing12: CGFloat = 12
+    static let spacing10: CGFloat = 10
+    static let spacing20: CGFloat = 20
+
+    // Radius system
+    static let radiusTiny: CGFloat = 7
+    static let radiusSmall: CGFloat = 8
+    static let radiusMedium: CGFloat = 10
+    static let radiusModal: CGFloat = 22
+    static let radiusCard: CGFloat = 14
+
     static let pagePadding = CGFloat(16)
     static let sectionSpacing = CGFloat(16)
     static let cardRadius = CGFloat(14)

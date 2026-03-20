@@ -97,7 +97,7 @@ actor SwiftNativeProxyRuntimeService: ProxyRuntimeService {
             boundServer.start()
         } catch {
             lastError = L10n.tr("error.proxy_runtime.start_swift_proxy_failed_format", error.localizedDescription)
-            throw AppError.io(lastError ?? L10n.tr("error.proxy_runtime.start_failed"))
+            throw AppError.io(lastError ?? L10n.tr("error.proxy_runtime.start_failed"), underlying: error)
         }
 
         server = boundServer
@@ -337,7 +337,7 @@ actor SwiftNativeProxyRuntimeService: ProxyRuntimeService {
         let userAgent = Self.normalizedForwardHeader(downstreamHeaders["user-agent"]) ?? Self.defaultCodexUserAgent
         var request = URLRequest(url: responsesEndpoint(forUpstreamModel: upstreamModel))
         request.httpMethod = "POST"
-        request.timeoutInterval = 180
+        request.timeoutInterval = NetworkConfig.upstreamTimeoutSeconds
         request.httpBody = body
         request.setValue("Bearer \(candidate.accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue(candidate.accountID, forHTTPHeaderField: "ChatGPT-Account-Id")
@@ -352,7 +352,7 @@ actor SwiftNativeProxyRuntimeService: ProxyRuntimeService {
         let (responseBytes, response) = try await URLSession.shared.bytes(for: request)
         let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
         var responseBody = Data()
-        responseBody.reserveCapacity(64 * 1024)
+        responseBody.reserveCapacity(NetworkConfig.upstreamResponseBufferHint)
 
         for try await byte in responseBytes {
             responseBody.append(byte)

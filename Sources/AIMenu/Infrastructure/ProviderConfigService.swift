@@ -1195,18 +1195,18 @@ actor ProviderConfigService {
 
     private func parseJSONObjectString(_ text: String) throws -> [String: Any] {
         guard let data = text.data(using: .utf8) else {
-            throw AppError.invalidData("Claude 通用配置 JSON 无法读取")
+            throw AppError.invalidData("Claude 通用配置 JSON 无法读取", detail: "data encoding failure")
         }
 
         let object: Any
         do {
             object = try JSONSerialization.jsonObject(with: data)
         } catch {
-            throw AppError.invalidData("Claude 通用配置 JSON 解析失败")
+            throw AppError.invalidData("Claude 通用配置 JSON 解析失败", detail: error.localizedDescription)
         }
 
         guard let dictionary = object as? [String: Any] else {
-            throw AppError.invalidData("Claude 通用配置需要顶层对象")
+            throw AppError.invalidData("Claude 通用配置需要顶层对象", detail: "expected dictionary, got \(type(of: object))")
         }
         return dictionary
     }

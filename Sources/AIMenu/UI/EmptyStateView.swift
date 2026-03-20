@@ -21,7 +21,7 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(tint.opacity(0.12))
+                .fill(tint.opacity(OpacityScale.muted))
                 .overlay {
                     Image(systemName: icon)
                         .font(.system(size: 18, weight: .semibold))
@@ -37,6 +37,6 @@ struct EmptyStateView: View {
         }
         .frame(maxWidth: .infinity, minHeight: 180)
         .padding(18)
-        .cardSurface(cornerRadius: LayoutRules.cardRadius, tint: tint.opacity(0.04))
+        .cardSurface(cornerRadius: LayoutRules.cardRadius, tint: tint.opacity(OpacityScale.faint))
     }
 }

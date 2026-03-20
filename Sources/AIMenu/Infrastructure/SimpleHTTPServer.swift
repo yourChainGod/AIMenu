@@ -66,7 +66,7 @@ final class SimpleHTTPServer: @unchecked Sendable {
     }
 
     private func readRequest(on connection: NWConnection, buffer: Data) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
+        connection.receive(minimumIncompleteLength: 1, maximumLength: NetworkConfig.httpServerReceiveChunkSize) { [weak self] data, _, isComplete, error in
             guard let self else {
                 connection.cancel()
                 return
@@ -155,6 +155,9 @@ final class SimpleHTTPServer: @unchecked Sendable {
         }
 
         let contentLength = Int(headers["content-length"] ?? "0") ?? 0
+        guard contentLength >= 0, contentLength <= ProxyRuntimeLimits.maxInboundRequestBytes else {
+            return nil
+        }
         let bodyStart = headerRange.upperBound
         let expectedEnd = bodyStart + contentLength
         guard data.count >= expectedEnd else {

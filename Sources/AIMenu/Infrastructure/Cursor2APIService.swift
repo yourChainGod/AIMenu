@@ -161,7 +161,7 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
         logPath = newLogPath
         lastError = nil
 
-        for _ in 0..<20 {
+        for _ in 0..<NetworkConfig.serviceReadyMaxRetries {
             if await isHealthy(baseURL: "http://127.0.0.1:\(resolvedPort)") {
                 return await status()
             }
@@ -184,8 +184,8 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
     func stop() async -> Cursor2APIStatus {
         if let process, process.isRunning {
             process.terminate()
-            for _ in 0..<20 where process.isRunning {
-                try? await Task.sleep(for: .milliseconds(100))
+            for _ in 0..<NetworkConfig.serviceReadyMaxRetries where process.isRunning {
+                try? await Task.sleep(for: .milliseconds(NetworkConfig.processTermPollIntervalMs))
             }
             if process.isRunning {
                 process.interrupt()
@@ -328,7 +328,7 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
     private func isHealthy(baseURL: String) async -> Bool {
         guard let url = URL(string: "\(baseURL)/health") else { return false }
         var request = URLRequest(url: url)
-        request.timeoutInterval = 1.2
+        request.timeoutInterval = NetworkConfig.healthCheckTimeoutSeconds
         do {
             let (_, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse else { return false }

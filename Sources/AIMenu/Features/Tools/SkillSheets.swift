@@ -19,7 +19,7 @@ struct DiscoverableSkillPreviewSheet: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.primary.opacity(0.05), in: Capsule())
+                            .background(Color.primary.opacity(OpacityScale.subtle), in: Capsule())
                     }
 
                     if let description = document.skill.description?.trimmedNonEmpty {
@@ -51,7 +51,7 @@ struct DiscoverableSkillPreviewSheet: View {
                             .foregroundStyle(.mint)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .background(Color.mint.opacity(0.12), in: Capsule())
+                            .background(Color.mint.opacity(OpacityScale.muted), in: Capsule())
                     } else {
                         Button(L10n.tr("common.install")) {
                             onInstall()
@@ -93,10 +93,10 @@ struct DiscoverableSkillPreviewSheet: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.primary.opacity(0.05))
+                        .fill(Color.primary.opacity(OpacityScale.subtle))
                         .overlay(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                                .strokeBorder(Color.primary.opacity(OpacityScale.muted), lineWidth: 1)
                         )
                 )
             }
@@ -144,7 +144,7 @@ struct InstalledSkillEditorSheet: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.primary.opacity(0.05), in: Capsule())
+                            .background(Color.primary.opacity(OpacityScale.subtle), in: Capsule())
                     }
                     Text(document.path)
                         .font(.caption2.monospaced())
@@ -183,10 +183,10 @@ struct InstalledSkillEditorSheet: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .background(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.primary.opacity(0.05))
+                            .fill(Color.primary.opacity(OpacityScale.subtle))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                                    .strokeBorder(Color.primary.opacity(OpacityScale.muted), lineWidth: 1)
                             )
                     )
             }

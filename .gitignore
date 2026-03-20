@@ -16,3 +16,7 @@ SDKStatCaches.noindex/
 xcuserdata/
 AIMenu.xcodeproj/project.xcworkspace/xcuserdata/
 Copool.xcodeproj/
+
+# Credential / account config files
+*.cfd.json
+*.sbs-team.json
