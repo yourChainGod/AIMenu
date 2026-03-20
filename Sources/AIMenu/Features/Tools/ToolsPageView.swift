@@ -7,6 +7,34 @@ struct ToolsPageView: View {
         case workbench
     }
 
+    private enum ToolsOverviewSection: CaseIterable, Identifiable {
+        case services
+        case configs
+
+        var id: Self { self }
+
+        var title: String {
+            switch self {
+            case .services: return "本地服务"
+            case .configs: return "本地配置"
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .services: return "switch.2"
+            case .configs: return "folder.badge.gearshape"
+            }
+        }
+
+        var tint: Color {
+            switch self {
+            case .services: return .teal
+            case .configs: return .green
+            }
+        }
+    }
+
     private enum SkillsFilter: String, CaseIterable, Identifiable {
         case all
         case installed
@@ -26,12 +54,11 @@ struct ToolsPageView: View {
     @ObservedObject var model: ToolsPageModel
     let mode: PageMode
 
-    @State private var servicesExpanded = true
-    @State private var configsExpanded = true
     @State private var mcpExpanded = true
     @State private var promptsExpanded = true
     @State private var hooksExpanded = true
     @State private var skillsExpanded = true
+    @State private var selectedToolsOverviewSection: ToolsOverviewSection = .services
     @State private var showMCPPresets = false
     @State private var showMCPForm = false
     @State private var editingMCPServer: MCPServer?
@@ -159,8 +186,8 @@ struct ToolsPageView: View {
     private var contentSections: some View {
         switch mode {
         case .tools:
-            servicesSection
-            configsSection
+            toolsOverviewSwitcherRow
+            toolsOverviewContent
         case .workbench:
             workbenchSwitcherRow
             workbenchContent
@@ -177,6 +204,45 @@ struct ToolsPageView: View {
 
     private var isWorkbenchMode: Bool {
         mode == .workbench
+    }
+
+    private var toolsOverviewSwitcherRow: some View {
+        HStack(spacing: LayoutRules.listRowSpacing) {
+            ForEach(ToolsOverviewSection.allCases) { section in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        selectedToolsOverviewSection = section
+                    }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: section.iconName)
+                            .font(.caption.weight(.semibold))
+
+                        Text(section.title)
+                            .font(.caption.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity)
+                .aimenuActionButtonStyle(
+                    prominent: selectedToolsOverviewSection == section,
+                    tint: selectedToolsOverviewSection == section ? section.tint : nil,
+                    density: .compact
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    @ViewBuilder
+    private var toolsOverviewContent: some View {
+        switch selectedToolsOverviewSection {
+        case .services:
+            servicesSection
+        case .configs:
+            configsSection
+        }
     }
 
     private var workbenchSwitcherRow: some View {
@@ -392,26 +458,18 @@ struct ToolsPageView: View {
             icon: "switch.2",
             iconColor: .teal,
             headerTrailing: {
-                HStack(spacing: 6) {
-                    Button {
-                        Task { await model.refreshManagedToolStatus() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("刷新本地服务状态")
-
-                    CollapseChevronButton(isExpanded: servicesExpanded) {
-                        withAnimation(.easeInOut(duration: 0.2)) { servicesExpanded.toggle() }
-                    }
+                Button {
+                    Task { await model.refreshManagedToolStatus() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
                 }
+                .liquidGlassActionButtonStyle(density: .compact)
+                .help("刷新本地服务状态")
             }
         ) {
-            if servicesExpanded {
-                VStack(spacing: 12) {
-                    cursor2APIServiceCard
-                    portToolsCard
-                }
+            VStack(spacing: 12) {
+                cursor2APIServiceCard
+                portToolsCard
             }
         }
     }
@@ -632,26 +690,16 @@ struct ToolsPageView: View {
             icon: "folder.badge.gearshape",
             iconColor: .green,
             headerTrailing: {
-                HStack(spacing: 6) {
-                    Button {
-                        Task { await model.refreshLocalConfigBundles() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("刷新本地配置状态")
-
-                    CollapseChevronButton(isExpanded: configsExpanded) {
-                        withAnimation(.easeInOut(duration: 0.2)) { configsExpanded.toggle() }
-                    }
+                Button {
+                    Task { await model.refreshLocalConfigBundles() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
                 }
+                .liquidGlassActionButtonStyle(density: .compact)
+                .help("刷新本地配置状态")
             }
         ) {
-            if configsExpanded {
-                localConfigContent
-            } else {
-                localConfigCollapsedSummary
-            }
+            localConfigContent
         }
     }
 
@@ -671,27 +719,6 @@ struct ToolsPageView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 10)], spacing: 10) {
                 ForEach(model.localConfigBundles) { bundle in
                     localConfigBundleCard(bundle)
-                }
-            }
-        }
-    }
-
-    private var localConfigCollapsedSummary: some View {
-        let total = model.localConfigBundles.reduce(0) { $0 + $1.files.count }
-        let existing = model.localConfigBundles.reduce(0) { $0 + $1.existingFileCount }
-        return Group {
-            if total == 0 {
-                Text("暂无配置")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(existing == total ? Color.mint : Color.orange)
-                        .frame(width: 6, height: 6)
-                    Text("\(existing) / \(total) 可见")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
                 }
             }
         }
