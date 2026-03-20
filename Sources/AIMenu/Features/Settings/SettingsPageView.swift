@@ -29,9 +29,16 @@ struct SettingsPageView: View {
                     Spacer(minLength: 0)
                 }
             }
-            .padding(LayoutRules.pagePadding)
+            .padding(.top, LayoutRules.pagePadding)
+            .padding(.horizontal, LayoutRules.pagePadding)
+            .padding(.bottom, 6)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .scrollIndicators(.hidden)
+        .overlay {
+            PanelScrollChromeCleaner(bottomInset: 2)
+                .frame(width: 0, height: 0)
+        }
         .task {
             await model.loadIfNeeded()
         }
@@ -372,5 +379,25 @@ struct SettingsPageView: View {
 
     private func quitApp() {
         NSApp.terminate(nil)
+    }
+}
+
+private struct PanelScrollChromeCleaner: NSViewRepresentable {
+    let bottomInset: CGFloat
+
+    func makeNSView(context: Context) -> NSView {
+        NSView(frame: .zero)
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            guard let scrollView = nsView.enclosingScrollView else { return }
+            scrollView.drawsBackground = false
+            scrollView.backgroundColor = .clear
+            scrollView.borderType = .noBorder
+            scrollView.automaticallyAdjustsContentInsets = false
+            scrollView.contentInsets = NSEdgeInsets(top: 0, left: 0, bottom: bottomInset, right: 0)
+            scrollView.scrollerInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        }
     }
 }

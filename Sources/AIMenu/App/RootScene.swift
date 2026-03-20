@@ -65,14 +65,16 @@ struct RootScene: View {
                     .frame(maxWidth: LayoutRules.tabSwitcherMaxWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.horizontal, 12)
-                    .padding(.top, 18)
+                    .padding(.top, 16)
 
                 pageStage
                     .padding(.horizontal, 10)
-                    .padding(.bottom, 10)
+                    .padding(.bottom, 5)
             }
         }
-        .padding(8)
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
+        .padding(.bottom, 5)
         .environment(\.locale, runtimeLocale)
         .onAppear {
             L10n.setLocale(identifier: settingsModel.settings.locale)
