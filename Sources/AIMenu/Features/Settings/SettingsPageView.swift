@@ -183,35 +183,26 @@ struct SettingsPageView: View {
 
     private var languageSection: some View {
         SectionCard(title: "界面", icon: "globe", iconColor: .indigo) {
-            VStack(spacing: 10) {
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("语言")
-                            .font(.subheadline.weight(.semibold))
-                        Text("切换 AIMenu 显示语言")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Picker("语言", selection: Binding(
-                        get: { AppLocale.resolve(model.settings.locale) },
-                        set: { model.setLocale($0.identifier) }
-                    )) {
-                        ForEach(AppLocale.allCases) { locale in
-                            Text(L10n.tr(locale.displayNameKey)).tag(locale)
-                        }
-                    }
-                    .pickerStyle(.menu)
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("语言")
+                        .font(.subheadline.weight(.semibold))
+                    Text("切换 AIMenu 显示语言")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
-                settingsInfoRow(
-                    icon: "rectangle.and.text.magnifyingglass",
-                    title: "更清爽的工作台",
-                    subtitle: "设置页现在与主界面使用同一套卡片和悬浮按钮风格。",
-                    tint: .orange
-                )
+                Spacer(minLength: 0)
+
+                Picker("语言", selection: Binding(
+                    get: { AppLocale.resolve(model.settings.locale) },
+                    set: { model.setLocale($0.identifier) }
+                )) {
+                    ForEach(AppLocale.allCases) { locale in
+                        Text(L10n.tr(locale.displayNameKey)).tag(locale)
+                    }
+                }
+                .pickerStyle(.menu)
             }
         }
     }
@@ -238,10 +229,6 @@ struct SettingsPageView: View {
                 Spacer(minLength: 0)
 
                 Menu {
-                    Button("不指定") {
-                        model.setRestartEditorTarget(nil)
-                    }
-
                     ForEach(model.installedEditorApps) { app in
                         Button {
                             model.setRestartEditorTarget(app.id)
@@ -267,11 +254,16 @@ struct SettingsPageView: View {
     }
 
     private var selectedRestartEditorLabel: String {
-        guard let target = model.settings.restartEditorTargets.first else {
-            return "自动选择首个已安装"
+        if let target = model.settings.restartEditorTargets.first,
+           let label = model.installedEditorApps.first(where: { $0.id == target })?.label {
+            return label
         }
 
-        return model.installedEditorApps.first(where: { $0.id == target })?.label ?? target.rawValue
+        if let fallback = model.installedEditorApps.first?.label {
+            return "\(fallback)（默认）"
+        }
+
+        return "未发现编辑器"
     }
 
     private var aboutSection: some View {

@@ -71,23 +71,46 @@ final class SettingsPageModel: ObservableObject {
     }
 
     func setRestartEditorsOnSwitch(_ value: Bool) {
-        if value && settings.restartEditorTargets.isEmpty, let first = installedEditorApps.first?.id {
-            Task {
-                await update(
-                    AppSettingsPatch(
-                        restartEditorsOnSwitch: true,
-                        restartEditorTargets: [first]
-                    )
-                )
-            }
+        guard value else {
+            Task { await update(AppSettingsPatch(restartEditorsOnSwitch: false)) }
             return
         }
-        Task { await update(AppSettingsPatch(restartEditorsOnSwitch: value)) }
+
+        guard let target = resolvedRestartEditorTarget else {
+            notice = NoticeMessage(style: .error, text: L10n.tr("error.editor.no_restart_target_selected"))
+            return
+        }
+
+        Task {
+            await update(
+                AppSettingsPatch(
+                    restartEditorsOnSwitch: true,
+                    restartEditorTargets: [target]
+                )
+            )
+        }
     }
 
     func setRestartEditorTarget(_ target: EditorAppID?) {
-        let values = target.map { [$0] } ?? []
-        Task { await update(AppSettingsPatch(restartEditorTargets: values), successText: L10n.tr("settings.notice.restart_target_updated")) }
+        guard let resolvedTarget = target ?? resolvedRestartEditorTarget else {
+            notice = NoticeMessage(style: .error, text: L10n.tr("error.editor.no_restart_target_selected"))
+            return
+        }
+
+        Task {
+            await update(
+                AppSettingsPatch(restartEditorTargets: [resolvedTarget]),
+                successText: L10n.tr("settings.notice.restart_target_updated")
+            )
+        }
+    }
+
+    private var resolvedRestartEditorTarget: EditorAppID? {
+        if let stored = settings.restartEditorTargets.first,
+           installedEditorApps.contains(where: { $0.id == stored }) {
+            return stored
+        }
+        return installedEditorApps.first?.id
     }
 
     private func update(_ patch: AppSettingsPatch, successText: String = L10n.tr("settings.notice.updated")) async {
