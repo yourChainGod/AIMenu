@@ -1199,19 +1199,25 @@ private struct AddProviderSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             configSectionCard(title: "Claude 模型与认证", subtitle: "主模型 + 自动拉取", icon: "sparkles.rectangle.stack.fill") {
                 configField(label: "API 格式", hint: nil, hintLabel: nil) {
-                    Picker("", selection: $claudeApiFormat) {
-                        Text("Anthropic 原生").tag(ClaudeApiFormat.anthropic)
-                        Text("OpenAI Chat").tag(ClaudeApiFormat.openaiChat)
-                        Text("OpenAI Responses").tag(ClaudeApiFormat.openaiResponses)
-                    }
-                    .pickerStyle(.segmented)
+                    ProviderSegmentedControl(
+                        selection: $claudeApiFormat,
+                        options: [
+                            .init(title: "Anthropic 原生", value: .anthropic),
+                            .init(title: "OpenAI Chat", value: .openaiChat),
+                            .init(title: "OpenAI Responses", value: .openaiResponses)
+                        ],
+                        accent: accentTint
+                    )
                 }
                 configField(label: "认证字段", hint: nil, hintLabel: nil) {
-                    Picker("", selection: $claudeApiKeyField) {
-                        Text("ANTHROPIC_AUTH_TOKEN").tag(ClaudeApiKeyField.authToken)
-                        Text("ANTHROPIC_API_KEY").tag(ClaudeApiKeyField.apiKey)
-                    }
-                    .pickerStyle(.segmented)
+                    ProviderSegmentedControl(
+                        selection: $claudeApiKeyField,
+                        options: [
+                            .init(title: "ANTHROPIC_AUTH_TOKEN", value: .authToken),
+                            .init(title: "ANTHROPIC_API_KEY", value: .apiKey)
+                        ],
+                        accent: accentTint
+                    )
                 }
                 ProviderModelInputRow(
                     title: "主模型",
@@ -1309,21 +1315,27 @@ private struct AddProviderSheet: View {
             configSectionCard(title: "Codex 运行参数", subtitle: "只更新根字段", icon: "slider.horizontal.3") {
                 HStack(alignment: .top, spacing: 12) {
                     configField(label: "Wire API", hint: nil, hintLabel: nil) {
-                        Picker("", selection: $wireApi) {
-                            Text("responses").tag("responses")
-                            Text("chat").tag("chat")
-                        }
-                        .pickerStyle(.segmented)
+                        ProviderSegmentedControl(
+                            selection: $wireApi,
+                            options: [
+                                .init(title: "responses", value: "responses"),
+                                .init(title: "chat", value: "chat")
+                            ],
+                            accent: accentTint
+                        )
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                     configField(label: "推理强度", hint: nil, hintLabel: nil) {
-                        Picker("", selection: $reasoningEffort) {
-                            Text("low").tag("low")
-                            Text("medium").tag("medium")
-                            Text("high").tag("high")
-                        }
-                        .pickerStyle(.segmented)
+                        ProviderSegmentedControl(
+                            selection: $reasoningEffort,
+                            options: [
+                                .init(title: "low", value: "low"),
+                                .init(title: "medium", value: "medium"),
+                                .init(title: "high", value: "high")
+                            ],
+                            accent: accentTint
+                        )
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -2256,19 +2268,25 @@ private struct EditProviderSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionCard(title: "Claude 模型与认证", subtitle: "主模型 + 自动拉取", icon: "sparkles.rectangle.stack.fill") {
                 editConfigField(label: "API 格式") {
-                    Picker("", selection: $claudeApiFormat) {
-                        Text("Anthropic 原生").tag(ClaudeApiFormat.anthropic)
-                        Text("OpenAI Chat").tag(ClaudeApiFormat.openaiChat)
-                        Text("OpenAI Responses").tag(ClaudeApiFormat.openaiResponses)
-                    }
-                    .pickerStyle(.segmented)
+                    ProviderSegmentedControl(
+                        selection: $claudeApiFormat,
+                        options: [
+                            .init(title: "Anthropic 原生", value: .anthropic),
+                            .init(title: "OpenAI Chat", value: .openaiChat),
+                            .init(title: "OpenAI Responses", value: .openaiResponses)
+                        ],
+                        accent: accentTint
+                    )
                 }
                 editConfigField(label: "认证字段") {
-                    Picker("", selection: $claudeApiKeyField) {
-                        Text("ANTHROPIC_AUTH_TOKEN").tag(ClaudeApiKeyField.authToken)
-                        Text("ANTHROPIC_API_KEY").tag(ClaudeApiKeyField.apiKey)
-                    }
-                    .pickerStyle(.segmented)
+                    ProviderSegmentedControl(
+                        selection: $claudeApiKeyField,
+                        options: [
+                            .init(title: "ANTHROPIC_AUTH_TOKEN", value: .authToken),
+                            .init(title: "ANTHROPIC_API_KEY", value: .apiKey)
+                        ],
+                        accent: accentTint
+                    )
                 }
                 ProviderModelInputRow(
                     title: "主模型",
@@ -2366,21 +2384,27 @@ private struct EditProviderSheet: View {
             sectionCard(title: "Codex 运行参数", subtitle: "只更新根字段", icon: "slider.horizontal.3") {
                 HStack(alignment: .top, spacing: 12) {
                     editConfigField(label: "Wire API") {
-                        Picker("", selection: $codexWireApi) {
-                            Text("responses").tag("responses")
-                            Text("chat").tag("chat")
-                        }
-                        .pickerStyle(.segmented)
+                        ProviderSegmentedControl(
+                            selection: $codexWireApi,
+                            options: [
+                                .init(title: "responses", value: "responses"),
+                                .init(title: "chat", value: "chat")
+                            ],
+                            accent: accentTint
+                        )
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                     editConfigField(label: "推理强度") {
-                        Picker("", selection: $codexReasoningEffort) {
-                            Text("low").tag("low")
-                            Text("medium").tag("medium")
-                            Text("high").tag("high")
-                        }
-                        .pickerStyle(.segmented)
+                        ProviderSegmentedControl(
+                            selection: $codexReasoningEffort,
+                            options: [
+                                .init(title: "low", value: "low"),
+                                .init(title: "medium", value: "medium"),
+                                .init(title: "high", value: "high")
+                            ],
+                            accent: accentTint
+                        )
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -3550,6 +3574,76 @@ private func previewUnquoted(_ value: String) -> String {
         trimmed = trimmed.replacingOccurrences(of: "\\\"", with: "\"")
     }
     return trimmed
+}
+
+private struct ProviderSegmentedOption<Selection: Hashable>: Identifiable {
+    let title: String
+    let value: Selection
+
+    var id: String {
+        "\(title)-\(String(describing: value))"
+    }
+}
+
+private struct ProviderSegmentedControl<Selection: Hashable>: View {
+    @Binding var selection: Selection
+    let options: [ProviderSegmentedOption<Selection>]
+    let accent: Color
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(options) { option in
+                let isSelected = selection == option.value
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        selection = option.value
+                    }
+                } label: {
+                    Text(option.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(isSelected ? accent : .secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.82)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 34)
+                        .padding(.horizontal, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(isSelected ? accent.opacity(0.17) : Color.clear)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .strokeBorder(
+                                            isSelected ? accent.opacity(0.34) : Color.primary.opacity(0.06),
+                                            lineWidth: 1
+                                        )
+                                )
+                        )
+                }
+                .frame(maxWidth: .infinity)
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(nsColor: .controlBackgroundColor).opacity(0.96),
+                            accent.opacity(0.08)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .strokeBorder(accent.opacity(0.14), lineWidth: 1)
+                )
+        )
+    }
 }
 
 // MARK: - Preset Row
