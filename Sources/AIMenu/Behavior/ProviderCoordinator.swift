@@ -350,6 +350,7 @@ actor ProviderCoordinator {
     func toggleMCPApp(serverId: String, app: ProviderAppType, enabled: Bool) async throws {
         var store = try await configService.loadMCPStore()
         guard let index = store.servers.firstIndex(where: { $0.id == serverId }) else { return }
+        let previous = store.servers[index]
         switch app {
         case .claude: store.servers[index].apps.claude = enabled
         case .codex: store.servers[index].apps.codex = enabled
@@ -358,6 +359,7 @@ actor ProviderCoordinator {
         store.servers[index].updatedAt = Int64(Date().timeIntervalSince1970)
         try await configService.saveMCPStore(store)
         if store.servers[index].isEnabled {
+            try await configService.removeMCPServer(previous)
             try await configService.syncMCPServer(store.servers[index])
         }
     }

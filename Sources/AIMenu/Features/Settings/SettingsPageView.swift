@@ -10,6 +10,7 @@ struct SettingsPageView: View {
             VStack(alignment: .leading, spacing: LayoutRules.sectionSpacing) {
                 settingsHeroCard
                 launchSection
+                behaviorSection
                 routingSection
                 languageSection
                 aboutSection
@@ -130,6 +131,56 @@ struct SettingsPageView: View {
         }
     }
 
+    private var behaviorSection: some View {
+        SectionCard(title: "切换联动", icon: "arrow.triangle.branch", iconColor: .mint) {
+            VStack(spacing: 10) {
+                settingsToggleRow(
+                    title: "自动智能切换",
+                    subtitle: "检测到当前账号额度耗尽时，自动切到可用账号。",
+                    tint: .mint,
+                    isOn: Binding(
+                        get: { model.settings.autoSmartSwitch },
+                        set: { model.setAutoSmartSwitch($0) }
+                    )
+                )
+
+                settingsToggleRow(
+                    title: "切换后打开 Codex",
+                    subtitle: "账号切换完成后自动拉起 Codex CLI。",
+                    tint: .blue,
+                    isOn: Binding(
+                        get: { model.settings.launchCodexAfterSwitch },
+                        set: { model.setLaunchAfterSwitch($0) }
+                    )
+                )
+
+                settingsToggleRow(
+                    title: "同步 OpenCode 认证",
+                    subtitle: "切换账号时，同步刷新 OpenCode 的 OpenAI 认证。",
+                    tint: .orange,
+                    isOn: Binding(
+                        get: { model.settings.syncOpencodeOpenaiAuth },
+                        set: { model.setSyncOpencodeOpenaiAuth($0) }
+                    )
+                )
+
+                settingsToggleRow(
+                    title: "切换后重启编辑器",
+                    subtitle: "自动重启指定编辑器，让新账号与配置立即生效。",
+                    tint: .indigo,
+                    isOn: Binding(
+                        get: { model.settings.restartEditorsOnSwitch },
+                        set: { model.setRestartEditorsOnSwitch($0) }
+                    )
+                )
+
+                if model.settings.restartEditorsOnSwitch {
+                    restartTargetRow
+                }
+            }
+        }
+    }
+
     private var languageSection: some View {
         SectionCard(title: "界面", icon: "globe", iconColor: .indigo) {
             VStack(spacing: 10) {
@@ -163,6 +214,64 @@ struct SettingsPageView: View {
                 )
             }
         }
+    }
+
+    @ViewBuilder
+    private var restartTargetRow: some View {
+        if model.installedEditorApps.isEmpty {
+            settingsInfoRow(
+                icon: "desktopcomputer",
+                title: "未发现可重启编辑器",
+                subtitle: "安装 Cursor、VS Code 等桌面编辑器后，这里会出现目标选择。",
+                tint: .secondary
+            )
+        } else {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("重启目标")
+                        .font(.subheadline.weight(.semibold))
+                    Text("当前: \(selectedRestartEditorLabel)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                Menu {
+                    Button("不指定") {
+                        model.setRestartEditorTarget(nil)
+                    }
+
+                    ForEach(model.installedEditorApps) { app in
+                        Button {
+                            model.setRestartEditorTarget(app.id)
+                        } label: {
+                            HStack {
+                                Text(app.label)
+                                if app.id == model.settings.restartEditorTargets.first {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label(selectedRestartEditorLabel, systemImage: "desktopcomputer")
+                        .lineLimit(1)
+                }
+                .aimenuActionButtonStyle(density: .compact)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private var selectedRestartEditorLabel: String {
+        guard let target = model.settings.restartEditorTargets.first else {
+            return "自动选择首个已安装"
+        }
+
+        return model.installedEditorApps.first(where: { $0.id == target })?.label ?? target.rawValue
     }
 
     private var aboutSection: some View {
