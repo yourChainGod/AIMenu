@@ -51,7 +51,7 @@ final class ToolsPageModel: ObservableObject {
             prompts = try await coordinator.listPrompts(for: selectedPromptApp)
             claudeHooks = try await coordinator.listClaudeHooks()
             var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
+            skillStore.installedSkills = try await coordinator.listInstalledSkills()
             skills = skillStore
             await refreshManagedToolStatus()
         } catch {
@@ -222,9 +222,9 @@ final class ToolsPageModel: ObservableObject {
         }
     }
 
-    func toggleHookApp(hookId: String, app: ProviderAppType, enabled: Bool) async {
+    func toggleHookApp(hookIdentity: String, app: ProviderAppType, enabled: Bool) async {
         do {
-            try await coordinator.toggleHookApp(hookId: hookId, app: app, enabled: enabled)
+            try await coordinator.toggleHookApp(hookIdentity: hookIdentity, app: app, enabled: enabled)
             claudeHooks = try await coordinator.listClaudeHooks()
             localConfigBundles = try await coordinator.listLocalConfigBundles()
         } catch {
@@ -263,7 +263,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.installSkill(skill)
             var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
+            skillStore.installedSkills = try await coordinator.listInstalledSkills()
             skills = skillStore
             discoverableSkills = try await coordinator.discoverAvailableSkills()
             refreshDiscoverableSkillPreviewIfNeeded()
@@ -340,7 +340,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.uninstallSkill(directory: directory)
             var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
+            skillStore.installedSkills = try await coordinator.listInstalledSkills()
             skills = skillStore
             if !discoverableSkills.isEmpty {
                 discoverableSkills = try await coordinator.discoverAvailableSkills()
@@ -356,7 +356,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             try await coordinator.toggleSkillApp(directory: directory, app: app, enabled: enabled)
             var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
+            skillStore.installedSkills = try await coordinator.listInstalledSkills()
             skills = skillStore
             if !discoverableSkills.isEmpty {
                 discoverableSkills = try await coordinator.discoverAvailableSkills()
@@ -390,7 +390,7 @@ final class ToolsPageModel: ObservableObject {
         do {
             editingInstalledSkillDocument = try await coordinator.updateInstalledSkillContent(directory: directory, content: content)
             var skillStore = try await coordinator.loadSkillStore()
-            skillStore.installedSkills = try await coordinator.syncInstalledSkillsFromDisk()
+            skillStore.installedSkills = try await coordinator.listInstalledSkills()
             skills = skillStore
             notice = NoticeMessage(style: .success, text: "技能内容已保存")
         } catch {

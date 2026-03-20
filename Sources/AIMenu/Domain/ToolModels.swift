@@ -437,6 +437,18 @@ struct ClaudeHook: Codable, Equatable, Identifiable {
         apps.displayText
     }
 
+    var identityKey: String {
+        [
+            id,
+            event,
+            matcher ?? "",
+            command,
+            commandType ?? "",
+            timeout.map(String.init) ?? "",
+            scope.rawValue,
+        ].joined(separator: "\u{1f}")
+    }
+
     func supports(app: ProviderAppType) -> Bool {
         switch app {
         case .claude:

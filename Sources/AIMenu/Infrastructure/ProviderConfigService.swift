@@ -933,7 +933,7 @@ actor ProviderConfigService {
         var merged: [String: ClaudeHook] = [:]
 
         for hook in hooks {
-            let key = hookMergeKey(for: hook)
+            let key = hook.identityKey
             if var existing = merged[key] {
                 existing.apps.claude = existing.apps.claude || hook.apps.claude
                 existing.apps.codex = existing.apps.codex || hook.apps.codex
@@ -1162,17 +1162,6 @@ actor ProviderConfigService {
             try fileManager.removeItem(at: destination)
         }
         try fileManager.copyItem(at: source, to: destination)
-    }
-
-    private func hookMergeKey(for hook: ClaudeHook) -> String {
-        [
-            hook.event,
-            hook.matcher ?? "",
-            hook.command,
-            hook.commandType ?? "",
-            hook.timeout.map(String.init) ?? "",
-            hook.scope.rawValue,
-        ].joined(separator: "\u{1f}")
     }
 
     private func liveHookSourceSummary(for apps: MCPAppToggles) -> String {

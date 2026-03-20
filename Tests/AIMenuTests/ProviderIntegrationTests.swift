@@ -507,6 +507,80 @@ final class ProviderIntegrationTests: XCTestCase {
         XCTAssertNil(stopHook.matcher)
     }
 
+    func testListClaudeHooksDoesNotPersistHookStoreOnRead() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+        let settingsPath = tempHome.appendingPathComponent(".claude/settings.json")
+        let hookStorePath = tempHome.appendingPathComponent("Library/Application Support/AIMenu/hooks.json")
+
+        try FileManager.default.createDirectory(at: settingsPath.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let settings = """
+        {
+          "hooks": {
+            "Stop": [
+              {
+                "hooks": [
+                  {
+                    "type": "command",
+                    "command": "echo stop"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+        """
+        try settings.write(to: settingsPath, atomically: true, encoding: .utf8)
+
+        _ = try await coordinator.listClaudeHooks()
+
+        XCTAssertEqual(try String(contentsOf: settingsPath, encoding: .utf8), settings)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: hookStorePath.path))
+    }
+
+    func testListClaudeHooksKeepsDistinctHooksWhenIDsDiffer() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+        let settingsPath = tempHome.appendingPathComponent(".claude/settings.json")
+
+        try FileManager.default.createDirectory(at: settingsPath.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let settings = """
+        {
+          "hooks": {
+            "Stop": [
+              {
+                "hooks": [
+                  {
+                    "id": "hook-a",
+                    "type": "command",
+                    "command": "echo same"
+                  },
+                  {
+                    "id": "hook-b",
+                    "type": "command",
+                    "command": "echo same"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+        """
+        try settings.write(to: settingsPath, atomically: true, encoding: .utf8)
+
+        let hooks = try await coordinator.listClaudeHooks()
+
+        XCTAssertEqual(hooks.count, 2)
+        XCTAssertEqual(Set(hooks.map(\.id)), ["hook-a", "hook-b"])
+        XCTAssertEqual(Set(hooks.map(\.identityKey)).count, 2)
+    }
+
     func testListClaudeHooksSupportsLegacyFlatEntries() async throws {
         let tempHome = try makeTemporaryHome()
         defer { try? FileManager.default.removeItem(at: tempHome) }
@@ -540,6 +614,47 @@ final class ProviderIntegrationTests: XCTestCase {
         XCTAssertEqual(hooks[0].command, "echo notify")
         XCTAssertEqual(hooks[0].timeout, 8)
         XCTAssertEqual(hooks[0].commandType, "command")
+    }
+
+    func testDiscoverAvailableSkillsDoesNotImportMountedSkillsOnRead() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+        let mountedSkillDir = tempHome.appendingPathComponent(".claude/skills/demo-skill", isDirectory: true)
+        let mountedSkillPath = mountedSkillDir.appendingPathComponent("SKILL.md", isDirectory: false)
+        let managedSkillPath = tempHome
+            .appendingPathComponent("Library/Application Support/AIMenu/skills/demo-skill", isDirectory: true)
+            .appendingPathComponent("SKILL.md", isDirectory: false)
+
+        try await coordinator.saveSkillStore(
+            SkillStore(
+                repos: SkillStore.defaultRepos.map {
+                    SkillRepo(
+                        owner: $0.owner,
+                        name: $0.name,
+                        branch: $0.branch,
+                        isEnabled: false,
+                        isDefault: $0.isDefault
+                    )
+                },
+                installedSkills: []
+            )
+        )
+        try FileManager.default.createDirectory(at: mountedSkillDir, withIntermediateDirectories: true)
+        try """
+        # Demo Skill
+
+        Mounted only.
+        """.write(to: mountedSkillPath, atomically: true, encoding: .utf8)
+
+        let discovered = try await coordinator.discoverAvailableSkills()
+        let store = try await coordinator.loadSkillStore()
+
+        XCTAssertTrue(discovered.isEmpty)
+        XCTAssertTrue(store.installedSkills.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: managedSkillPath.path))
     }
 
     private func makeTemporaryHome() throws -> URL {

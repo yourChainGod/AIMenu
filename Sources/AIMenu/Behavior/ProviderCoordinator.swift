@@ -422,11 +422,18 @@ actor ProviderCoordinator {
     }
 
     func listClaudeHooks() async throws -> [ClaudeHook] {
-        try await mergedHookStore().hooks
+        try await effectiveHookStore().hooks
     }
 
     func loadHookStore() async throws -> HookStore {
-        try await mergedHookStore()
+        try await effectiveHookStore()
+    }
+
+    func listInstalledSkills() async throws -> [InstalledSkill] {
+        let store = try await configService.loadSkillStore()
+        return store.installedSkills.sorted { lhs, rhs in
+            lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
     }
 
     func saveHookStore(_ store: HookStore) async throws {
@@ -434,9 +441,9 @@ actor ProviderCoordinator {
         try await configService.syncHooks(store.hooks)
     }
 
-    func toggleHookApp(hookId: String, app: ProviderAppType, enabled: Bool) async throws {
-        var store = try await mergedHookStore()
-        guard let index = store.hooks.firstIndex(where: { $0.id == hookId }) else {
+    func toggleHookApp(hookIdentity: String, app: ProviderAppType, enabled: Bool) async throws {
+        var store = try await effectiveHookStore()
+        guard let index = store.hooks.firstIndex(where: { $0.identityKey == hookIdentity }) else {
             throw AppError.invalidData("Hook 不存在")
         }
         guard !enabled || store.hooks[index].supports(app: app) else {
@@ -548,8 +555,7 @@ actor ProviderCoordinator {
 
     func discoverAvailableSkills() async throws -> [DiscoverableSkill] {
         let store = try await configService.loadSkillStore()
-        let installedSkills = try await syncInstalledSkillsFromDisk()
-        let installedByKey = Dictionary(uniqueKeysWithValues: installedSkills.map { ($0.key, $0) })
+        let installedByKey = Dictionary(uniqueKeysWithValues: store.installedSkills.map { ($0.key, $0) })
 
         var discovered: [DiscoverableSkill] = []
         var firstError: Error?
@@ -608,28 +614,33 @@ actor ProviderCoordinator {
             throw AppError.fileNotFound("技能目录不存在：\(skill.directory)")
         }
 
-        let installName = skill.directory
-            .replacingOccurrences(of: "/", with: "__")
-            .replacingOccurrences(of: " ", with: "-")
-            .lowercased()
-        let targetDir = installDir.appendingPathComponent(installName)
+        var store = try await configService.loadSkillStore()
+        if let existing = store.installedSkills.first(where: { $0.key == skill.key }),
+           existing.directory != skill.directory {
+            let legacyDir = skillDirectoryURL(directory: existing.directory, root: installDir)
+            if fm.fileExists(atPath: legacyDir.path) {
+                try fm.removeItem(at: legacyDir)
+            }
+            try await configService.removeInstalledSkillFromApps(directory: existing.directory)
+        }
+
+        let targetDir = skillDirectoryURL(directory: skill.directory, root: installDir)
         if fm.fileExists(atPath: targetDir.path) {
             try fm.removeItem(at: targetDir)
         }
-        try fm.copyItem(at: sourceDirectory, to: targetDir)
+        try copyDirectoryReplacingExisting(from: sourceDirectory, to: targetDir)
 
-        var store = try await configService.loadSkillStore()
         let installed = InstalledSkill(
             key: skill.key,
             name: skill.name,
             description: skill.description,
-            directory: installName,
+            directory: skill.directory,
             repoOwner: skill.repoOwner,
             repoName: skill.repoName,
             installedAt: Int64(Date().timeIntervalSince1970),
             apps: skill.apps
         )
-        store.installedSkills.removeAll { $0.key == skill.key || $0.directory == installName }
+        store.installedSkills.removeAll { $0.key == skill.key || $0.directory == skill.directory }
         store.installedSkills.append(installed)
         try await configService.saveSkillStore(store)
         try await configService.syncInstalledSkill(installed)
@@ -729,7 +740,7 @@ actor ProviderCoordinator {
     }
 
     func readInstalledSkillDocument(directory: String) async throws -> InstalledSkillDocument {
-        let installedSkills = try await syncInstalledSkillsFromDisk()
+        let installedSkills = try await listInstalledSkills()
         guard let skill = installedSkills.first(where: { $0.directory == directory }) else {
             throw AppError.fileNotFound("未找到技能：\(directory)")
         }
@@ -746,7 +757,25 @@ actor ProviderCoordinator {
 
     func updateInstalledSkillContent(directory: String, content: String) async throws -> InstalledSkillDocument {
         try await configService.writeInstalledSkillContent(directory: directory, content: content)
-        return try await readInstalledSkillDocument(directory: directory)
+
+        var store = try await configService.loadSkillStore()
+        guard let index = store.installedSkills.firstIndex(where: { $0.directory == directory }) else {
+            throw AppError.fileNotFound("未找到技能：\(directory)")
+        }
+
+        let fallbackName = directory.components(separatedBy: "/").last ?? directory
+        let metadata = parseSkillMetadata(from: content, fallbackName: fallbackName)
+        store.installedSkills[index].name = metadata.name
+        store.installedSkills[index].description = metadata.description
+        try await configService.saveSkillStore(store)
+        try await configService.syncInstalledSkill(store.installedSkills[index])
+
+        let path = await configService.installedSkillMarkdownPath(directory: directory)
+        return InstalledSkillDocument(
+            skill: store.installedSkills[index],
+            path: path.path,
+            content: content
+        )
     }
 
     func readDiscoverableSkillDocument(_ skill: DiscoverableSkill) async throws -> DiscoverableSkillPreviewDocument {
@@ -831,13 +860,11 @@ actor ProviderCoordinator {
         return discovered
     }
 
-    private func mergedHookStore() async throws -> HookStore {
+    private func effectiveHookStore() async throws -> HookStore {
         var store = try await configService.loadHookStore()
         let liveHooks = try await configService.loadClaudeHooks()
         let hooks = try await mergeHooks(stored: store.hooks, live: liveHooks)
         store.hooks = hooks
-        try await configService.saveHookStore(store)
-        try await configService.syncHooks(hooks)
         return store
     }
 
@@ -847,14 +874,14 @@ actor ProviderCoordinator {
         for hook in stored {
             var storedHook = hook
             storedHook.sourcePath = await configService.hookSourceSummary(for: storedHook.apps)
-            merged[hookMergeKey(for: storedHook)] = storedHook
+            merged[storedHook.identityKey] = storedHook
         }
 
         for hook in live {
-            let key = hookMergeKey(for: hook)
+            let key = hook.identityKey
             if var existing = merged[key] {
                 existing.id = existing.id.trimmedNonEmpty ?? hook.id
-                existing.enabled = hook.enabled
+                existing.enabled = existing.enabled || hook.enabled
                 existing.apps = mergeAppToggles(existing.apps, hook.apps)
                 existing.sourcePath = await configService.hookSourceSummary(for: existing.apps)
                 merged[key] = existing
@@ -876,17 +903,6 @@ actor ProviderCoordinator {
             }
             return lhs.command.localizedCaseInsensitiveCompare(rhs.command) == .orderedAscending
         }
-    }
-
-    private func hookMergeKey(for hook: ClaudeHook) -> String {
-        [
-            hook.event,
-            hook.matcher ?? "",
-            hook.command,
-            hook.commandType ?? "",
-            hook.timeout.map(String.init) ?? "",
-            hook.scope.rawValue,
-        ].joined(separator: "\u{1f}")
     }
 
     private func importMountedSkillsIfNeeded(into installDir: URL) async throws -> [String: MCPAppToggles] {

@@ -1567,7 +1567,7 @@ struct ToolsPageView: View {
             }
 
             VStack(spacing: 4) {
-                ForEach(hooks) { hook in
+                ForEach(hooks, id: \.identityKey) { hook in
                     claudeHookRow(hook)
                 }
             }
@@ -1605,15 +1605,15 @@ struct ToolsPageView: View {
 
                 HStack(spacing: 6) {
                     ForEach(ProviderAppType.allCases) { app in
-                        appMountChip(
-                            app: app,
-                            isOn: hook.apps.isEnabled(for: app),
-                            disabled: !hook.supports(app: app),
-                            onChange: { enabled in
-                                Task { await model.toggleHookApp(hookId: hook.id, app: app, enabled: enabled) }
-                            }
-                        )
-                    }
+                            appMountChip(
+                                app: app,
+                                isOn: hook.apps.isEnabled(for: app),
+                                disabled: !hook.supports(app: app),
+                                onChange: { enabled in
+                                Task { await model.toggleHookApp(hookIdentity: hook.identityKey, app: app, enabled: enabled) }
+                                }
+                            )
+                        }
                     Spacer(minLength: 0)
                 }
 
