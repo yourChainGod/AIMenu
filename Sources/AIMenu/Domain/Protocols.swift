@@ -59,7 +59,8 @@ protocol Cursor2APIServiceProtocol: Sendable {
 
 protocol PortManagementServiceProtocol: Sendable {
     func status(for port: Int) async -> ManagedPortStatus
-    func kill(port: Int) async throws -> ManagedPortStatus
+    func terminate(port: Int) async throws -> ManagedPortStatus
+    func forceKill(port: Int) async throws -> ManagedPortStatus
 }
 
 protocol UpdateCheckingService: Sendable {

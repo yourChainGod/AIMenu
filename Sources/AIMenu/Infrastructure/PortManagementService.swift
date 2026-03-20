@@ -35,10 +35,37 @@ actor PortManagementService: PortManagementServiceProtocol {
         )
     }
 
-    func kill(port: Int) async throws -> ManagedPortStatus {
+    func terminate(port: Int) async throws -> ManagedPortStatus {
         guard port > 0 else {
             throw AppError.invalidData("端口号无效")
         }
+        let pids = try listeningProcessIDs(for: port)
+        guard !pids.isEmpty else { return await status(for: port) }
+
+        try send(signal: "-TERM", to: pids, errorPrefix: "结束端口进程失败")
+        try? await Task.sleep(for: .milliseconds(250))
+
+        let refreshed = await status(for: port)
+        guard !refreshed.occupied else {
+            throw AppError.invalidData("端口 \(port) 仍被占用，请尝试强制解除占用")
+        }
+
+        return refreshed
+    }
+
+    func forceKill(port: Int) async throws -> ManagedPortStatus {
+        guard port > 0 else {
+            throw AppError.invalidData("端口号无效")
+        }
+        let pids = try listeningProcessIDs(for: port)
+        guard !pids.isEmpty else { return await status(for: port) }
+
+        try send(signal: "-KILL", to: pids, errorPrefix: "强制结束端口进程失败")
+        try? await Task.sleep(for: .milliseconds(250))
+        return await status(for: port)
+    }
+
+    private func listeningProcessIDs(for port: Int) throws -> [Int] {
         guard let lsof = CommandRunner.resolveExecutable("lsof") else {
             throw AppError.fileNotFound("系统缺少 lsof，无法释放端口")
         }
@@ -49,41 +76,25 @@ actor PortManagementService: PortManagementServiceProtocol {
             timeout: 1.5
         )
 
-        let pids = pidResult.stdout
+        return pidResult.stdout
             .components(separatedBy: .newlines)
             .compactMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
 
-        guard !pids.isEmpty else {
-            return await status(for: port)
-        }
-
+    private func send(signal: String, to pids: [Int], errorPrefix: String) throws {
         let pidStrings = pids.map(String.init)
         _ = try CommandRunner.runChecked(
             "/bin/kill",
-            arguments: ["-TERM"] + pidStrings,
+            arguments: [signal] + pidStrings,
             timeout: 1.5,
-            errorPrefix: "结束端口进程失败"
+            errorPrefix: errorPrefix
         )
-
-        try? await Task.sleep(for: .milliseconds(250))
-        let afterTERM = await status(for: port)
-        if !afterTERM.occupied {
-            return afterTERM
-        }
-
-        _ = try CommandRunner.runChecked(
-            "/bin/kill",
-            arguments: ["-KILL"] + pidStrings,
-            timeout: 1.5,
-            errorPrefix: "强制结束端口进程失败"
-        )
-        try? await Task.sleep(for: .milliseconds(250))
-        return await status(for: port)
     }
 }
 #else
 actor PortManagementService: PortManagementServiceProtocol {
     func status(for port: Int) async -> ManagedPortStatus { .idle(port: port) }
-    func kill(port: Int) async throws -> ManagedPortStatus { .idle(port: port) }
+    func terminate(port: Int) async throws -> ManagedPortStatus { .idle(port: port) }
+    func forceKill(port: Int) async throws -> ManagedPortStatus { .idle(port: port) }
 }
 #endif

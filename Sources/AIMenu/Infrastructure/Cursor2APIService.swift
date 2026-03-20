@@ -184,7 +184,11 @@ actor Cursor2APIService: Cursor2APIServiceProtocol {
         } else {
             let current = await status()
             if current.running {
-                _ = try? await portService.kill(port: current.port)
+                do {
+                    _ = try await portService.terminate(port: current.port)
+                } catch {
+                    _ = try? await portService.forceKill(port: current.port)
+                }
             }
         }
 

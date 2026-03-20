@@ -521,13 +521,18 @@ final class ToolsPageModel: ObservableObject {
         notice = NoticeMessage(style: .info, text: "已移除端口 \(port)")
     }
 
-    func killPort(_ port: Int) async {
+    func releaseTrackedPort(_ port: Int, force: Bool = false) async {
         loading = true
         defer { loading = false }
         do {
-            _ = try await portService.kill(port: port)
+            if force {
+                _ = try await portService.forceKill(port: port)
+            } else {
+                _ = try await portService.terminate(port: port)
+            }
             await refreshManagedToolStatus()
-            notice = NoticeMessage(style: .success, text: "端口 \(port) 已释放")
+            let message = force ? "端口 \(port) 已强制解除占用" : "端口 \(port) 已解除占用"
+            notice = NoticeMessage(style: .success, text: message)
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }

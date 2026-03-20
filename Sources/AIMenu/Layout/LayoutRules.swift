@@ -8,7 +8,7 @@ enum LayoutRules {
     static let liquidProgressHeight = CGFloat(12)
     static let liquidProgressInset = CGFloat(2)
     static let listRowSpacing = CGFloat(10)
-    static let tabSwitcherMaxWidth = CGFloat(320)
+    static let tabSwitcherMaxWidth = CGFloat(520)
     static let minimumPanelHeight = CGFloat(520)
     static let defaultPanelHeight = CGFloat(620)
     static let accountsRowSpacing = CGFloat(10)
