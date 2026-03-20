@@ -21,7 +21,7 @@
 
 AIMenu 不是凭空开始的，它是在以下项目启发上继续重构、整合和原生化的结果：
 
-- [AlickH/Copool](https://github.com/AlickH/Copool)：账号池与使用额度管理思路
+- [AlickH/Copool](https://github.com/AlickH/Copool)：AIMenu 几乎完全基于它继续制作与重构，是当前项目最主要的上游基础
 - [kongkongyo/cc-switch](https://github.com/kongkongyo/cc-switch)：多提供商切换与本地配置写入思路
 - [Moresl/cchub](https://github.com/Moresl/cchub)：MCP / 提示词 / Hooks / Skills 的工具中台思路
 - [yourChainGod/cursor2api-go](https://github.com/yourChainGod/cursor2api-go)：本地 Cursor2API 桥接服务
