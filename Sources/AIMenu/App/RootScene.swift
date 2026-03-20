@@ -41,17 +41,52 @@ struct RootScene: View {
         AppLocale.resolve(settingsModel.settings.locale)
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            AppTabToolbarSwitcher(selection: $selectedTab, tabs: AppTab.allCases)
-                .frame(maxWidth: LayoutRules.tabSwitcherMaxWidth)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.horizontal, LayoutRules.pagePadding)
-                .padding(.top, 10)
-                .padding(.bottom, 8)
-
-            activePage
+    private var currentTabAccent: Color {
+        switch selectedTab {
+        case .accounts:
+            return .mint
+        case .providers:
+            return .blue
+        case .tools:
+            return .teal
+        case .workbench:
+            return .orange
+        case .settings:
+            return .indigo
         }
+    }
+
+    private var currentTabSubtitle: String {
+        switch selectedTab {
+        case .accounts:
+            return "账号、代理与状态"
+        case .providers:
+            return "提供商与接管配置"
+        case .tools:
+            return "本地服务与本地配置"
+        case .workbench:
+            return "MCP、提示词与工具挂载"
+        case .settings:
+            return "语言、启动与全局偏好"
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            panelChromeBackground
+
+            VStack(spacing: 0) {
+                panelHeader
+                    .padding(.horizontal, 12)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+
+                activePage
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.bottom, 8)
+            }
+        }
+        .padding(8)
         .environment(\.locale, runtimeLocale)
         .onAppear {
             L10n.setLocale(identifier: settingsModel.settings.locale)
@@ -73,8 +108,8 @@ struct RootScene: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             NoticeBanner(notice: currentNotice)
-                .padding(.horizontal, LayoutRules.pagePadding)
-                .padding(.top, 6)
+                .padding(.horizontal, LayoutRules.pagePadding + 2)
+                .padding(.top, 8)
                 .allowsHitTesting(false)
                 .zIndex(10)
         }
@@ -93,6 +128,111 @@ struct RootScene: View {
             maxWidth: LayoutRules.maximumPanelWidth,
             minHeight: LayoutRules.minimumPanelHeight
         )
+        .animation(.spring(response: 0.26, dampingFraction: 0.86), value: selectedTab)
+    }
+
+    private var panelHeader: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    currentTabAccent.opacity(0.28),
+                                    currentTabAccent.opacity(0.12)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
+                    Image(systemName: "drop.halffull")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(currentTabAccent)
+                }
+                .frame(width: 42, height: 42)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("AIMenu")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                    Text(selectedTab.toolbarTitle)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.primary)
+                    Text(currentTabSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                Text("\(AppTab.allCases.firstIndex(of: selectedTab).map { $0 + 1 } ?? 1)/\(AppTab.allCases.count)")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(currentTabAccent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(currentTabAccent.opacity(0.12), in: Capsule())
+            }
+
+            AppTabToolbarSwitcher(selection: $selectedTab, tabs: AppTab.allCases, tint: currentTabAccent)
+                .frame(maxWidth: LayoutRules.tabSwitcherMaxWidth)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .padding(14)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.20), lineWidth: 1)
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(currentTabAccent.opacity(0.08))
+                        .blur(radius: 18)
+                )
+        }
+    }
+
+    private var panelChromeBackground: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(.ultraThinMaterial)
+
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            currentTabAccent.opacity(0.16),
+                            Color.white.opacity(0.04),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Circle()
+                .fill(currentTabAccent.opacity(0.14))
+                .frame(width: 210, height: 210)
+                .blur(radius: 52)
+                .offset(x: -116, y: -172)
+
+            Circle()
+                .fill(currentTabAccent.opacity(0.10))
+                .frame(width: 176, height: 176)
+                .blur(radius: 46)
+                .offset(x: 152, y: 214)
+
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .shadow(color: .black.opacity(0.16), radius: 26, x: 0, y: 16)
     }
 
     @ViewBuilder
@@ -158,6 +298,7 @@ private struct WindowSizeEnforcer: NSViewRepresentable {
 private struct AppTabToolbarSwitcher: View {
     @Binding var selection: AppTab
     let tabs: [AppTab]
+    let tint: Color
 
     var body: some View {
         HStack(spacing: 0) {
@@ -169,7 +310,7 @@ private struct AppTabToolbarSwitcher: View {
                 } label: {
                     Image(systemName: tab.iconName)
                         .font(.system(size: 16, weight: selection == tab ? .semibold : .medium))
-                        .foregroundStyle(selection == tab ? Color.primary : Color.secondary)
+                        .foregroundStyle(selection == tab ? tint : Color.secondary)
                         .frame(maxWidth: .infinity, minHeight: 40)
                 }
                 .buttonStyle(.plain)
@@ -210,7 +351,7 @@ private struct AppTabToolbarSwitcher: View {
             .fill(.regularMaterial)
             .overlay {
                 Capsule()
-                    .fill(Color.accentColor.opacity(0.12))
+                    .fill(tint.opacity(0.16))
             }
     }
 

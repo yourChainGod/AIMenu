@@ -193,12 +193,17 @@ struct ToolsPageView: View {
                     height: max(460, geometry.size.height - 22)
                 )
                 .padding(.horizontal, 11)
-                .padding(.vertical, 11)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(.scale(scale: 0.96).combined(with: .opacity))
+                .padding(.top, modalTopInset(for: geometry.size.height))
+                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .transition(.move(edge: .top).combined(with: .scale(scale: 0.98)).combined(with: .opacity))
             }
             .zIndex(20)
         }
+    }
+
+    private func modalTopInset(for height: CGFloat) -> CGFloat {
+        min(48, max(14, height * 0.08))
     }
 
     private func closeMCPForm() {

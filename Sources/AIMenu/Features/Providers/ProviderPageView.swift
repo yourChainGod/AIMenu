@@ -114,12 +114,17 @@ struct ProviderPageView: View {
                     height: max(460, geometry.size.height - 28)
                 )
                 .padding(.horizontal, 14)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                .padding(.top, modalTopInset(for: geometry.size.height))
+                .padding(.bottom, 14)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .transition(.move(edge: .top).combined(with: .scale(scale: 0.97)).combined(with: .opacity))
             }
             .zIndex(20)
         }
+    }
+
+    private func modalTopInset(for height: CGFloat) -> CGFloat {
+        min(52, max(16, height * 0.08))
     }
 
     // MARK: - Toolbar (App Picker + Actions)

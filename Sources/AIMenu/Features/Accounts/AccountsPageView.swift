@@ -74,9 +74,10 @@ struct AccountsPageView: View {
                         .onDrop(of: [UTType.fileURL], isTargeted: $importDropTargeted, perform: handleDroppedItems)
                         .frame(maxWidth: 620, maxHeight: max(420, geometry.size.height - 44))
                         .padding(.horizontal, 26)
-                        .padding(.vertical, 22)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .transition(.scale(scale: 0.94).combined(with: .opacity))
+                        .padding(.top, modalTopInset(for: geometry.size.height))
+                        .padding(.bottom, 22)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .transition(.move(edge: .top).combined(with: .scale(scale: 0.97)).combined(with: .opacity))
                     }
                     .zIndex(10)
                 }
@@ -102,9 +103,10 @@ struct AccountsPageView: View {
                         }
                         .frame(maxWidth: 620, maxHeight: max(420, geometry.size.height - 44))
                         .padding(.horizontal, 26)
-                        .padding(.vertical, 22)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .transition(.scale(scale: 0.94).combined(with: .opacity))
+                        .padding(.top, modalTopInset(for: geometry.size.height))
+                        .padding(.bottom, 22)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .transition(.move(edge: .top).combined(with: .scale(scale: 0.97)).combined(with: .opacity))
                     }
                     .zIndex(10)
                 }
@@ -333,6 +335,10 @@ struct AccountsPageView: View {
                 ),
             count: LayoutRules.accountsExpandedColumns
         )
+    }
+
+    private func modalTopInset(for height: CGFloat) -> CGFloat {
+        min(54, max(18, height * 0.09))
     }
 
     private var resolvedImportJSONURLs: [URL] {
