@@ -80,7 +80,14 @@ struct ToolsPageView: View {
             .padding(LayoutRules.pagePadding)
         }
         .scrollIndicators(.hidden)
-        .task { await model.load() }
+        .task {
+            switch mode {
+            case .tools:
+                await model.loadOverview()
+            case .workbench:
+                await model.loadWorkbench()
+            }
+        }
         .sheet(isPresented: $showMCPForm) {
             MCPServerEditorSheet(
                 server: editingMCPServer,
@@ -232,6 +239,7 @@ struct ToolsPageView: View {
                 )
             }
         }
+        .frame(maxWidth: 360)
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
@@ -271,6 +279,7 @@ struct ToolsPageView: View {
                 )
             }
         }
+        .frame(maxWidth: 460)
         .frame(maxWidth: .infinity, alignment: .center)
     }
 

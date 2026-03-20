@@ -63,12 +63,6 @@ struct RootScene: View {
             if tab == .accounts {
                 Task { await proxyModel.refreshForTabEntry() }
             }
-            if tab == .providers {
-                Task { await providerModel.load() }
-            }
-            if tab == .tools || tab == .workbench {
-                Task { await toolsModel.load() }
-            }
         }
         .onReceive(trayModel.$accounts.removeDuplicates()) { accounts in
             accountsModel.syncFromBackgroundRefresh(accounts)

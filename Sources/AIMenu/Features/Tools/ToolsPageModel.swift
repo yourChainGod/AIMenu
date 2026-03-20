@@ -42,18 +42,27 @@ final class ToolsPageModel: ObservableObject {
         self.portService = portService
     }
 
-    func load() async {
+    func loadOverview() async {
         loading = true
         defer { loading = false }
         do {
             localConfigBundles = try await coordinator.listLocalConfigBundles()
+            await refreshManagedToolStatus()
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    func loadWorkbench() async {
+        loading = true
+        defer { loading = false }
+        do {
             mcpServers = try await coordinator.listMCPServers()
             prompts = try await coordinator.listPrompts(for: selectedPromptApp)
             claudeHooks = try await coordinator.listClaudeHooks()
             var skillStore = try await coordinator.loadSkillStore()
             skillStore.installedSkills = try await coordinator.listInstalledSkills()
             skills = skillStore
-            await refreshManagedToolStatus()
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
