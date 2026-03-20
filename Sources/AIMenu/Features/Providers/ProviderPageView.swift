@@ -461,15 +461,53 @@ private struct ProviderModalPanel<Content: View>: View {
         .background {
             ZStack {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color(nsColor: .windowBackgroundColor).opacity(0.985))
+                    .fill(Color(nsColor: .windowBackgroundColor).opacity(0.97))
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(accent.opacity(0.03))
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(0.14),
+                                accent.opacity(0.045),
+                                Color.white.opacity(0.02)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                VStack(spacing: 0) {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.24),
+                                    Color.white.opacity(0.02),
+                                    Color.clear
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(height: 110)
+                    Spacer(minLength: 0)
+                }
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.14), lineWidth: 1)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(0.28),
+                                Color.white.opacity(0.14),
+                                Color.black.opacity(0.06)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 10)
+        .shadow(color: accent.opacity(0.12), radius: 16, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.14), radius: 28, x: 0, y: 14)
     }
 }
 
@@ -622,11 +660,13 @@ private struct AddProviderSheet: View {
     private var presetSelectionView: some View {
         VStack(alignment: .leading, spacing: 0) {
             sheetHeader
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 16)
                 .padding(.top, 16)
-                .padding(.bottom, 12)
+                .padding(.bottom, 10)
 
-            Divider()
+            Rectangle()
+                .fill(accentTint.opacity(0.12))
+                .frame(height: 1)
 
             presetPickerStep
         }
@@ -636,11 +676,13 @@ private struct AddProviderSheet: View {
     private var configureView: some View {
         VStack(alignment: .leading, spacing: 0) {
             sheetHeader
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 16)
                 .padding(.top, 16)
-                .padding(.bottom, 12)
+                .padding(.bottom, 10)
 
-            Divider()
+            Rectangle()
+                .fill(accentTint.opacity(0.12))
+                .frame(height: 1)
 
             configureStep
         }
@@ -648,47 +690,102 @@ private struct AddProviderSheet: View {
     }
 
     private var sheetHeader: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(accentTint.opacity(0.14))
-                .overlay {
-                    Image(systemName: step == .selectPreset ? "square.grid.2x2.fill" : (selectedPreset?.icon ?? appType.iconName))
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(accentTint)
-                }
-                .frame(width: 38, height: 38)
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(step == .selectPreset ? "选择提供商" : (selectedPreset?.name ?? "配置详情"))
-                        .font(.headline.weight(.semibold))
-
-                    Text(step == .selectPreset ? "预设" : "配置")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(accentTint)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(accentTint.opacity(0.12), in: Capsule())
-                }
-                Text(step == .selectPreset ? "先挑一个常用预设，再补充接口与模型。" : appType.liveConfigPathsText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 0)
-
-            if step == .configure {
-                Button("返回预设") {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        step = .selectPreset
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accentTint.opacity(0.24),
+                                accentTint.opacity(0.10)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay {
+                        Image(systemName: step == .selectPreset ? "square.grid.2x2.fill" : (selectedPreset?.icon ?? appType.iconName))
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(accentTint)
                     }
+                    .frame(width: 42, height: 42)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(step == .selectPreset ? "添加供应商" : (selectedPreset?.name ?? "配置详情"))
+                            .font(.headline.weight(.semibold))
+
+                        ProviderConfigBadge(
+                            text: step == .selectPreset ? "预设选择" : appType.displayName,
+                            tint: accentTint
+                        )
+                    }
+                    Text(step == .selectPreset ? "先挑一个常用预设，再补充接口与模型。" : "补齐接口、模型和运行参数后即可写入本地配置。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
-                .aimenuActionButtonStyle(density: .compact)
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 8) {
+                    if step == .configure {
+                        Button("返回预设") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                step = .selectPreset
+                            }
+                        }
+                        .aimenuActionButtonStyle(tint: accentTint, density: .compact)
+                    }
+
+                    CloseGlassButton { handleClose() }
+                }
             }
 
-            CloseGlassButton { handleClose() }
+            HStack(spacing: 8) {
+                ProviderConfigBadge(
+                    text: step == .selectPreset ? "\(filteredPresets.count) 个候选" : "写入目标",
+                    tint: step == .selectPreset ? .secondary : accentTint
+                )
+
+                Label(
+                    step == .selectPreset ? appType.displayName : appType.liveConfigPathsText,
+                    systemImage: step == .selectPreset ? "sparkles" : "arrow.down.doc.fill"
+                )
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule()
+                        .fill(Color.white.opacity(0.14))
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(accentTint.opacity(0.15), lineWidth: 1)
+                        )
+                )
+                .lineLimit(1)
+            }
         }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            accentTint.opacity(0.16),
+                            accentTint.opacity(0.05),
+                            Color.white.opacity(0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(accentTint.opacity(0.14), lineWidth: 1)
+                )
+        )
     }
 
     private func handleClose() {
@@ -828,9 +925,6 @@ private struct AddProviderSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-            Divider()
-                .overlay(Color.white.opacity(0.08))
-
             HStack(spacing: 8) {
                 HStack(spacing: 6) {
                     Image(systemName: showAllPresets ? "square.grid.2x2" : "sparkles")
@@ -851,6 +945,21 @@ private struct AddProviderSheet: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
+            .background(
+                LinearGradient(
+                    colors: [
+                        accentTint.opacity(0.07),
+                        Color.clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(accentTint.opacity(0.12))
+                    .frame(height: 1)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
@@ -861,7 +970,7 @@ private struct AddProviderSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     formHeroCard
 
-                    configSectionCard(title: "基本信息") {
+                    configSectionCard(title: "基本信息", subtitle: "名称、官网与备注", icon: "square.text.square") {
                         HStack(alignment: .top, spacing: 12) {
                             configField(label: "供应商名称 *", hint: nil, hintLabel: nil) {
                                 TextField(selectedPreset?.name ?? "名称", text: $providerName)
@@ -886,7 +995,7 @@ private struct AddProviderSheet: View {
                         }
                     }
 
-                    configSectionCard(title: "接口凭据") {
+                    configSectionCard(title: "接口凭据", subtitle: "本地将保存当前 provider 的接入信息", icon: "key.fill") {
                         configField(
                             label: "API 密钥 *",
                             hint: selectedPreset?.apiKeyUrl,
@@ -919,8 +1028,6 @@ private struct AddProviderSheet: View {
                 .padding(.vertical, 14)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-            Divider()
 
             HStack(spacing: 8) {
                 if let preset = selectedPreset {
@@ -983,6 +1090,21 @@ private struct AddProviderSheet: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
+            .background(
+                LinearGradient(
+                    colors: [
+                        accentTint.opacity(0.08),
+                        Color.clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(accentTint.opacity(0.12))
+                    .frame(height: 1)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
@@ -1075,7 +1197,7 @@ private struct AddProviderSheet: View {
 
     private var claudeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            configSectionCard(title: "Claude 模型与认证", subtitle: "主模型 + 自动拉取") {
+            configSectionCard(title: "Claude 模型与认证", subtitle: "主模型 + 自动拉取", icon: "sparkles.rectangle.stack.fill") {
                 configField(label: "API 格式", hint: nil, hintLabel: nil) {
                     Picker("", selection: $claudeApiFormat) {
                         Text("Anthropic 原生").tag(ClaudeApiFormat.anthropic)
@@ -1104,7 +1226,7 @@ private struct AddProviderSheet: View {
                 fetchedModelRow(selection: $model)
             }
 
-            configSectionCard {
+            configSectionCard(title: "高级路由", subtitle: "附加模型与运行参数", icon: "dial.medium.fill") {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { showClaudeAdvanced.toggle() }
                 } label: {
@@ -1170,7 +1292,7 @@ private struct AddProviderSheet: View {
 
     private var codexSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            configSectionCard(title: "Codex 模型", subtitle: "写入 `auth.json` + `config.toml`") {
+            configSectionCard(title: "Codex 模型", subtitle: "写入 `auth.json` + `config.toml`", icon: "chevron.left.forwardslash.chevron.right") {
                 ProviderModelInputRow(
                     title: "模型名称",
                     placeholder: selectedPreset?.defaultModel ?? "例如：gpt-5-codex",
@@ -1184,7 +1306,7 @@ private struct AddProviderSheet: View {
                 fetchedModelRow(selection: $model)
             }
 
-            configSectionCard(title: "Codex 运行参数", subtitle: "只更新根字段") {
+            configSectionCard(title: "Codex 运行参数", subtitle: "只更新根字段", icon: "slider.horizontal.3") {
                 HStack(alignment: .top, spacing: 12) {
                     configField(label: "Wire API", hint: nil, hintLabel: nil) {
                         Picker("", selection: $wireApi) {
@@ -1210,7 +1332,7 @@ private struct AddProviderSheet: View {
     }
 
     private var geminiSection: some View {
-        configSectionCard(title: "Gemini 模型", subtitle: "支持官方与聚合接口") {
+        configSectionCard(title: "Gemini 模型", subtitle: "支持官方与聚合接口", icon: "diamond.fill") {
             ProviderModelInputRow(
                 title: "模型名称",
                 placeholder: selectedPreset?.defaultModel ?? "默认模型",
@@ -1226,13 +1348,13 @@ private struct AddProviderSheet: View {
     }
 
     private var configPreviewSection: some View {
-        configSectionCard {
+        configSectionCard(title: "配置预览", subtitle: previewSubtitle, icon: "doc.text.magnifyingglass") {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) { showConfigPreview.toggle() }
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("配置预览")
+                        Text(showConfigPreview ? "收起预览" : "展开预览")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
                         Text(previewSubtitle)
@@ -1284,12 +1406,12 @@ private struct AddProviderSheet: View {
     }
 
     private var proxySection: some View {
-        configSectionCard {
+        configSectionCard(title: "代理配置", subtitle: "按需为当前 provider 单独指定代理", icon: "point.3.filled.connected.trianglepath.dotted") {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) { showProxyConfig.toggle() }
             } label: {
                 HStack {
-                    Text("代理配置")
+                    Text(showProxyConfig ? "收起代理设置" : "展开代理设置")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
                     Spacer(minLength: 0)
@@ -1344,12 +1466,12 @@ private struct AddProviderSheet: View {
     }
 
     private var billingSection: some View {
-        configSectionCard {
+        configSectionCard(title: "计费配置", subtitle: "记录成本信息，便于后续对比", icon: "banknote.fill") {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) { showBillingConfig.toggle() }
             } label: {
                 HStack {
-                    Text("计费配置")
+                    Text(showBillingConfig ? "收起计费设置" : "展开计费设置")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
                     Spacer(minLength: 0)
@@ -1685,26 +1807,62 @@ private struct AddProviderSheet: View {
     private func configSectionCard<Content: View>(
         title: String? = nil,
         subtitle: String? = nil,
+        icon: String? = nil,
         emphasis: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if let title {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                HStack(alignment: .top, spacing: 10) {
+                    if let icon {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(accentTint.opacity(0.14))
+                            .overlay {
+                                Image(systemName: icon)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(accentTint)
+                            }
+                            .frame(width: 28, height: 28)
                     }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        if let subtitle {
+                            Text(subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
                 }
             }
             content()
         }
-        .padding(14)
-        .cardSurface(cornerRadius: 14, tint: accentTint.opacity(emphasis ? 0.05 : 0.025))
+        .padding(15)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(nsColor: .controlBackgroundColor).opacity(0.92),
+                            accentTint.opacity(emphasis ? 0.09 : 0.04)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(
+                            accentTint.opacity(emphasis ? 0.18 : 0.10),
+                            lineWidth: 1
+                        )
+                )
+        )
+        .shadow(color: accentTint.opacity(emphasis ? 0.08 : 0.03), radius: emphasis ? 18 : 10, x: 0, y: 6)
     }
 
     @ViewBuilder
@@ -1853,47 +2011,100 @@ private struct EditProviderSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(accentTint.opacity(0.14))
-                    .overlay {
-                        Image(systemName: provider.displayIcon)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(accentTint)
-                    }
-                    .frame(width: 38, height: 38)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    accentTint.opacity(0.24),
+                                    accentTint.opacity(0.10)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay {
+                            Image(systemName: provider.displayIcon)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(accentTint)
+                        }
+                        .frame(width: 42, height: 42)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text("编辑提供商")
-                            .font(.headline.weight(.semibold))
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 8) {
+                            Text(provider.name)
+                                .font(.headline.weight(.semibold))
 
-                        Text("配置")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(accentTint)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(accentTint.opacity(0.12), in: Capsule())
+                            ProviderConfigBadge(text: provider.appType.displayName, tint: accentTint)
+                        }
+                        Text("编辑当前 provider 的接口、模型和本地写入参数。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
                     }
-                    Text(provider.appType.liveConfigPathsText)
-                        .font(.caption)
+
+                    Spacer(minLength: 0)
+
+                    CloseGlassButton { onCancel() }
+                }
+
+                HStack(spacing: 8) {
+                    ProviderConfigBadge(
+                        text: provider.isCurrent ? "使用中" : "未启用",
+                        tint: provider.isCurrent ? .mint : .secondary
+                    )
+
+                    Label(provider.appType.liveConfigPathsText, systemImage: "arrow.down.doc.fill")
+                        .font(.caption2.weight(.medium))
                         .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.14))
+                                .overlay(
+                                    Capsule()
+                                        .strokeBorder(accentTint.opacity(0.15), lineWidth: 1)
+                                )
+                        )
                         .lineLimit(1)
                 }
-                Spacer(minLength: 0)
-                CloseGlassButton { onCancel() }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
             .padding(.top, 16)
-            .padding(.bottom, 12)
+            .padding(.bottom, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accentTint.opacity(0.16),
+                                accentTint.opacity(0.05),
+                                Color.white.opacity(0.03)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(accentTint.opacity(0.14), lineWidth: 1)
+                    )
+            )
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 10)
 
-            Divider()
+            Rectangle()
+                .fill(accentTint.opacity(0.12))
+                .frame(height: 1)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     editHeroCard
 
-                    sectionCard(title: "基础信息") {
+                    sectionCard(title: "基础信息", subtitle: "名称与备注", icon: "square.text.square") {
                         HStack(alignment: .top, spacing: 12) {
                             editConfigField(label: "名称") {
                                 TextField("提供商名称", text: $providerName)
@@ -1909,7 +2120,7 @@ private struct EditProviderSheet: View {
                         }
                     }
 
-                    sectionCard(title: "接口凭据") {
+                    sectionCard(title: "接口凭据", subtitle: "当前 provider 的实际接入配置", icon: "key.fill") {
                         editConfigField(
                             label: "API 密钥 *",
                             trailingLink: apiKeyUrl.isEmpty ? nil : URL(string: apiKeyUrl),
@@ -1947,7 +2158,7 @@ private struct EditProviderSheet: View {
 
                     previewSection
 
-                    sectionCard(title: "链接信息") {
+                    sectionCard(title: "链接信息", subtitle: "官网与获取密钥入口", icon: "link") {
                         HStack(alignment: .top, spacing: 12) {
                             editConfigField(label: "官网链接") {
                                 TextField("https://", text: $websiteUrl)
@@ -1968,8 +2179,6 @@ private struct EditProviderSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-            Divider()
-
             HStack(spacing: 8) {
                 Spacer(minLength: 0)
                 Button("取消") { onCancel() }
@@ -1980,6 +2189,21 @@ private struct EditProviderSheet: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
+            .background(
+                LinearGradient(
+                    colors: [
+                        accentTint.opacity(0.08),
+                        Color.clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(accentTint.opacity(0.12))
+                    .frame(height: 1)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -2030,7 +2254,7 @@ private struct EditProviderSheet: View {
 
     private var claudeEditFields: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionCard(title: "Claude 模型与认证", subtitle: "主模型 + 自动拉取") {
+            sectionCard(title: "Claude 模型与认证", subtitle: "主模型 + 自动拉取", icon: "sparkles.rectangle.stack.fill") {
                 editConfigField(label: "API 格式") {
                     Picker("", selection: $claudeApiFormat) {
                         Text("Anthropic 原生").tag(ClaudeApiFormat.anthropic)
@@ -2059,7 +2283,7 @@ private struct EditProviderSheet: View {
                 fetchedModelRow(selection: $claudeModel)
             }
 
-            sectionCard {
+            sectionCard(title: "高级路由", subtitle: "附加模型与运行参数", icon: "dial.medium.fill") {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { showClaudeAdvanced.toggle() }
                 } label: {
@@ -2125,7 +2349,7 @@ private struct EditProviderSheet: View {
 
     private var codexEditFields: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionCard(title: "Codex 模型", subtitle: "写入 `auth.json` + `config.toml`") {
+            sectionCard(title: "Codex 模型", subtitle: "写入 `auth.json` + `config.toml`", icon: "chevron.left.forwardslash.chevron.right") {
                 ProviderModelInputRow(
                     title: "模型名称",
                     placeholder: "例如：gpt-5-codex",
@@ -2139,7 +2363,7 @@ private struct EditProviderSheet: View {
                 fetchedModelRow(selection: $codexModel)
             }
 
-            sectionCard(title: "Codex 运行参数", subtitle: "只更新根字段") {
+            sectionCard(title: "Codex 运行参数", subtitle: "只更新根字段", icon: "slider.horizontal.3") {
                 HStack(alignment: .top, spacing: 12) {
                     editConfigField(label: "Wire API") {
                         Picker("", selection: $codexWireApi) {
@@ -2165,7 +2389,7 @@ private struct EditProviderSheet: View {
     }
 
     private var geminiEditFields: some View {
-        sectionCard(title: "Gemini 模型", subtitle: "支持官方与聚合接口") {
+        sectionCard(title: "Gemini 模型", subtitle: "支持官方与聚合接口", icon: "diamond.fill") {
             ProviderModelInputRow(
                 title: "模型名称",
                 placeholder: "例如：gemini-2.5-pro",
@@ -2181,13 +2405,13 @@ private struct EditProviderSheet: View {
     }
 
     private var previewSection: some View {
-        sectionCard {
+        sectionCard(title: "配置预览", subtitle: previewSubtitle, icon: "doc.text.magnifyingglass") {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) { showConfigPreview.toggle() }
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("配置预览")
+                        Text(showConfigPreview ? "收起预览" : "展开预览")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
                         Text(previewSubtitle)
@@ -2539,26 +2763,62 @@ private struct EditProviderSheet: View {
     private func sectionCard<Content: View>(
         title: String? = nil,
         subtitle: String? = nil,
+        icon: String? = nil,
         emphasis: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if let title {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                HStack(alignment: .top, spacing: 10) {
+                    if let icon {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(accentTint.opacity(0.14))
+                            .overlay {
+                                Image(systemName: icon)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(accentTint)
+                            }
+                            .frame(width: 28, height: 28)
                     }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        if let subtitle {
+                            Text(subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
                 }
             }
             content()
         }
-        .padding(14)
-        .cardSurface(cornerRadius: 14, tint: accentTint.opacity(emphasis ? 0.05 : 0.025))
+        .padding(15)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(nsColor: .controlBackgroundColor).opacity(0.92),
+                            accentTint.opacity(emphasis ? 0.09 : 0.04)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(
+                            accentTint.opacity(emphasis ? 0.18 : 0.10),
+                            lineWidth: 1
+                        )
+                )
+        )
+        .shadow(color: accentTint.opacity(emphasis ? 0.08 : 0.03), radius: emphasis ? 18 : 10, x: 0, y: 6)
     }
 
     @ViewBuilder
@@ -2633,7 +2893,7 @@ private struct ProviderConfigPreviewBlock: View {
                     Text(subtitle)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
 
                 Spacer(minLength: 0)
@@ -2683,11 +2943,43 @@ private struct ProviderConfigPreviewBlock: View {
                 .foregroundStyle(.primary.opacity(0.92))
                 .scrollContentBackground(.hidden)
                 .padding(12)
-                .frame(minHeight: 320, alignment: .topLeading)
-                .cardSurface(cornerRadius: 12, tint: accent.opacity(0.04))
+                .frame(minHeight: 360, alignment: .topLeading)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.black.opacity(0.02),
+                                    accent.opacity(0.05)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(accent.opacity(0.12), lineWidth: 1)
+                        )
+                )
         }
         .padding(12)
-        .cardSurface(cornerRadius: 14, tint: accent.opacity(0.03))
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(nsColor: .controlBackgroundColor).opacity(0.9),
+                            accent.opacity(0.05)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(accent.opacity(0.10), lineWidth: 1)
+                )
+        )
         .onChange(of: content) { _, newValue in
             if draft == lastGeneratedContent {
                 draft = newValue
@@ -2747,9 +3039,26 @@ private struct ProviderModelInputRow: View {
             }
             .aimenuActionButtonStyle(prominent: true, tint: accent, density: .compact)
             .disabled(!canFetch || isFetching)
+            .frame(minWidth: 132)
         }
-        .padding(10)
-        .cardSurface(cornerRadius: 12, tint: accent.opacity(0.035))
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(0.08),
+                            accent.opacity(0.025)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .strokeBorder(accent.opacity(0.12), lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -2766,6 +3075,10 @@ private struct ProviderConfigBadge: View {
             .background(
                 Capsule()
                     .fill((tint == .secondary ? Color.primary : tint).opacity(0.1))
+                    .overlay(
+                        Capsule()
+                            .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.12), lineWidth: 1)
+                    )
             )
     }
 }
@@ -2814,7 +3127,23 @@ private struct ClaudeCommonConfigControls: View {
                 .foregroundStyle(.secondary)
         }
         .padding(12)
-        .cardSurface(cornerRadius: 12, tint: accent.opacity(0.025))
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(nsColor: .controlBackgroundColor).opacity(0.88),
+                            accent.opacity(0.05)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(accent.opacity(0.10), lineWidth: 1)
+                )
+        )
     }
 
     private func claudeQuickToggle(_ title: String, isOn: Binding<Bool>) -> some View {
