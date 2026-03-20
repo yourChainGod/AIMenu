@@ -17,6 +17,33 @@
 
 ---
 
+## 界面预览
+
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <img src="./docs/screenshots/accounts-overview.png" alt="AIMenu 账号池页面" width="75%" />
+      <div><strong>账号池</strong>：账号列表、集中代理、公网访问统一收口</div>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <img src="./docs/screenshots/providers-overview.png" alt="AIMenu 供应商页面" width="75%" />
+      <div><strong>供应商</strong>：按应用切换 provider，并联动测速与模型配置</div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <img src="./docs/screenshots/services-overview.png" alt="AIMenu 本地服务页面" width="75%" />
+      <div><strong>本地服务</strong>：托管 Cursor2API，并管理端口占用</div>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <img src="./docs/screenshots/workbench-prompts.png" alt="AIMenu 工作台提示词页面" width="75%" />
+      <div><strong>工作台</strong>：MCP、提示词、Hooks、Skills 按应用挂载</div>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 上游参考
 
 AIMenu 不是凭空开始的，它是在以下项目启发上继续重构、整合和原生化的结果：
