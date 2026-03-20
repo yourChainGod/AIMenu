@@ -361,6 +361,15 @@ private struct WindowSizeEnforcer: NSViewRepresentable {
 
     private func apply(on window: NSWindow?) {
         guard let window else { return }
+        if window.frameAutosaveName != "AIMenu.Panel" {
+            window.setFrameAutosaveName("AIMenu.Panel")
+        }
+        window.isMovableByWindowBackground = true
+        window.tabbingMode = .disallowed
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isOpaque = false
+        window.backgroundColor = .clear
         window.contentMinSize = NSSize(width: minWidth, height: minHeight)
         window.contentMaxSize = NSSize(width: maxWidth, height: .greatestFiniteMagnitude)
 

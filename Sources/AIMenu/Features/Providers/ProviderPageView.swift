@@ -18,7 +18,7 @@ struct ProviderPageView: View {
                 .allowsHitTesting(!hasActiveModal)
 
             if let addingPreset {
-                providerModal(accent: model.selectedApp.formAccent, onDismiss: closeAddProviderSheet) {
+                providerModal(accent: model.selectedApp.formAccent) {
                     AddProviderSheet(
                         appType: model.selectedApp,
                         initialPreset: addingPreset,
@@ -29,9 +29,7 @@ struct ProviderPageView: View {
                     )
                 }
             } else if let editing = model.editingProvider {
-                providerModal(accent: editing.appType.formAccent, onDismiss: {
-                    model.editingProvider = nil
-                }) {
+                providerModal(accent: editing.appType.formAccent) {
                     EditProviderSheet(
                         provider: editing,
                         onSave: { updated in
@@ -98,7 +96,6 @@ struct ProviderPageView: View {
     @ViewBuilder
     private func providerModal<Content: View>(
         accent: Color,
-        onDismiss: @escaping () -> Void,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         GeometryReader { geometry in
@@ -173,21 +170,6 @@ struct ProviderPageView: View {
                                 providerFeatureChip(text: modelName, tint: .accentColor)
                             }
                         }
-                    }
-
-                    Spacer(minLength: 0)
-
-                    HStack(spacing: 8) {
-                        providerSummaryBadge(
-                            title: "总数",
-                            value: "\(model.providers.count)",
-                            tint: .accentColor
-                        )
-                        providerSummaryBadge(
-                            title: "状态",
-                            value: "已接管",
-                            tint: .mint
-                        )
                     }
                 }
             }
@@ -349,28 +331,6 @@ struct ProviderPageView: View {
         }
         .buttonStyle(.plain)
         .help(tooltip)
-    }
-
-    private func providerSummaryBadge(title: String, value: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(tint == .secondary ? .primary : tint)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill((tint == .secondary ? Color.primary : tint).opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.08), lineWidth: 1)
-                )
-        )
     }
 
     private func providerFeatureChip(text: String, tint: Color) -> some View {
@@ -2010,7 +1970,7 @@ private struct EditProviderSheet: View {
                         editConfigField(
                             label: "接口地址",
                             trailingLink: websiteUrl.isEmpty ? nil : URL(string: websiteUrl),
-                            trailingLinkLabel: "管理"
+                            trailingLinkLabel: "访问"
                         ) {
                             TextField(currentBaseUrlPlaceholder, text: currentBaseUrlBinding)
                                 .frostedRoundedInput(cornerRadius: 10)

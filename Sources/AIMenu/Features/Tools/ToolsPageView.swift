@@ -326,7 +326,7 @@ struct ToolsPageView: View {
     private var workbenchContent: some View {
         Group {
             switch activeWorkbenchSection {
-            case .configs, .mcp:
+            case .mcp:
                 mcpSection
             case .prompts:
                 promptsSection
@@ -341,7 +341,7 @@ struct ToolsPageView: View {
 
     private func workbenchSectionTitle(for section: ToolsPageModel.ToolsSection) -> String {
         switch section {
-        case .configs, .mcp:
+        case .mcp:
             return "MCP"
         case .prompts:
             return "Prompts"
@@ -354,7 +354,7 @@ struct ToolsPageView: View {
 
     private func workbenchSectionIcon(for section: ToolsPageModel.ToolsSection) -> String {
         switch section {
-        case .configs, .mcp:
+        case .mcp:
             return "server.rack"
         case .prompts:
             return "text.bubble"
@@ -367,7 +367,7 @@ struct ToolsPageView: View {
 
     private func workbenchSectionTint(for section: ToolsPageModel.ToolsSection) -> Color {
         switch section {
-        case .configs, .mcp:
+        case .mcp:
             return .blue
         case .prompts:
             return .purple
@@ -1217,13 +1217,13 @@ struct ToolsPageView: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         HStack(spacing: 8) {
-                            mcpAppToggle(serverId: server.id, label: "Claude Code", app: .claude, isOn: server.apps.claude, onChange: { v in
+                            mcpAppToggle(label: "Claude Code", app: .claude, isOn: server.apps.claude, onChange: { v in
                                 Task { await model.toggleMCPApp(serverId: server.id, app: .claude, enabled: v) }
                             })
-                            mcpAppToggle(serverId: server.id, label: "Codex", app: .codex, isOn: server.apps.codex, onChange: { v in
+                            mcpAppToggle(label: "Codex", app: .codex, isOn: server.apps.codex, onChange: { v in
                                 Task { await model.toggleMCPApp(serverId: server.id, app: .codex, enabled: v) }
                             })
-                            mcpAppToggle(serverId: server.id, label: "Gemini", app: .gemini, isOn: server.apps.gemini, onChange: { v in
+                            mcpAppToggle(label: "Gemini", app: .gemini, isOn: server.apps.gemini, onChange: { v in
                                 Task { await model.toggleMCPApp(serverId: server.id, app: .gemini, enabled: v) }
                             })
                         }
@@ -1245,7 +1245,6 @@ struct ToolsPageView: View {
     }
 
     private func mcpAppToggle(
-        serverId _: String,
         label: String,
         app: ProviderAppType,
         isOn: Bool,

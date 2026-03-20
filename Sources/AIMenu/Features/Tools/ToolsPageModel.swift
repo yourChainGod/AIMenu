@@ -9,7 +9,7 @@ final class ToolsPageModel: ObservableObject {
     private let portService: PortManagementServiceProtocol
     private let noticeScheduler = NoticeAutoDismissScheduler()
 
-    enum ToolsSection: String, CaseIterable { case configs, mcp, prompts, hooks, skills }
+    enum ToolsSection: String, CaseIterable { case mcp, prompts, hooks, skills }
 
     @Published var activeSection: ToolsSection = .mcp
     @Published var localConfigBundles: [LocalConfigBundle] = []
