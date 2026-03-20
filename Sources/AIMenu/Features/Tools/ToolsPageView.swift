@@ -73,13 +73,76 @@ struct ToolsPageView: View {
     @State private var selectedSkillsFilter: SkillsFilter = .all
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: LayoutRules.sectionSpacing) {
-                contentSections
+        ZStack {
+            pageContent
+                .blur(radius: hasActiveModal ? 2 : 0)
+                .allowsHitTesting(!hasActiveModal)
+
+            if showMCPForm {
+                toolsModal(accent: .mint, onDismiss: closeMCPForm) {
+                    MCPServerEditorSheet(
+                        server: editingMCPServer,
+                        onSave: { server in
+                            Task { await model.saveMCPServer(server) }
+                            closeMCPForm()
+                        },
+                        onCancel: closeMCPForm
+                    )
+                }
+            } else if showPromptEditor {
+                toolsModal(accent: .purple, onDismiss: closePromptEditor) {
+                    PromptEditorSheet(
+                        appType: model.selectedPromptApp,
+                        prompt: editingPrompt,
+                        onSave: { name, content in
+                            Task {
+                                if let editingPrompt {
+                                    var updated = editingPrompt
+                                    updated.name = name
+                                    updated.content = content
+                                    await model.updatePrompt(updated)
+                                } else {
+                                    await model.addPrompt(name: name, content: content)
+                                }
+                            }
+                            closePromptEditor()
+                        },
+                        onCancel: closePromptEditor
+                    )
+                }
+            } else if showSkillRepoEditor {
+                toolsModal(accent: .orange, onDismiss: closeSkillRepoEditor) {
+                    SkillRepoEditorSheet(
+                        onSave: { owner, name, branch in
+                            Task { await model.addSkillRepo(owner: owner, name: name, branch: branch) }
+                            closeSkillRepoEditor()
+                        },
+                        onCancel: closeSkillRepoEditor
+                    )
+                }
+            } else if let document = model.previewingDiscoverableSkillDocument {
+                toolsModal(accent: .blue, onDismiss: closeDiscoverableSkillPreview) {
+                    DiscoverableSkillPreviewSheet(
+                        document: document,
+                        previewLoading: model.previewingDiscoverableSkillKey == document.skill.key,
+                        onInstall: {
+                            Task { await model.installSkill(document.skill) }
+                        },
+                        onDismiss: closeDiscoverableSkillPreview
+                    )
+                }
+            } else if let document = model.editingInstalledSkillDocument {
+                toolsModal(accent: .orange, onDismiss: closeInstalledSkillEditor) {
+                    InstalledSkillEditorSheet(
+                        document: document,
+                        onSave: { content in
+                            Task { await model.saveInstalledSkill(directory: document.skill.directory, content: content) }
+                        },
+                        onCancel: closeInstalledSkillEditor
+                    )
+                }
             }
-            .padding(LayoutRules.pagePadding)
         }
-        .scrollIndicators(.hidden)
         .task {
             switch mode {
             case .tools:
@@ -88,105 +151,76 @@ struct ToolsPageView: View {
                 await model.loadWorkbench()
             }
         }
-        .sheet(isPresented: $showMCPForm) {
-            MCPServerEditorSheet(
-                server: editingMCPServer,
-                onSave: { server in
-                    Task { await model.saveMCPServer(server) }
-                    showMCPForm = false
-                    editingMCPServer = nil
-                },
-                onCancel: {
-                    showMCPForm = false
-                    editingMCPServer = nil
-                }
-            )
-            .frame(width: 700, height: 680)
-        }
-        .sheet(isPresented: $showPromptEditor) {
-            PromptEditorSheet(
-                appType: model.selectedPromptApp,
-                prompt: editingPrompt,
-                onSave: { name, content in
-                    Task {
-                        if let editingPrompt {
-                            var updated = editingPrompt
-                            updated.name = name
-                            updated.content = content
-                            await model.updatePrompt(updated)
-                        } else {
-                            await model.addPrompt(name: name, content: content)
-                        }
-                    }
-                    showPromptEditor = false
-                    editingPrompt = nil
-                },
-                onCancel: {
-                    showPromptEditor = false
-                    editingPrompt = nil
-                }
-            )
-            .frame(width: 640, height: 500)
-        }
-        .sheet(isPresented: $showSkillRepoEditor) {
-            SkillRepoEditorSheet(
-                onSave: { owner, name, branch in
-                    Task { await model.addSkillRepo(owner: owner, name: name, branch: branch) }
-                    showSkillRepoEditor = false
-                },
-                onCancel: {
-                    showSkillRepoEditor = false
-                }
-            )
-            .frame(width: 520, height: 320)
-        }
-        .sheet(
-            isPresented: Binding(
-                get: { model.previewingDiscoverableSkillDocument != nil },
-                set: { newValue in
-                    if !newValue {
-                        model.previewingDiscoverableSkillDocument = nil
-                    }
-                }
-            )
-        ) {
-            if let document = model.previewingDiscoverableSkillDocument {
-                DiscoverableSkillPreviewSheet(
-                    document: document,
-                    previewLoading: model.previewingDiscoverableSkillKey == document.skill.key,
-                    onInstall: {
-                        Task { await model.installSkill(document.skill) }
-                    },
-                    onDismiss: {
-                        model.previewingDiscoverableSkillDocument = nil
-                    }
-                )
-                .frame(width: 780, height: 640)
+        .animation(.spring(response: 0.28, dampingFraction: 0.84), value: hasActiveModal)
+    }
+
+    private var pageContent: some View {
+        ScrollView {
+            VStack(spacing: LayoutRules.sectionSpacing) {
+                contentSections
             }
+            .padding(LayoutRules.pagePadding)
         }
-        .sheet(
-            isPresented: Binding(
-                get: { model.editingInstalledSkillDocument != nil },
-                set: { newValue in
-                    if !newValue {
-                        model.editingInstalledSkillDocument = nil
-                    }
+        .scrollIndicators(.hidden)
+    }
+
+    private var hasActiveModal: Bool {
+        showMCPForm ||
+        showPromptEditor ||
+        showSkillRepoEditor ||
+        model.previewingDiscoverableSkillDocument != nil ||
+        model.editingInstalledSkillDocument != nil
+    }
+
+    @ViewBuilder
+    private func toolsModal<Content: View>(
+        accent: Color,
+        onDismiss: @escaping () -> Void,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.opacity(0.24)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {}
+
+                ToolsModalPanel(accent: accent, onClose: onDismiss) {
+                    content()
                 }
-            )
-        ) {
-            if let document = model.editingInstalledSkillDocument {
-                InstalledSkillEditorSheet(
-                    document: document,
-                    onSave: { content in
-                        Task { await model.saveInstalledSkill(directory: document.skill.directory, content: content) }
-                    },
-                    onCancel: {
-                        model.editingInstalledSkillDocument = nil
-                    }
+                .frame(
+                    width: max(420, geometry.size.width - 22),
+                    height: max(460, geometry.size.height - 22)
                 )
-                .frame(width: 760, height: 620)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 11)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.scale(scale: 0.96).combined(with: .opacity))
             }
+            .zIndex(20)
         }
+    }
+
+    private func closeMCPForm() {
+        showMCPForm = false
+        editingMCPServer = nil
+    }
+
+    private func closePromptEditor() {
+        showPromptEditor = false
+        editingPrompt = nil
+    }
+
+    private func closeSkillRepoEditor() {
+        showSkillRepoEditor = false
+    }
+
+    private func closeDiscoverableSkillPreview() {
+        model.previewingDiscoverableSkillDocument = nil
+    }
+
+    private func closeInstalledSkillEditor() {
+        model.editingInstalledSkillDocument = nil
     }
 
     @ViewBuilder
@@ -2230,6 +2264,72 @@ struct ToolsPageView: View {
         default:
             return "端口 \(port)"
         }
+    }
+}
+
+private struct ToolsModalPanel<Content: View>: View {
+    let accent: Color
+    let onClose: () -> Void
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer(minLength: 0)
+                CloseGlassButton {
+                    onClose()
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
+
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.regularMaterial)
+
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(0.14),
+                                Color.white.opacity(0.02),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.30), lineWidth: 1)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(accent.opacity(0.10))
+                    .blur(radius: 22)
+            )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(alignment: .top) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(accent.opacity(0.9))
+                .frame(width: 74, height: 4)
+                .padding(.top, 8)
+        }
+        .overlay(alignment: .topLeading) {
+            Circle()
+                .fill(accent.opacity(0.16))
+                .frame(width: 120, height: 120)
+                .blur(radius: 32)
+                .offset(x: -28, y: -34)
+        }
+        .shadow(color: .black.opacity(0.24), radius: 28, x: 0, y: 14)
     }
 }
 
