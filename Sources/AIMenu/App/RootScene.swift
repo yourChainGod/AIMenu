@@ -284,16 +284,7 @@ private struct AppTabToolbarSwitcher: View {
     let tint: Color
 
     var body: some View {
-        Picker("导航分区", selection: $selection.animation(.easeInOut(duration: 0.18))) {
-            ForEach(tabs, id: \.self) { tab in
-                Text(L10n.tr(tab.titleTranslationKey))
-                    .tag(tab)
-                    .accessibilityLabel(Text(tab.titleKey))
-            }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .tint(tint)
+        AppTabSegmentedControl(selection: $selection, tabs: tabs, tint: tint)
         .frame(maxWidth: .infinity, minHeight: 32)
         .padding(4)
         .background {
@@ -314,6 +305,134 @@ private struct AppTabToolbarSwitcher: View {
 
     private var separatorColor: Color {
         Color(nsColor: .separatorColor).opacity(0.9)
+    }
+}
+
+private struct AppTabSegmentedControl: NSViewRepresentable {
+    @Binding var selection: AppTab
+    let tabs: [AppTab]
+    let tint: Color
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> FirstMouseSegmentedHostView {
+        let view = FirstMouseSegmentedHostView()
+        view.configure(
+            labels: tabs.map { L10n.tr($0.titleTranslationKey) },
+            tint: NSColor(tint),
+            target: context.coordinator,
+            action: #selector(Coordinator.segmentChanged(_:))
+        )
+        if let index = tabs.firstIndex(of: selection) {
+            view.selectSegment(index)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: FirstMouseSegmentedHostView, context: Context) {
+        context.coordinator.parent = self
+        nsView.configure(
+            labels: tabs.map { L10n.tr($0.titleTranslationKey) },
+            tint: NSColor(tint),
+            target: context.coordinator,
+            action: #selector(Coordinator.segmentChanged(_:))
+        )
+        if let index = tabs.firstIndex(of: selection) {
+            nsView.selectSegment(index)
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var parent: AppTabSegmentedControl
+
+        init(parent: AppTabSegmentedControl) {
+            self.parent = parent
+        }
+
+        @objc
+        func segmentChanged(_ sender: NSSegmentedControl) {
+            let index = sender.selectedSegment
+            guard parent.tabs.indices.contains(index) else { return }
+            withAnimation(.easeInOut(duration: 0.18)) {
+                parent.selection = parent.tabs[index]
+            }
+        }
+    }
+}
+
+private final class FirstMouseSegmentedHostView: NSView {
+    private let control = FirstMouseSegmentedControl(labels: [], trackingMode: .selectOne, target: nil, action: nil)
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = false
+
+        control.translatesAutoresizingMaskIntoConstraints = false
+        control.segmentStyle = .rounded
+        control.controlSize = .large
+        control.focusRingType = .none
+        addSubview(control)
+
+        NSLayoutConstraint.activate([
+            control.leadingAnchor.constraint(equalTo: leadingAnchor),
+            control.trailingAnchor.constraint(equalTo: trailingAnchor),
+            control.topAnchor.constraint(equalTo: topAnchor),
+            control.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func layout() {
+        super.layout()
+
+        let segmentCount = control.segmentCount
+        guard segmentCount > 0 else { return }
+
+        let totalWidth = max(bounds.width, 1)
+        let segmentWidth = floor(totalWidth / CGFloat(segmentCount))
+        for index in 0..<segmentCount {
+            control.setWidth(segmentWidth, forSegment: index)
+        }
+    }
+
+    func configure(labels: [String], tint: NSColor, target: AnyObject, action: Selector) {
+        if control.segmentCount != labels.count {
+            control.segmentCount = labels.count
+        }
+
+        for (index, label) in labels.enumerated() {
+            control.setLabel(label, forSegment: index)
+            control.setEnabled(true, forSegment: index)
+        }
+
+        control.target = target
+        control.action = action
+        if #available(macOS 13.0, *) {
+            control.selectedSegmentBezelColor = tint
+        }
+        needsLayout = true
+    }
+
+    func selectSegment(_ index: Int) {
+        control.selectedSegment = index
+    }
+}
+
+private final class FirstMouseSegmentedControl: NSSegmentedControl {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
     }
 }
 
