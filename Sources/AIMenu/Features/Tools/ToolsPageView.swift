@@ -895,67 +895,17 @@ struct ToolsPageView: View {
             icon: "server.rack",
             iconColor: .blue,
             headerTrailing: {
-                if isWorkbenchMode {
-                    HStack(spacing: 6) {
-                        Button {
-                            Task { await model.importLiveMCPServers() }
-                        } label: {
-                            Image(systemName: "square.and.arrow.down")
-                        }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help("从 Claude / Codex / Gemini 导入 MCP")
-
-                        Button {
-                            editingMCPServer = nil
-                            showMCPForm = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help("添加自定义 MCP 服务器")
-
-                        workbenchMoreMenu(help: "更多 MCP 操作") {
-                            Button(showMCPPresets ? "隐藏预设" : "显示预设") {
-                                withAnimation(.spring(duration: 0.25)) { showMCPPresets.toggle() }
-                            }
-                        }
-                    }
-                } else {
-                    HStack(spacing: 6) {
-                        Button {
-                            withAnimation(.spring(duration: 0.25)) { showMCPPresets.toggle() }
-                        } label: {
-                            Image(systemName: showMCPPresets ? "square.grid.2x2.fill" : "square.grid.2x2")
-                        }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help(showMCPPresets ? "预设已展开" : "显示 MCP 预设")
-
-                        Button {
-                            Task { await model.importLiveMCPServers() }
-                        } label: {
-                            Image(systemName: "square.and.arrow.down")
-                        }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help("从 Claude / Codex / Gemini 导入 MCP")
-
-                        Button {
-                            editingMCPServer = nil
-                            showMCPForm = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                        .liquidGlassActionButtonStyle(density: .compact)
-                        .help("添加自定义 MCP 服务器")
-
-                        CollapseChevronButton(isExpanded: mcpExpanded) {
-                            withAnimation(.easeInOut(duration: 0.2)) { mcpExpanded.toggle() }
-                        }
+                if !isWorkbenchMode {
+                    CollapseChevronButton(isExpanded: mcpExpanded) {
+                        withAnimation(.easeInOut(duration: 0.2)) { mcpExpanded.toggle() }
                     }
                 }
             }
         ) {
-            if isWorkbenchMode || mcpExpanded {
-                VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 8) {
+                mcpActionButtons
+
+                if isWorkbenchMode || mcpExpanded {
                     if showMCPPresets {
                         mcpPresetsGrid
                             .transition(.move(edge: .top).combined(with: .opacity))
@@ -970,11 +920,44 @@ struct ToolsPageView: View {
                             }
                         }
                     }
+                } else {
+                    mcpCollapsedSummary
                 }
-            } else {
-                mcpCollapsedSummary
             }
         }
+    }
+
+    private var mcpActionButtons: some View {
+        HStack(spacing: LayoutRules.listRowSpacing) {
+            Button {
+                withAnimation(.spring(duration: 0.25)) { showMCPPresets.toggle() }
+            } label: {
+                Label(showMCPPresets ? "隐藏预设" : "预设", systemImage: showMCPPresets ? "square.grid.2x2.fill" : "square.grid.2x2")
+                    .lineLimit(1)
+            }
+            .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
+            .help(showMCPPresets ? "收起 MCP 预设" : "显示 MCP 预设")
+
+            Button {
+                Task { await model.importLiveMCPServers() }
+            } label: {
+                Label("导入", systemImage: "square.and.arrow.down")
+                    .lineLimit(1)
+            }
+            .aimenuActionButtonStyle(prominent: true, density: .compact)
+            .help("从 Claude / Codex / Gemini 导入 MCP")
+
+            Button {
+                editingMCPServer = nil
+                showMCPForm = true
+            } label: {
+                Label("添加", systemImage: "plus")
+                    .lineLimit(1)
+            }
+            .aimenuActionButtonStyle(prominent: true, tint: .mint, density: .compact)
+            .help("添加自定义 MCP 服务器")
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var mcpEmptyState: some View {
@@ -985,23 +968,9 @@ struct ToolsPageView: View {
             Text("暂未配置 MCP 服务器")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            HStack(spacing: 8) {
-                Button("从预设添加") {
-                    withAnimation(.spring(duration: 0.25)) { showMCPPresets = true }
-                }
-                .liquidGlassActionButtonStyle(density: .compact)
-
-                Button("导入本地") {
-                    Task { await model.importLiveMCPServers() }
-                }
-                .liquidGlassActionButtonStyle(density: .compact)
-
-                Button("新建自定义") {
-                    editingMCPServer = nil
-                    showMCPForm = true
-                }
-                .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
-            }
+            Text("可从上方预设、导入或添加自定义服务。")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
     }

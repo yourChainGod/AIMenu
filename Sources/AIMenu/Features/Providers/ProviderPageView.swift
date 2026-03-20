@@ -62,8 +62,10 @@ struct ProviderPageView: View {
                 toolBar
                     .padding(.horizontal, LayoutRules.pagePadding)
 
-                providerSummaryCard
-                    .padding(.horizontal, LayoutRules.pagePadding)
+                if currentProvider != nil {
+                    providerSummaryCard
+                        .padding(.horizontal, LayoutRules.pagePadding)
+                }
 
                 if model.loading && model.providers.isEmpty {
                     ProgressView("加载中...")
@@ -133,57 +135,56 @@ struct ProviderPageView: View {
     }
 
     private var providerSummaryCard: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(pageAccent.opacity(0.14))
-                .overlay {
-                    Image(systemName: model.selectedApp.iconName)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(pageAccent)
-                }
-                .frame(width: 42, height: 42)
+        Group {
+            if let currentProvider {
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(pageAccent.opacity(0.14))
+                        .overlay {
+                            Image(systemName: model.selectedApp.iconName)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(pageAccent)
+                        }
+                        .frame(width: 42, height: 42)
 
-            VStack(alignment: .leading, spacing: 7) {
-                HStack(spacing: 8) {
-                    Text(model.selectedApp.displayName)
-                        .font(.headline.weight(.semibold))
-                    ProviderConfigBadge(
-                        text: currentProvider == nil ? "未接管" : "已接管",
-                        tint: currentProvider == nil ? .secondary : .mint
-                    )
-                }
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(spacing: 8) {
+                            Text(model.selectedApp.displayName)
+                                .font(.headline.weight(.semibold))
+                            ProviderConfigBadge(text: "已接管", tint: .mint)
+                        }
 
-                Text(currentProvider?.name ?? "还没有启用接管提供商")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(currentProvider == nil ? .secondary : .primary)
-                    .lineLimit(1)
+                        Text(currentProvider.name)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
 
-                HStack(spacing: 6) {
-                    if let provider = currentProvider,
-                       let host = providerEndpointHost(provider) {
-                        providerFeatureChip(text: host, tint: .secondary)
+                        HStack(spacing: 6) {
+                            if let host = providerEndpointHost(currentProvider) {
+                                providerFeatureChip(text: host, tint: .secondary)
+                            }
+
+                            if let modelName = providerModelName(currentProvider) {
+                                providerFeatureChip(text: modelName, tint: .accentColor)
+                            }
+                        }
                     }
 
-                    if let provider = currentProvider,
-                       let modelName = providerModelName(provider) {
-                        providerFeatureChip(text: modelName, tint: .accentColor)
+                    Spacer(minLength: 0)
+
+                    HStack(spacing: 8) {
+                        providerSummaryBadge(
+                            title: "总数",
+                            value: "\(model.providers.count)",
+                            tint: .accentColor
+                        )
+                        providerSummaryBadge(
+                            title: "状态",
+                            value: "已接管",
+                            tint: .mint
+                        )
                     }
                 }
-            }
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 8) {
-                providerSummaryBadge(
-                    title: "总数",
-                    value: "\(model.providers.count)",
-                    tint: .accentColor
-                )
-                providerSummaryBadge(
-                    title: "状态",
-                    value: currentProvider == nil ? "待配置" : "已接管",
-                    tint: currentProvider == nil ? .secondary : .mint
-                )
             }
         }
         .padding(14)
@@ -452,50 +453,29 @@ struct ProviderPageView: View {
 
     private var toolBar: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                HStack(spacing: 10) {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(pageAccent.opacity(0.14))
-                        .overlay {
-                            Image(systemName: model.selectedApp.iconName)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(pageAccent)
-                        }
-                        .frame(width: 36, height: 36)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("提供商管理")
-                            .font(.headline.weight(.semibold))
-                        Text("为 \(model.selectedApp.displayName) 管理模型接入与切换。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+            HStack(spacing: 10) {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(pageAccent.opacity(0.14))
+                    .overlay {
+                        Image(systemName: model.selectedApp.iconName)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(pageAccent)
                     }
+                    .frame(width: 36, height: 36)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("提供商管理")
+                        .font(.headline.weight(.semibold))
+                    Text("为 \(model.selectedApp.displayName) 管理模型接入与切换。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
 
                 Spacer(minLength: 0)
-
-                HStack(spacing: 8) {
-                    Button {
-                        openAddProviderSheet()
-                    } label: {
-                        Label("添加", systemImage: "plus")
-                            .lineLimit(1)
-                    }
-                    .aimenuActionButtonStyle(prominent: true, tint: pageAccent, density: .compact)
-
-                    Button {
-                        Task { await model.speedTestAll() }
-                    } label: {
-                        Label("全部测速", systemImage: "bolt.horizontal.fill")
-                            .lineLimit(1)
-                    }
-                    .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
-                    .disabled(model.providers.isEmpty)
-                }
             }
 
-            HStack(spacing: 6) {
+            HStack(spacing: LayoutRules.listRowSpacing) {
                 ForEach(ProviderAppType.allCases) { app in
                     Button {
                         Task { await model.switchApp(app) }
@@ -506,7 +486,6 @@ struct ProviderPageView: View {
                             Text(app.displayName)
                                 .font(.subheadline.weight(.medium))
                         }
-                        .frame(maxWidth: .infinity)
                         .lineLimit(1)
                     }
                     .aimenuActionButtonStyle(
@@ -516,34 +495,29 @@ struct ProviderPageView: View {
                     )
                 }
             }
-            .padding(4)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.primary.opacity(0.04))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.05), lineWidth: 1)
-                    )
-            )
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+
+                Button {
+                    openAddProviderSheet()
+                } label: {
+                    Label("添加", systemImage: "plus")
+                        .lineLimit(1)
+                }
+                .aimenuActionButtonStyle(prominent: true, tint: pageAccent, density: .compact)
+
+                Button {
+                    Task { await model.speedTestAll() }
+                } label: {
+                    Label("全部测速", systemImage: "bolt.horizontal.fill")
+                        .lineLimit(1)
+                }
+                .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
+                .disabled(model.providers.isEmpty)
+            }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            pageAccent.opacity(0.10),
-                            Color.primary.opacity(0.025)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(pageAccent.opacity(0.14), lineWidth: 1)
-                )
-        )
     }
 
     private func openAddProviderSheet() {
