@@ -196,6 +196,152 @@ final class ProviderIntegrationTests: XCTestCase {
         XCTAssertEqual(statusLine["padding"] as? Int, 0)
     }
 
+    func testListProvidersSyncsOnlyClaudeLiveCommonConfigForCurrentProvider() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+
+        var provider = ProviderPresets.claudePresets[0].makeProvider(apiKey: "sk-store")
+        provider.id = "claude-live-sync"
+        provider.name = "Claude Live Sync"
+        provider.claudeConfig?.baseUrl = "https://store.example.com"
+        provider.claudeConfig?.model = "claude-store-model"
+        provider.claudeConfig?.maxOutputTokens = 2048
+        provider.claudeConfig?.apiTimeoutMs = 30_000
+        provider.claudeConfig?.disableNonessentialTraffic = false
+        provider.claudeConfig?.hideAttribution = false
+        provider.claudeConfig?.alwaysThinkingEnabled = false
+        provider.claudeConfig?.enableTeammates = false
+        provider.claudeConfig?.applyCommonConfig = false
+        provider.claudeConfig?.commonConfigJSON = nil
+
+        _ = try await coordinator.addProvider(provider)
+
+        let settingsPath = tempHome.appendingPathComponent(".claude/settings.json")
+        try """
+        {
+          "alwaysThinkingEnabled": true,
+          "attribution": {
+            "commit": "",
+            "pr": ""
+          },
+          "env": {
+            "ANTHROPIC_AUTH_TOKEN": "sk-live",
+            "ANTHROPIC_BASE_URL": "https://live.example.com",
+            "ANTHROPIC_MODEL": "claude-live-model",
+            "API_TIMEOUT_MS": "45000",
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+            "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+            "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "4096"
+          },
+          "hooks": {
+            "Stop": [
+              {
+                "hooks": [
+                  {
+                    "command": "echo done",
+                    "type": "command"
+                  }
+                ]
+              }
+            ]
+          },
+          "outputStyle": "abyss-cultivator"
+        }
+        """.write(to: settingsPath, atomically: true, encoding: .utf8)
+
+        let providers = try await coordinator.listProviders(for: .claude)
+        let synced = try XCTUnwrap(providers.first(where: { $0.id == provider.id }))
+        let config = try XCTUnwrap(synced.claudeConfig)
+
+        XCTAssertEqual(config.apiKey, "sk-store")
+        XCTAssertEqual(config.baseUrl, "https://store.example.com")
+        XCTAssertEqual(config.model, "claude-store-model")
+        XCTAssertEqual(config.maxOutputTokens, 4096)
+        XCTAssertEqual(config.apiTimeoutMs, 45_000)
+        XCTAssertEqual(config.disableNonessentialTraffic, true)
+        XCTAssertEqual(config.hideAttribution, true)
+        XCTAssertEqual(config.alwaysThinkingEnabled, true)
+        XCTAssertEqual(config.enableTeammates, true)
+        XCTAssertEqual(config.applyCommonConfig, true)
+
+        let commonData = try XCTUnwrap(config.commonConfigJSON?.data(using: .utf8))
+        let commonObject = try XCTUnwrap(try JSONSerialization.jsonObject(with: commonData) as? [String: Any])
+        XCTAssertEqual(commonObject["outputStyle"] as? String, "abyss-cultivator")
+        XCTAssertNotNil(commonObject["hooks"])
+
+        let store = try await service.loadProviderStore()
+        let stored = try XCTUnwrap(store.providers.first(where: { $0.id == provider.id }))
+        XCTAssertEqual(stored.claudeConfig?.apiKey, "sk-store")
+        XCTAssertEqual(stored.claudeConfig?.baseUrl, "https://store.example.com")
+        XCTAssertEqual(stored.claudeConfig?.model, "claude-store-model")
+        XCTAssertEqual(stored.claudeConfig?.maxOutputTokens, 2048)
+    }
+
+    func testListProvidersSyncsOnlyCodexLiveRuntimeFlagsForCurrentProvider() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+
+        let provider = makeCodexProvider(
+            id: "codex-live-sync",
+            name: "Codex Live Sync",
+            apiKey: "sk-store",
+            baseUrl: "https://store.example.com/v1",
+            model: "gpt-store"
+        )
+
+        _ = try await coordinator.addProvider(provider)
+
+        let codexDirectory = tempHome.appendingPathComponent(".codex", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexDirectory, withIntermediateDirectories: true)
+        try """
+        {
+          "OPENAI_API_KEY": "sk-live",
+          "OPENAI_BASE_URL": "https://live.example.com/v1"
+        }
+        """.write(
+            to: codexDirectory.appendingPathComponent("auth.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try """
+        model = "gpt-live"
+        wire_api = "chat"
+        base_url = "https://live.example.com/v1"
+        reasoning_effort = "high"
+
+        [profiles.default]
+        model = "ignored"
+        """.write(
+            to: codexDirectory.appendingPathComponent("config.toml"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let providers = try await coordinator.listProviders(for: .codex)
+        let synced = try XCTUnwrap(providers.first(where: { $0.id == provider.id }))
+        let config = try XCTUnwrap(synced.codexConfig)
+
+        XCTAssertEqual(config.apiKey, "sk-store")
+        XCTAssertEqual(config.baseUrl, "https://store.example.com/v1")
+        XCTAssertEqual(config.model, "gpt-store")
+        XCTAssertEqual(config.wireApi, "chat")
+        XCTAssertEqual(config.reasoningEffort, "high")
+
+        let store = try await service.loadProviderStore()
+        let stored = try XCTUnwrap(store.providers.first(where: { $0.id == provider.id }))
+        XCTAssertEqual(stored.codexConfig?.apiKey, "sk-store")
+        XCTAssertEqual(stored.codexConfig?.baseUrl, "https://store.example.com/v1")
+        XCTAssertEqual(stored.codexConfig?.model, "gpt-store")
+        XCTAssertEqual(stored.codexConfig?.wireApi, "responses")
+        XCTAssertEqual(stored.codexConfig?.reasoningEffort, "medium")
+    }
+
     func testDeleteCurrentProviderFallsBackAndRewritesLiveConfig() async throws {
         let tempHome = try makeTemporaryHome()
         defer { try? FileManager.default.removeItem(at: tempHome) }

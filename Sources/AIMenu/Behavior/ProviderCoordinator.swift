@@ -34,11 +34,19 @@ actor ProviderCoordinator {
     func listProviders(for app: ProviderAppType) async throws -> [Provider] {
         let store = try await configService.loadProviderStore()
         let currentId = store.currentProviderId(for: app)
-        return store.providers(for: app).map { p in
+        var providers = store.providers(for: app).map { p in
             var provider = p
             provider.isCurrent = provider.id == currentId
             return provider
         }
+
+        guard let currentId,
+              let index = providers.firstIndex(where: { $0.id == currentId }) else {
+            return providers
+        }
+
+        providers[index] = try await applyingLiveOverrides(to: providers[index])
+        return providers
     }
 
     func addProvider(_ provider: Provider) async throws -> ProviderSaveOutcome {
@@ -303,6 +311,41 @@ actor ProviderCoordinator {
             error: latency == nil ? "Connection failed" : nil,
             testedAt: Date()
         )
+    }
+
+    private func applyingLiveOverrides(to provider: Provider) async throws -> Provider {
+        var updated = provider
+
+        switch provider.appType {
+        case .claude:
+            guard var config = updated.claudeConfig,
+                  let overrides = try await configService.loadClaudeLiveOverrides() else {
+                return updated
+            }
+
+            config.maxOutputTokens = overrides.maxOutputTokens
+            config.apiTimeoutMs = overrides.apiTimeoutMs
+            config.disableNonessentialTraffic = overrides.disableNonessentialTraffic
+            config.hideAttribution = overrides.hideAttribution
+            config.alwaysThinkingEnabled = overrides.alwaysThinkingEnabled
+            config.enableTeammates = overrides.enableTeammates
+            config.applyCommonConfig = overrides.applyCommonConfig
+            config.commonConfigJSON = overrides.commonConfigJSON
+            updated.claudeConfig = config
+        case .codex:
+            guard var config = updated.codexConfig,
+                  let overrides = try await configService.loadCodexLiveOverrides() else {
+                return updated
+            }
+
+            config.wireApi = overrides.wireApi
+            config.reasoningEffort = overrides.reasoningEffort
+            updated.codexConfig = config
+        case .gemini:
+            break
+        }
+
+        return updated
     }
 
     // MARK: - MCP

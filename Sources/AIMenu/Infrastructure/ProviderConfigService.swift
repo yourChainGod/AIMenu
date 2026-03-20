@@ -1,6 +1,22 @@
 import Foundation
 
 actor ProviderConfigService {
+    struct ClaudeLiveOverrides: Equatable {
+        var maxOutputTokens: Int?
+        var apiTimeoutMs: Int?
+        var disableNonessentialTraffic: Bool
+        var hideAttribution: Bool
+        var alwaysThinkingEnabled: Bool
+        var enableTeammates: Bool
+        var applyCommonConfig: Bool
+        var commonConfigJSON: String?
+    }
+
+    struct CodexLiveOverrides: Equatable {
+        var wireApi: String?
+        var reasoningEffort: String?
+    }
+
     private let fileManager: FileManager
     private let homeDirectory: URL
 
@@ -77,6 +93,37 @@ actor ProviderConfigService {
         case .gemini:
             try clearGeminiConfig()
         }
+    }
+
+    // MARK: - Live Config Readback
+
+    func loadClaudeLiveOverrides() throws -> ClaudeLiveOverrides? {
+        guard fileManager.fileExists(atPath: claudeSettingsPath.path) else { return nil }
+
+        let settings = loadJSONObject(from: claudeSettingsPath)
+        let env = (settings["env"] as? [String: Any]) ?? [:]
+        let commonConfig = extractClaudeCommonConfig(from: settings)
+
+        return ClaudeLiveOverrides(
+            maxOutputTokens: jsonInt(env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"]),
+            apiTimeoutMs: jsonInt(env["API_TIMEOUT_MS"]),
+            disableNonessentialTraffic: jsonBool(env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"]),
+            hideAttribution: settings["attribution"] != nil,
+            alwaysThinkingEnabled: jsonBool(settings["alwaysThinkingEnabled"]),
+            enableTeammates: jsonBool(env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"]),
+            applyCommonConfig: !commonConfig.isEmpty,
+            commonConfigJSON: commonConfig.isEmpty ? nil : prettyJSONString(commonConfig)
+        )
+    }
+
+    func loadCodexLiveOverrides() throws -> CodexLiveOverrides? {
+        guard fileManager.fileExists(atPath: codexConfigPath.path) else { return nil }
+
+        let rootValues = parseCodexRootAssignments(from: readTOML(at: codexConfigPath))
+        return CodexLiveOverrides(
+            wireApi: rootValues["wire_api"]?.trimmedNonEmpty,
+            reasoningEffort: rootValues["reasoning_effort"]?.trimmedNonEmpty
+        )
     }
 
     // MARK: - Claude Code Config
@@ -1164,6 +1211,23 @@ actor ProviderConfigService {
         return dictionary
     }
 
+    private func prettyJSONString(_ object: [String: Any]) -> String {
+        guard JSONSerialization.isValidJSONObject(object),
+              let data = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+              let string = String(data: data, encoding: .utf8) else {
+            return "{}"
+        }
+        return string
+    }
+
+    private func extractClaudeCommonConfig(from payload: [String: Any]) -> [String: Any] {
+        var common = payload
+        common.removeValue(forKey: "env")
+        common.removeValue(forKey: "attribution")
+        common.removeValue(forKey: "alwaysThinkingEnabled")
+        return common
+    }
+
     private func writeJSONObject(_ object: [String: Any], to path: URL) throws {
         try fileManager.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
         let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
@@ -1450,6 +1514,32 @@ actor ProviderConfigService {
         }
     }
 
+    private func jsonBool(_ value: Any?) -> Bool {
+        switch value {
+        case let bool as Bool:
+            return bool
+        case let string as String:
+            return ["1", "true", "yes", "on"].contains(string.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+        case let number as NSNumber:
+            return number.boolValue
+        default:
+            return false
+        }
+    }
+
+    private func jsonInt(_ value: Any?) -> Int? {
+        switch value {
+        case let int as Int:
+            return int
+        case let number as NSNumber:
+            return number.intValue
+        case let string as String:
+            return Int(string.trimmingCharacters(in: .whitespacesAndNewlines))
+        default:
+            return nil
+        }
+    }
+
     private func mergingJSONObject(_ base: [String: Any], with overlay: [String: Any]) -> [String: Any] {
         var result = base
         for (key, value) in overlay {
@@ -1461,6 +1551,20 @@ actor ProviderConfigService {
     private func readTOML(at path: URL) -> String {
         guard fileManager.fileExists(atPath: path.path) else { return "" }
         return (try? String(contentsOf: path, encoding: .utf8)) ?? ""
+    }
+
+    private func parseCodexRootAssignments(from content: String) -> [String: String] {
+        var result: [String: String] = [:]
+
+        for rawLine in content.normalizedNewlines.components(separatedBy: "\n") {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !line.isEmpty, !line.hasPrefix("#") else { continue }
+            if line.hasPrefix("[") { break }
+            guard let assignment = splitTomlAssignment(line) else { continue }
+            result[assignment.key] = parseTomlStringScalar(assignment.value)
+        }
+
+        return result
     }
 
     private func writeTOML(_ content: String, to path: URL) throws {
