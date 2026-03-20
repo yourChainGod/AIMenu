@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a1a"/>
+      <stop offset="100%" stop-color="#141432"/>
+    </linearGradient>
+    <linearGradient id="dot1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF8A65"/>
+      <stop offset="100%" stop-color="#FF6A3D"/>
+    </linearGradient>
+    <linearGradient id="dot2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#00E5A0"/>
+    </linearGradient>
+    <linearGradient id="dot3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#818CF8"/>
+    </linearGradient>
+    <filter id="g1" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12"/>
+    </filter>
+    <filter id="g2" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12"/>
+    </filter>
+    <filter id="g3" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- Tracks -->
+  <rect x="116" y="171" width="280" height="14" rx="7" fill="#fff" opacity="0.08"/>
+  <rect x="116" y="249" width="280" height="14" rx="7" fill="#fff" opacity="0.08"/>
+  <rect x="116" y="327" width="280" height="14" rx="7" fill="#fff" opacity="0.08"/>
+
+  <!-- Active track fill (left of each dot) -->
+  <rect x="116" y="171" width="54"  height="14" rx="7" fill="#FF6A3D" opacity="0.30"/>
+  <rect x="116" y="249" width="140" height="14" rx="7" fill="#00E5A0" opacity="0.25"/>
+  <rect x="116" y="327" width="226" height="14" rx="7" fill="#818CF8" opacity="0.25"/>
+
+  <!-- Dot glows -->
+  <circle cx="170" cy="178" r="36" fill="#FF6A3D" opacity="0.35" filter="url(#g1)"/>
+  <circle cx="256" cy="256" r="36" fill="#00E5A0" opacity="0.30" filter="url(#g2)"/>
+  <circle cx="342" cy="334" r="36" fill="#818CF8" opacity="0.30" filter="url(#g3)"/>
+
+  <!-- Dots -->
+  <circle cx="170" cy="178" r="28" fill="url(#dot1)"/>
+  <circle cx="256" cy="256" r="28" fill="url(#dot2)"/>
+  <circle cx="342" cy="334" r="28" fill="url(#dot3)"/>
+
+  <!-- Dot inner highlights -->
+  <circle cx="163" cy="170" r="10" fill="#fff" opacity="0.30"/>
+  <circle cx="249" cy="248" r="10" fill="#fff" opacity="0.25"/>
+  <circle cx="335" cy="326" r="10" fill="#fff" opacity="0.25"/>
+</svg>

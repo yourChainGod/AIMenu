@@ -1,131 +1,212 @@
+<div align="center">
+
+<img src="./docs/icon.svg" alt="AIMenu" width="120" />
+
 # AIMenu
 
-<img src="./AIMenu.png" alt="AIMenu Icon" width="156" />
+**一个原生 macOS 菜单栏控制台，统一管理 Claude Code / Codex / Gemini。**
 
-> 上游参考项目
-> - [AlickH/Copool](https://github.com/AlickH/Copool)
-> - [kongkongyo/cc-switch](https://github.com/kongkongyo/cc-switch)
-> - [Moresl/cchub](https://github.com/Moresl/cchub)
-> - [yourChainGod/cursor2api-go](https://github.com/yourChainGod/cursor2api-go)
-> - [productdevbook/port-killer](https://github.com/productdevbook/port-killer)
+账号池、供应商、集中代理、MCP、提示词、Hooks、Skills、本地服务，都收进同一个小窗里。
 
-AIMenu 是一个面向 macOS 菜单栏的 AI CLI 控制台，用来统一接管 Claude Code、Codex、Gemini 的账号、提供商、集中代理、MCP、提示词、skills 和本地服务。
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black?logo=apple&logoColor=white)](https://www.apple.com/macos/)
+[![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://swift.org)
+[![Menu Bar App](https://img.shields.io/badge/App-Menu%20Bar-4F46E5)](https://github.com/yourChainGod/AIMenu)
+[![i18n: 11 languages](https://img.shields.io/badge/i18n-11%20languages-2563EB)](#国际化)
 
-项目已经移除 iOS / iCloud 方向的残留，专注桌面端本地配置管理与联动体验。
+</div>
 
-## 它解决什么问题
+---
 
-- AI CLI 的配置文件格式不统一：Claude 用 `settings.json`，Codex 用 `config.toml`，Gemini 常见是 `.env` / `settings.json`。
-- 本地代理、账号池、MCP、skills、提示词通常分散在多个文件夹和多个工具里，切换时容易漏改。
-- 需要一个更轻、更直观、更接近日常开发流程的原生入口，而不是额外搭一套重后台。
+## 上游参考
 
-## 当前重点能力
+AIMenu 不是凭空开始的，它是在以下项目启发上继续重构、整合和原生化的结果：
 
-- 账号池
-  - 导入和管理本地认证。
-  - 展示账号状态、配额窗口和智能切换结果。
-- 提供商中心
-  - 按 Claude Code、Codex、Gemini 分开管理提供商。
-  - 支持预设接入、自定义编辑、自动获取模型。
-  - 真实写入对应应用的本地配置文件。
-- 集中代理与公网访问
-  - 管理 AIMenu 自带的集中代理。
-  - Codex 走集中代理接入，不再走本地直配账号。
-  - 支持公网访问链路联动。
-- 工具管理
-  - MCP 统一面板：预设添加、手动编辑、从本地配置导入。
-  - Prompt 管理：针对 `CLAUDE.md`、`AGENTS.md`、`GEMINI.md` 的导入、编辑、写入。
-  - Hooks 可视化：扫描 `~/.claude/settings.json`，展示事件、matcher、命令和超时。
-  - Skills 管理：扫描已安装 skills、发现 GitHub 仓库中的可安装 skills、直接编辑 `SKILL.md`、快速安装/卸载。
-  - 本地配置总览：直接查看 Claude / Codex / Gemini 当前 live 文件是否存在，并可快速打开。
-- 本地服务
-  - 托管 `cursor2api-go` 的下载、安装、启动、停止、配置文件与日志。
-  - 一键把 Claude Code 切换到本地 Cursor2API 桥接。
-  - 内置端口占用检查与释放，吸收 `port-killer` 的轻量能力。
+- [AlickH/Copool](https://github.com/AlickH/Copool)：账号池与使用额度管理思路
+- [kongkongyo/cc-switch](https://github.com/kongkongyo/cc-switch)：多提供商切换与本地配置写入思路
+- [Moresl/cchub](https://github.com/Moresl/cchub)：MCP / 提示词 / Hooks / Skills 的工具中台思路
+- [yourChainGod/cursor2api-go](https://github.com/yourChainGod/cursor2api-go)：本地 Cursor2API 桥接服务
+- [productdevbook/port-killer](https://github.com/productdevbook/port-killer)：端口占用治理思路
 
-## 配置写入位置
+---
+
+## 项目定位
+
+Claude Code、Codex、Gemini 都在写各自的本地配置：
 
 - Claude Code：`~/.claude/settings.json`
-- Codex：`~/.codex/auth.json`、`~/.codex/config.toml`
-- Gemini：`~/.gemini/.env`、`~/.gemini/settings.json`
-- Prompt 文件：
-  - Claude：`~/.claude/CLAUDE.md`
-  - Codex：`~/.codex/AGENTS.md`
-  - Gemini：`~/.gemini/GEMINI.md`
-- Skills：`~/.claude/skills`
+- Codex：`~/.codex/config.toml` 和 `~/.codex/auth.json`
+- Gemini：`~/.gemini/.env`
 
-## 本地数据目录
+一旦你开始频繁切换账号、供应商、模型、MCP、提示词、Hooks，终端、编辑器、配置文件和本地服务就会来回跳。
 
-- 当前目录：`~/Library/Application Support/AIMenu`
-- 兼容迁移：若历史目录仍为 `CodexToolsSwift`，启动时会自动迁移到 `AIMenu`
+**AIMenu 的目标就是把这些高频操作折叠进一个原生菜单栏面板里：打开小窗，点一下，立即写入，立即生效。**
 
-## 界面方向
+---
 
-- 原生 macOS 菜单栏入口
-- 以轻量卡片和短操作链路为主
-- 尽量减少解释性文案，优先把常用动作放到一屏内完成
-- 保持提供商、代理、工具页的视觉语言一致
+## 核心能力
 
-## 集成说明
+### 1. 账号池
 
-### Cursor2API
+- 支持本地认证导入、ChatGPT OAuth 登录、批量文件导入
+- 按 `7 天 * 0.7 + 5 小时 * 0.3` 做综合排序
+- 30 秒自动刷新使用情况
+- 可联动 Codex 启动、编辑器重启、OpenCode 认证同步
 
-AIMenu 不直接内嵌 `cursor2api-go` 源码，而是以“托管外部服务”的方式接入：
+### 2. 供应商管理
 
-- 从 GitHub Release 下载适配当前 macOS 架构的二进制
-- 生成默认 `config.yaml`
-- 管理启动、停止、健康检查、日志与端口
-- 生成受托管的 Claude 提供商并一键应用
+- 内置 **33 个供应商预设**
+- Claude Code：20 个
+- Codex：8 个
+- Gemini：5 个
+- 支持官方接口、国内模型平台、聚合平台、自定义代理供应商
+- 支持自动拉取模型列表、接口测速、代理配置、计费配置
+- 修改后直接写入本地配置文件，不需要手动再去改 JSON / TOML / ENV
 
-### Port Management
+### 3. 集中代理与公网访问
 
-AIMenu 吸收了 `port-killer` 的核心开发者场景：
+- 内置本地 API 代理，一键启动 / 停止
+- 自动选择可用端口
+- Codex 可自动切换到 AIMenu 生成的集中代理 provider
+- 支持 Cloudflared 快速隧道与命名隧道
+- 适合把本地代理暴露到公网或做远程接入
 
-- 查看常用端口是否被占用
-- 查看进程名与 PID
-- 一键优雅结束并在必要时强制释放
-- 追加临时关注端口
+### 4. 工具工作台
 
-## 开发环境
+- **MCP**：预设导入、自定义 STDIO / HTTP / SSE，且可按 Claude / Codex / Gemini 分别挂载
+- **提示词**：统一管理 `CLAUDE.md`、`AGENTS.md`、`GEMINI.md`
+- **Hooks**：管理 Claude / Codex / Gemini 的事件挂载，并支持按具体 App 生效
+- **Skills**：从 GitHub 仓库发现、预览、安装、卸载与自定义仓库
+- **本地配置总览**：一眼查看关键配置文件是否存在、最后修改时间和大小
+
+### 5. 本地服务
+
+- 托管 [cursor2api-go](https://github.com/yourChainGod/cursor2api-go)，自动生成配置、拉起进程、健康检查、收集日志
+- 内置端口管理，可查看 PID、进程名，并执行解除占用 / 强制解除占用
+
+---
+
+## 写入哪些文件
+
+```text
+Claude Code
+  ~/.claude/settings.json             # provider、MCP、hooks、通用配置
+  ~/.claude/CLAUDE.md                 # 提示词
+  ~/.claude/skills/                   # 已安装技能
+
+Codex
+  ~/.codex/auth.json                  # 认证信息
+  ~/.codex/config.toml                # provider、运行参数
+  ~/.codex/hooks.json                 # hooks
+  ~/.codex/skills/                    # 已安装技能
+  ~/.codex/AGENTS.md                  # 提示词
+
+Gemini
+  ~/.gemini/.env                      # 认证信息
+  ~/.gemini/settings.json             # provider、hooks
+  ~/.gemini/skills/                   # 已安装技能
+  ~/.gemini/GEMINI.md                 # 提示词
+
+AIMenu
+  ~/Library/Application Support/AIMenu/
+```
+
+---
+
+## 设计原则
+
+- **原生 macOS 菜单栏体验**：不是 Web 包壳，而是原生 SwiftUI 小窗
+- **本地优先**：不依赖后端，不要求云同步，状态都保存在本机
+- **配置即结果**：界面修改后直接落到真实配置文件，而不是只存一份“应用内状态”
+- **智能联动**：账号池、供应商、代理、本地服务、MCP、Hooks、提示词之间尽量自动接上
+- **尽量保留已有配置**：例如 Codex 的 `config.toml` 会增量写入根字段，已有段落会尽量保留
+
+---
+
+## 当前实现亮点
+
+- MVVM + Coordinator 结构
+- Swift 6 `actor` 并发模型
+- 原子写入与损坏恢复
+- 认证文件权限控制（如 `chmod 600`）
+- Rust 本地代理内核
+- 17 个测试文件覆盖账号、供应商、代理、工具页、本地服务等核心逻辑
+
+---
+
+## 构建与运行
+
+### 环境要求
 
 - macOS 14+
-- Xcode 17+
+- Xcode 16+
 - Swift 6
 
-## 构建与测试
+### 使用 SwiftPM
 
 ```bash
 swift build
 swift test
-xcodebuild -project AIMenu.xcodeproj -scheme AIMenu -destination 'platform=macOS' build
 ```
 
-## 仓库结构
+### 使用 Xcode
 
-- `Sources/AIMenu/App`
-  - 应用装配、场景入口、菜单栏状态。
-- `Sources/AIMenu/Features`
-  - 账号池、提供商、代理、工具、设置页面。
-- `Sources/AIMenu/Behavior`
-  - 协调器与业务编排。
-- `Sources/AIMenu/Infrastructure`
-  - 文件、网络、命令执行、本地服务与配置落盘。
-- `Sources/AIMenu/Domain`
-  - 领域模型、协议、配置结构。
-- `Tests/AIMenuTests`
-  - 核心逻辑与配置相关测试。
+```bash
+xcodebuild -project AIMenu.xcodeproj -scheme AIMenu \
+  -destination 'platform=macOS' build
+```
 
-## 截图
+如果你需要重新生成工程文件，项目根目录已经包含 `project.yml`。
 
-<img src="./account.png" alt="Accounts Overview" width="560" />
-<img src="./account_2.png" alt="Accounts Detail" width="560" />
-<img src="./proxy.png" alt="Proxy" width="560" />
-<img src="./setting.png" alt="Settings" width="560" />
+---
 
-## 仓库地址
+## 项目结构
 
-- GitHub: [yourChainGod/AIMenu](https://github.com/yourChainGod/AIMenu)
+```text
+Sources/AIMenu/
+  App/                  入口、场景装配、窗口行为
+  Features/             Accounts / Providers / Proxy / Tools / Settings
+  Behavior/             协调器与业务编排
+  Domain/               模型、协议、预设、配置结构
+  Infrastructure/       文件 I/O、HTTP、Shell、OAuth、本地服务
+  Layout/               尺寸与布局常量
+  UI/                   公共组件与样式
+  Resources/            本地化、图标、代理源码
 
-## 说明
+Tests/AIMenuTests/      17 个测试文件
+```
 
-AIMenu 不是对某个上游项目的直接换皮，而是在吸收 Copool、cc-switch、cchub 等项目思路后，围绕 macOS 菜单栏和本地配置联动重新整理的一套实现。欢迎继续提出关于 UI 一致性、配置兼容性和工具编排的改进建议。
+---
+
+## 国际化
+
+目前内置 11 种语言：
+
+- English
+- 简体中文
+- 繁體中文
+- 日本語
+- 한국어
+- Français
+- Deutsch
+- Italiano
+- Español
+- Русский
+- Nederlands
+
+应用内支持运行时切换语言，无需重启。
+
+---
+
+## 适合谁
+
+- 每天在 Claude Code / Codex / Gemini 之间切换的人
+- 同时维护多个 API 供应商、代理节点、本地模型入口的人
+- 想把 MCP、提示词、Hooks、Skills 统一管理起来的人
+- 希望用一个更轻、更快的原生菜单栏工具替代手改配置文件的人
+
+---
+
+## 声明
+
+- AIMenu 与 Anthropic、OpenAI、Google 等服务商无官方隶属关系
+- 本项目的核心能力是帮助你管理本地配置、账号和代理，不代替各平台自身的服务条款与计费规则
