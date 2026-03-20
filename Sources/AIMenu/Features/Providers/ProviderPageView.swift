@@ -7,7 +7,56 @@ struct ProviderPageView: View {
     @State private var hoveredProvider: String? = nil
     @State private var addingPreset: ProviderPreset?
 
+    private var hasActiveModal: Bool {
+        addingPreset != nil || model.editingProvider != nil
+    }
+
     var body: some View {
+        ZStack {
+            pageContent
+                .blur(radius: hasActiveModal ? 2 : 0)
+                .allowsHitTesting(!hasActiveModal)
+
+            if let addingPreset {
+                providerModal(accent: model.selectedApp.formAccent, onDismiss: closeAddProviderSheet) {
+                    AddProviderSheet(
+                        appType: model.selectedApp,
+                        initialPreset: addingPreset,
+                        onAdd: { draft in
+                            Task { await model.addProvider(draft: draft) }
+                        },
+                        onCancel: closeAddProviderSheet
+                    )
+                }
+            } else if let editing = model.editingProvider {
+                providerModal(accent: editing.appType.formAccent, onDismiss: {
+                    model.editingProvider = nil
+                }) {
+                    EditProviderSheet(
+                        provider: editing,
+                        onSave: { updated in
+                            Task { await model.updateProvider(updated) }
+                        },
+                        onCancel: { model.editingProvider = nil }
+                    )
+                }
+            }
+        }
+        .task {
+            await model.load()
+        }
+        .onChange(of: model.selectedApp) { _, _ in
+            if !model.isAddingProvider { addingPreset = nil }
+        }
+        .onChange(of: model.isAddingProvider) { _, isAddingProvider in
+            if !isAddingProvider {
+                addingPreset = nil
+            }
+        }
+        .animation(.spring(response: 0.28, dampingFraction: 0.84), value: hasActiveModal)
+    }
+
+    private var pageContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: LayoutRules.sectionSpacing) {
                 toolBar
@@ -19,7 +68,7 @@ struct ProviderPageView: View {
                 if model.loading && model.providers.isEmpty {
                     ProgressView("加载中...")
                         .frame(maxWidth: .infinity, minHeight: 120)
-                    .padding(.horizontal, LayoutRules.pagePadding)
+                        .padding(.horizontal, LayoutRules.pagePadding)
                 } else if model.providers.isEmpty {
                     EmptyStateView(
                         title: "暂无提供商",
@@ -40,32 +89,36 @@ struct ProviderPageView: View {
         .padding(.bottom, 12)
         .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .task {
-            await model.load()
-        }
-        .onChange(of: model.selectedApp) { _, _ in
-            if !model.isAddingProvider { addingPreset = nil }
-        }
-        .sheet(item: $addingPreset, onDismiss: closeAddProviderSheet) { addingPreset in
-            AddProviderSheet(
-                appType: model.selectedApp,
-                initialPreset: addingPreset,
-                onAdd: { draft in
-                    Task { await model.addProvider(draft: draft) }
-                },
-                onCancel: closeAddProviderSheet
-            )
-            .frame(width: 760, height: 820)
-        }
-        .sheet(item: $model.editingProvider) { editing in
-            EditProviderSheet(
-                provider: editing,
-                onSave: { updated in
-                    Task { await model.updateProvider(updated) }
-                },
-                onCancel: { model.editingProvider = nil }
-            )
-            .frame(width: 760, height: 820)
+    }
+
+    @ViewBuilder
+    private func providerModal<Content: View>(
+        accent: Color,
+        onDismiss: @escaping () -> Void,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.opacity(0.24)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        onDismiss()
+                    }
+
+                ProviderModalPanel(accent: accent) {
+                    content()
+                }
+                .frame(
+                    width: min(max(420, geometry.size.width - 28), 540),
+                    height: max(460, geometry.size.height - 28)
+                )
+                .padding(.horizontal, 14)
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.scale(scale: 0.95).combined(with: .opacity))
+            }
+            .zIndex(20)
         }
     }
 
@@ -387,6 +440,39 @@ struct ProviderPageView: View {
     }
 }
 
+private struct ProviderModalPanel<Content: View>: View {
+    let accent: Color
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            content
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.30), lineWidth: 1)
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(accent.opacity(0.08))
+                        .blur(radius: 18)
+                )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(alignment: .top) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(accent.opacity(0.9))
+                .frame(width: 74, height: 4)
+                .padding(.top, 8)
+        }
+        .shadow(color: .black.opacity(0.24), radius: 28, x: 0, y: 14)
+    }
+}
+
 // MARK: - Add Provider Sheet
 
 private struct AddProviderSheet: View {
@@ -494,6 +580,10 @@ private struct AddProviderSheet: View {
         max(filteredPresets.count - presets.count, 0)
     }
 
+    private var featuredPresetCount: Int {
+        filteredPresets.filter { featuredPresetIDs.contains($0.id) }.count
+    }
+
     private var canAdd: Bool {
         guard selectedPreset != nil else { return false }
         return !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -518,8 +608,7 @@ private struct AddProviderSheet: View {
                 configureView
             }
         }
-        .frame(width: 700)
-        .background(.regularMaterial)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             guard !didBootstrap else { return }
             didBootstrap = true
@@ -531,42 +620,63 @@ private struct AddProviderSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             sheetHeader
                 .padding(.horizontal, 20)
-                .padding(.top, 18)
+                .padding(.top, 16)
                 .padding(.bottom, 12)
 
             Divider()
 
             presetPickerStep
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var configureView: some View {
         VStack(alignment: .leading, spacing: 0) {
             sheetHeader
                 .padding(.horizontal, 20)
-                .padding(.top, 18)
+                .padding(.top, 16)
                 .padding(.bottom, 12)
 
             Divider()
 
             configureStep
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var sheetHeader: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(step == .selectPreset ? "选择提供商" : (selectedPreset?.name ?? "配置详情"))
-                    .font(.headline)
-                Text(step == .selectPreset ? "先选预设，再补充详细配置。" : appType.liveConfigPathsText)
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(accentTint.opacity(0.14))
+                .overlay {
+                    Image(systemName: step == .selectPreset ? "square.grid.2x2.fill" : (selectedPreset?.icon ?? appType.iconName))
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(accentTint)
+                }
+                .frame(width: 38, height: 38)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(step == .selectPreset ? "选择提供商" : (selectedPreset?.name ?? "配置详情"))
+                        .font(.headline.weight(.semibold))
+
+                    Text(step == .selectPreset ? "预设" : "配置")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(accentTint)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(accentTint.opacity(0.12), in: Capsule())
+                }
+                Text(step == .selectPreset ? "先挑一个常用预设，再补充接口与模型。" : appType.liveConfigPathsText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
 
             Spacer(minLength: 0)
 
             if step == .configure {
-                Button("更换预设") {
+                Button("返回预设") {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         step = .selectPreset
                     }
@@ -590,10 +700,10 @@ private struct AddProviderSheet: View {
 
     private var presetPickerStep: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
-                        .foregroundStyle(accentTint.opacity(0.9))
+                        .foregroundStyle(accentTint)
                         .font(.subheadline.weight(.semibold))
                     TextField("搜索提供商...", text: $searchText)
                         .textFieldStyle(.plain)
@@ -607,94 +717,139 @@ private struct AddProviderSheet: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 9)
+                .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(accentTint.opacity(0.1))
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    accentTint.opacity(0.12),
+                                    Color.primary.opacity(0.03)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(accentTint.opacity(0.18), lineWidth: 1)
+                                .strokeBorder(accentTint.opacity(0.22), lineWidth: 1)
                         )
                 )
 
                 HStack(spacing: 8) {
-                    Text(searchText.isEmpty ? "预设" : "搜索结果")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
                     if searchText.isEmpty {
-                        Button("精选") {
+                        presetScopeButton(
+                            title: "精选",
+                            count: featuredPresetCount,
+                            isActive: !showAllPresets
+                        ) {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 showAllPresets = false
                             }
                         }
-                        .aimenuActionButtonStyle(
-                            prominent: !showAllPresets,
-                            tint: !showAllPresets ? accentTint : nil,
-                            density: .compact
-                        )
 
                         if hiddenPresetCount > 0 {
-                            Button("全部 \(filteredPresets.count)") {
+                            presetScopeButton(
+                                title: "全部",
+                                count: filteredPresets.count,
+                                isActive: showAllPresets
+                            ) {
                                 withAnimation(.easeInOut(duration: 0.2)) {
                                     showAllPresets = true
                                 }
                             }
-                            .aimenuActionButtonStyle(
-                                prominent: showAllPresets,
-                                tint: showAllPresets ? accentTint : nil,
-                                density: .compact
-                            )
                         }
+                    } else {
+                        presetMetaBadge(
+                            icon: "line.3.horizontal.decrease.circle",
+                            text: "搜索结果 \(filteredPresets.count)",
+                            tint: accentTint
+                        )
                     }
 
                     Spacer(minLength: 0)
 
-                    Text("\(presets.count)")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.tertiary)
+                    if let selectedPreset {
+                        presetMetaBadge(
+                            icon: "checkmark.circle.fill",
+                            text: selectedPreset.name,
+                            tint: accentTint
+                        )
+                    } else {
+                        presetMetaBadge(
+                            icon: "hand.tap",
+                            text: "点击卡片进入配置",
+                            tint: .secondary
+                        )
+                    }
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.vertical, 12)
+            .padding(.top, 14)
+            .padding(.bottom, 12)
+            .background(
+                LinearGradient(
+                    colors: [
+                        accentTint.opacity(0.08),
+                        Color.clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
 
             ScrollView {
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 12)],
-                    spacing: 12
+                    columns: [GridItem(.adaptive(minimum: 150, maximum: 190), spacing: 10)],
+                    spacing: 10
                 ) {
                     ForEach(presets) { preset in
-                        PresetRow(
-                            preset: preset,
-                            isSelected: selectedPreset?.id == preset.id,
-                            accent: accentTint
-                        )
-                        .onTapGesture {
+                        Button {
                             applyPreset(preset)
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 step = .configure
                             }
+                        } label: {
+                            PresetRow(
+                                preset: preset,
+                                isSelected: selectedPreset?.id == preset.id,
+                                accent: accentTint
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.top, 12)
+                .padding(.bottom, 14)
             }
-            .frame(height: 360)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             Divider()
+                .overlay(Color.white.opacity(0.08))
 
-            HStack {
-                Text("已显示 \(presets.count) 个")
+            HStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: showAllPresets ? "square.grid.2x2" : "sparkles")
+                        .font(.caption2.weight(.semibold))
+                    Text(showAllPresets ? "已展开全部预设" : "优先展示常用预设")
+                        .font(.caption)
+                }
+                .foregroundStyle(.secondary)
+
+                Spacer(minLength: 0)
+
+                Text("当前 \(presets.count) / 共 \(filteredPresets.count)")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
-                Spacer(minLength: 0)
+
                 Button("取消") { onCancel() }
                     .aimenuActionButtonStyle()
             }
             .padding(.horizontal, 18)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var configureStep: some View {
@@ -760,7 +915,7 @@ private struct AddProviderSheet: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 14)
             }
-            .frame(maxHeight: 620)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             Divider()
 
@@ -824,6 +979,48 @@ private struct AddProviderSheet: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private func presetScopeButton(
+        title: String,
+        count: Int,
+        isActive: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(title)
+                Text("\(count)")
+                    .font(.caption2.weight(.bold))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background((isActive ? accentTint : Color.primary).opacity(isActive ? 0.15 : 0.08), in: Capsule())
+            }
+            .lineLimit(1)
+        }
+        .aimenuActionButtonStyle(
+            prominent: isActive,
+            tint: isActive ? accentTint : nil,
+            density: .compact
+        )
+    }
+
+    private func presetMetaBadge(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.caption2.weight(.semibold))
+            Text(text)
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
+        }
+        .foregroundStyle(tint == .secondary ? .secondary : tint)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill((tint == .secondary ? Color.primary : tint).opacity(0.08))
+        )
     }
 
     @ViewBuilder
@@ -1633,19 +1830,38 @@ private struct EditProviderSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("编辑提供商")
-                        .font(.headline)
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(accentTint.opacity(0.14))
+                    .overlay {
+                        Image(systemName: provider.displayIcon)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(accentTint)
+                    }
+                    .frame(width: 38, height: 38)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text("编辑提供商")
+                            .font(.headline.weight(.semibold))
+
+                        Text("配置")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(accentTint)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(accentTint.opacity(0.12), in: Capsule())
+                    }
                     Text(provider.appType.liveConfigPathsText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 CloseGlassButton { onCancel() }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 18)
+            .padding(.top, 16)
             .padding(.bottom, 12)
 
             Divider()
@@ -1727,7 +1943,7 @@ private struct EditProviderSheet: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 14)
             }
-            .frame(maxHeight: 620)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             Divider()
 
@@ -1742,8 +1958,7 @@ private struct EditProviderSheet: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
         }
-        .frame(width: 700)
-        .background(.regularMaterial)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder
@@ -2925,16 +3140,24 @@ private struct PresetRow: View {
         return URL(string: baseURL)?.host ?? baseURL
     }
 
+    private var defaultModelLabel: String? {
+        preset.defaultModel?.trimmedNonEmpty
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 11) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: preset.icon ?? "server.rack")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(isSelected ? rowTint : .secondary)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 34, height: 34)
                     .background(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(isSelected ? rowTint.opacity(0.16) : Color.primary.opacity(0.05))
+                            .fill(
+                                isSelected
+                                    ? rowTint.opacity(0.16)
+                                    : Color.primary.opacity(0.05)
+                            )
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -2963,28 +3186,55 @@ private struct PresetRow: View {
                 }
 
                 Spacer(minLength: 0)
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "arrow.up.right.circle")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(isSelected ? rowTint : Color.secondary.opacity(0.7))
             }
 
-            if let hostLabel {
-                Text(hostLabel)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+            VStack(alignment: .leading, spacing: 6) {
+                if let hostLabel {
+                    presetInfoRow(icon: "network", text: hostLabel)
+                }
+                if let defaultModelLabel {
+                    presetInfoRow(icon: "sparkles", text: defaultModelLabel)
+                }
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(minHeight: 98, alignment: .topLeading)
-        .padding(12)
+        .frame(minHeight: 108, alignment: .topLeading)
+        .padding(13)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(isSelected ? rowTint.opacity(0.14) : Color.primary.opacity(0.04))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            isSelected ? rowTint.opacity(0.17) : Color.primary.opacity(0.05),
+                            Color.primary.opacity(isSelected ? 0.028 : 0.02)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(isSelected ? rowTint.opacity(0.42) : Color.primary.opacity(0.07), lineWidth: 1)
+                        .strokeBorder(isSelected ? rowTint.opacity(0.42) : Color.primary.opacity(0.08), lineWidth: 1)
                 )
         )
         .contentShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func presetInfoRow(icon: String, text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isSelected ? rowTint : Color.secondary.opacity(0.7))
+            Text(text)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
     }
 }
 
