@@ -195,8 +195,8 @@ struct ToolsPageView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    ForEach(Array(workbenchSections.enumerated()), id: \.element) { index, section in
+                HStack(spacing: LayoutRules.listRowSpacing) {
+                    ForEach(workbenchSections, id: \.self) { section in
                         Button {
                             withAnimation(.easeInOut(duration: 0.18)) {
                                 model.activeSection = section
@@ -213,46 +213,21 @@ struct ToolsPageView: View {
                                     .font(.caption2.weight(.bold))
                                     .foregroundStyle(
                                         activeWorkbenchSection == section
-                                            ? Color.white.opacity(0.88)
-                                            : Color.secondary
+                                            ? AnyShapeStyle(workbenchSectionTint(for: section))
+                                            : AnyShapeStyle(Color.secondary)
                                     )
                             }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .frame(minWidth: 92)
+                            .lineLimit(1)
                         }
-                        .buttonStyle(.plain)
-                        .background {
-                            if activeWorkbenchSection == section {
-                                Capsule()
-                                    .fill(.regularMaterial)
-                                    .overlay {
-                                        Capsule()
-                                            .fill(workbenchSectionTint(for: section).opacity(0.14))
-                                    }
-                                    .padding(3)
-                            }
-                        }
-                        .overlay(alignment: .trailing) {
-                            if shouldShowWorkbenchDivider(after: index) {
-                                Rectangle()
-                                    .fill(workbenchSeparatorColor.opacity(0.55))
-                                    .frame(width: 1, height: 20)
-                            }
-                        }
-                        .foregroundStyle(activeWorkbenchSection == section ? Color.primary : Color.secondary)
+                        .aimenuActionButtonStyle(
+                            prominent: activeWorkbenchSection == section,
+                            tint: activeWorkbenchSection == section ? workbenchSectionTint(for: section) : nil,
+                            density: .compact
+                        )
                     }
                 }
-                .background {
-                    Capsule()
-                        .fill(.ultraThinMaterial)
-                }
-                .overlay {
-                    Capsule()
-                        .strokeBorder(workbenchSeparatorColor, lineWidth: 1)
-                }
-                .clipShape(Capsule())
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -309,17 +284,6 @@ struct ToolsPageView: View {
         .padding(.horizontal, icon != nil && text == nil ? 11 : 12)
         .padding(.vertical, 7)
         .frostedCapsuleSurface(prominent: true, tint: tint)
-    }
-
-    private func shouldShowWorkbenchDivider(after index: Int) -> Bool {
-        guard index < workbenchSections.count - 1 else { return false }
-        let current = workbenchSections[index]
-        let next = workbenchSections[index + 1]
-        return activeWorkbenchSection != current && activeWorkbenchSection != next
-    }
-
-    private var workbenchSeparatorColor: Color {
-        Color(nsColor: .separatorColor).opacity(0.9)
     }
 
     private func workbenchSectionIcon(for section: ToolsPageModel.ToolsSection) -> String {
