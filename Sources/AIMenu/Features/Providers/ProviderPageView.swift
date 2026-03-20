@@ -140,14 +140,14 @@ struct ProviderPageView: View {
         Group {
             if let currentProvider {
                 HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(pageAccent.opacity(0.14))
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(pageAccent.opacity(0.10))
                         .overlay {
                             Image(systemName: model.selectedApp.iconName)
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(pageAccent)
                         }
-                        .frame(width: 42, height: 42)
+                        .frame(width: 38, height: 38)
 
                     VStack(alignment: .leading, spacing: 7) {
                         HStack(spacing: 8) {
@@ -174,24 +174,8 @@ struct ProviderPageView: View {
                 }
             }
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            pageAccent.opacity(0.11),
-                            Color.primary.opacity(0.03)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(pageAccent.opacity(0.14), lineWidth: 1)
-                )
-        )
+        .padding(12)
+        .cardSurface(cornerRadius: 14, tint: pageAccent.opacity(0.035))
     }
 
     // MARK: - Provider Row
@@ -245,7 +229,7 @@ struct ProviderPageView: View {
 
             Spacer(minLength: 0)
 
-            VStack(alignment: .trailing, spacing: 7) {
+            VStack(alignment: .trailing, spacing: 6) {
                 HStack(spacing: 4) {
                     if let result = model.speedTestResults[provider.id] {
                         Circle()
@@ -260,12 +244,6 @@ struct ProviderPageView: View {
                             .foregroundStyle(.tertiary)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(Color.primary.opacity(0.04))
-                )
 
                 HStack(spacing: 4) {
                     if !provider.isCurrent {
@@ -283,28 +261,23 @@ struct ProviderPageView: View {
                         Task { await model.deleteProvider(provider) }
                     }
                 }
-                .padding(4)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.primary.opacity(0.035))
-                )
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(
                     provider.isCurrent
-                        ? rowAccent.opacity(isHovered ? 0.14 : 0.10)
-                        : Color.primary.opacity(isHovered ? 0.055 : 0.03)
+                        ? rowAccent.opacity(isHovered ? 0.10 : 0.065)
+                        : Color.primary.opacity(isHovered ? 0.04 : 0.018)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .strokeBorder(
                             provider.isCurrent
-                                ? rowAccent.opacity(0.22)
-                                : Color.primary.opacity(isHovered ? 0.10 : 0.06),
+                                ? rowAccent.opacity(0.16)
+                                : Color.primary.opacity(isHovered ? 0.08 : 0.04),
                             lineWidth: 1
                         )
                 )
@@ -319,13 +292,13 @@ struct ProviderPageView: View {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(tint == .secondary ? Color.secondary : tint)
-                .frame(width: 24, height: 24)
+                .frame(width: 22, height: 22)
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(tint == .secondary ? Color.primary.opacity(0.07) : tint.opacity(0.1))
+                        .fill(tint == .secondary ? Color.primary.opacity(0.05) : tint.opacity(0.08))
                         .overlay(
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.12), lineWidth: 1)
+                                .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.10), lineWidth: 1)
                         )
                 )
         }
@@ -341,7 +314,7 @@ struct ProviderPageView: View {
             .padding(.vertical, 3)
             .background(
                 Capsule()
-                    .fill((tint == .secondary ? Color.primary : tint).opacity(0.08))
+                    .fill((tint == .secondary ? Color.primary : tint).opacity(0.06))
             )
             .lineLimit(1)
     }
@@ -417,7 +390,7 @@ struct ProviderPageView: View {
     // MARK: - Toolbar
 
     private var toolBar: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(spacing: 10) {
             HStack(spacing: LayoutRules.listRowSpacing) {
                 ForEach(ProviderAppType.allCases) { app in
                     Button {
@@ -438,11 +411,10 @@ struct ProviderPageView: View {
                     )
                 }
             }
+            .frame(maxWidth: 340)
             .frame(maxWidth: .infinity, alignment: .center)
 
             HStack(spacing: 8) {
-                Spacer(minLength: 0)
-
                 Button {
                     openAddProviderSheet()
                 } label: {
@@ -460,6 +432,8 @@ struct ProviderPageView: View {
                 .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
                 .disabled(model.providers.isEmpty)
             }
+            .frame(maxWidth: 220)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
@@ -486,46 +460,16 @@ private struct ProviderModalPanel<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             ZStack {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(.regularMaterial)
-
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.14),
-                                Color.white.opacity(0.02),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.30), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color(nsColor: .windowBackgroundColor).opacity(0.985))
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(accent.opacity(0.03))
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.14), lineWidth: 1)
             }
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(accent.opacity(0.10))
-                    .blur(radius: 22)
-            )
         }
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(alignment: .top) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(accent.opacity(0.9))
-                .frame(width: 74, height: 4)
-                .padding(.top, 8)
-        }
-        .overlay(alignment: .topLeading) {
-            Circle()
-                .fill(accent.opacity(0.16))
-                .frame(width: 120, height: 120)
-                .blur(radius: 32)
-                .offset(x: -28, y: -34)
-        }
-        .shadow(color: .black.opacity(0.24), radius: 28, x: 0, y: 14)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 10)
     }
 }
 
@@ -1726,24 +1670,7 @@ private struct AddProviderSheet: View {
             content()
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            accentTint.opacity(emphasis ? 0.15 : 0.08),
-                            Color.primary.opacity(emphasis ? 0.045 : 0.025)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .shadow(color: accentTint.opacity(emphasis ? 0.12 : 0.05), radius: emphasis ? 18 : 10, y: 8)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(accentTint.opacity(emphasis ? 0.24 : 0.12), lineWidth: 1)
-        )
+        .cardSurface(cornerRadius: 14, tint: accentTint.opacity(emphasis ? 0.05 : 0.025))
     }
 
     @ViewBuilder
@@ -2564,24 +2491,7 @@ private struct EditProviderSheet: View {
             content()
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            accentTint.opacity(emphasis ? 0.15 : 0.08),
-                            Color.primary.opacity(emphasis ? 0.045 : 0.025)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .shadow(color: accentTint.opacity(emphasis ? 0.12 : 0.05), radius: emphasis ? 18 : 10, y: 8)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(accentTint.opacity(emphasis ? 0.24 : 0.12), lineWidth: 1)
-        )
+        .cardSurface(cornerRadius: 14, tint: accentTint.opacity(emphasis ? 0.05 : 0.025))
     }
 
     @ViewBuilder
@@ -2707,33 +2617,10 @@ private struct ProviderConfigPreviewBlock: View {
                 .scrollContentBackground(.hidden)
                 .padding(12)
                 .frame(minHeight: 320, alignment: .topLeading)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    accent.opacity(0.11),
-                                    Color.primary.opacity(0.035)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(accent.opacity(0.18), lineWidth: 1)
-                        )
-                )
+                .cardSurface(cornerRadius: 12, tint: accent.opacity(0.04))
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.primary.opacity(0.025))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
-                )
-        )
+        .cardSurface(cornerRadius: 14, tint: accent.opacity(0.03))
         .onChange(of: content) { _, newValue in
             if draft == lastGeneratedContent {
                 draft = newValue
@@ -2795,14 +2682,7 @@ private struct ProviderModelInputRow: View {
             .disabled(!canFetch || isFetching)
         }
         .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(accent.opacity(0.045))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(accent.opacity(0.10), lineWidth: 1)
-                )
-        )
+        .cardSurface(cornerRadius: 12, tint: accent.opacity(0.035))
     }
 }
 

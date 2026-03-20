@@ -58,23 +58,38 @@ struct RootScene: View {
 
     var body: some View {
         ZStack {
-            panelChromeBackground
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.985))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(currentTabAccent.opacity(0.018))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.14), lineWidth: 1)
+                )
 
-            VStack(spacing: 8) {
+            VStack(spacing: 0) {
                 AppTabToolbarSwitcher(selection: $selectedTab, tabs: AppTab.allCases, tint: currentTabAccent)
                     .frame(maxWidth: LayoutRules.tabSwitcherMaxWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 16)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 10)
+                    .padding(.bottom, 8)
 
-                pageStage
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 5)
+                Rectangle()
+                    .fill(Color(nsColor: .separatorColor).opacity(0.12))
+                    .frame(height: 1)
+                    .padding(.horizontal, 14)
+
+                activePage
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 2)
+                    .padding(.bottom, 4)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 8)
-        .padding(.bottom, 5)
+        .shadow(color: .black.opacity(0.08), radius: 14, x: 0, y: 8)
+        .padding(6)
         .environment(\.locale, runtimeLocale)
         .onAppear {
             L10n.setLocale(identifier: settingsModel.settings.locale)
@@ -117,96 +132,6 @@ struct RootScene: View {
             minHeight: LayoutRules.minimumPanelHeight
         )
         .animation(.spring(response: 0.26, dampingFraction: 0.86), value: selectedTab)
-    }
-
-    private var pageStage: some View {
-        ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.thinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-                )
-
-            Circle()
-                .fill(currentTabAccent.opacity(0.10))
-                .frame(width: 180, height: 180)
-                .blur(radius: 40)
-                .offset(x: -120, y: -90)
-
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            currentTabAccent.opacity(0.72),
-                            currentTabAccent.opacity(0.08),
-                            Color.clear
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .frame(height: 3)
-                .padding(.top, 10)
-                .padding(.horizontal, 24)
-
-            activePage
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
-    }
-
-    private var panelChromeBackground: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(.ultraThinMaterial)
-
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            currentTabAccent.opacity(0.16),
-                            Color.white.opacity(0.04),
-                            Color.clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-
-            Circle()
-                .fill(currentTabAccent.opacity(0.14))
-                .frame(width: 210, height: 210)
-                .blur(radius: 52)
-                .offset(x: -116, y: -172)
-
-            Circle()
-                .fill(currentTabAccent.opacity(0.10))
-                .frame(width: 176, height: 176)
-                .blur(radius: 46)
-                .offset(x: 152, y: 214)
-
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
-
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .inset(by: 1.5)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.30),
-                            Color.clear,
-                            currentTabAccent.opacity(0.12)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .shadow(color: .black.opacity(0.16), radius: 26, x: 0, y: 16)
     }
 
     @ViewBuilder
@@ -258,12 +183,22 @@ private struct WindowSizeEnforcer: NSViewRepresentable {
         if window.frameAutosaveName != "AIMenu.Panel" {
             window.setFrameAutosaveName("AIMenu.Panel")
         }
-        window.isMovableByWindowBackground = false
+        if !window.styleMask.contains(.fullSizeContentView) {
+            window.styleMask.insert(.fullSizeContentView)
+        }
+        window.isMovableByWindowBackground = true
         window.tabbingMode = .disallowed
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = false
+        window.titlebarAppearsTransparent = true
         window.isOpaque = false
         window.backgroundColor = .clear
+        window.toolbar = nil
+        window.standardWindowButton(.closeButton)?.isHidden = true
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+        if #available(macOS 11.0, *) {
+            window.titlebarSeparatorStyle = .none
+        }
         window.contentMinSize = NSSize(width: minWidth, height: minHeight)
         window.contentMaxSize = NSSize(width: maxWidth, height: .greatestFiniteMagnitude)
 
@@ -284,31 +219,23 @@ private struct AppTabToolbarSwitcher: View {
     let tint: Color
 
     var body: some View {
-        AppTabSegmentedControl(selection: $selection, tabs: tabs, tint: tint)
-        .frame(maxWidth: .infinity, minHeight: 32)
-        .padding(4)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(tint.opacity(0.05))
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(separatorColor, lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityLabel(Text("导航分区"))
-    }
-
-    private var separatorColor: Color {
-        Color(nsColor: .separatorColor).opacity(0.9)
+        AppTabButtonBar(selection: $selection, tabs: tabs, tint: tint)
+            .frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
+            .padding(2)
+            .background(
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .fill(Color.primary.opacity(0.028))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.10), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .accessibilityLabel(Text("导航分区"))
     }
 }
 
-private struct AppTabSegmentedControl: NSViewRepresentable {
+private struct AppTabButtonBar: NSViewRepresentable {
     @Binding var selection: AppTab
     let tabs: [AppTab]
     let tint: Color
@@ -317,44 +244,40 @@ private struct AppTabSegmentedControl: NSViewRepresentable {
         Coordinator(parent: self)
     }
 
-    func makeNSView(context: Context) -> FirstMouseSegmentedHostView {
-        let view = FirstMouseSegmentedHostView()
+    func makeNSView(context: Context) -> FirstMouseTabBarHostView {
+        let view = FirstMouseTabBarHostView()
         view.configure(
             labels: tabs.map { L10n.tr($0.titleTranslationKey) },
+            selectedIndex: tabs.firstIndex(of: selection) ?? 0,
             tint: NSColor(tint),
             target: context.coordinator,
-            action: #selector(Coordinator.segmentChanged(_:))
+            action: #selector(Coordinator.tabPressed(_:))
         )
-        if let index = tabs.firstIndex(of: selection) {
-            view.selectSegment(index)
-        }
         return view
     }
 
-    func updateNSView(_ nsView: FirstMouseSegmentedHostView, context: Context) {
+    func updateNSView(_ nsView: FirstMouseTabBarHostView, context: Context) {
         context.coordinator.parent = self
         nsView.configure(
             labels: tabs.map { L10n.tr($0.titleTranslationKey) },
+            selectedIndex: tabs.firstIndex(of: selection) ?? 0,
             tint: NSColor(tint),
             target: context.coordinator,
-            action: #selector(Coordinator.segmentChanged(_:))
+            action: #selector(Coordinator.tabPressed(_:))
         )
-        if let index = tabs.firstIndex(of: selection) {
-            nsView.selectSegment(index)
-        }
     }
 
     @MainActor
     final class Coordinator: NSObject {
-        var parent: AppTabSegmentedControl
+        var parent: AppTabButtonBar
 
-        init(parent: AppTabSegmentedControl) {
+        init(parent: AppTabButtonBar) {
             self.parent = parent
         }
 
         @objc
-        func segmentChanged(_ sender: NSSegmentedControl) {
-            let index = sender.selectedSegment
+        func tabPressed(_ sender: NSButton) {
+            let index = sender.tag
             guard parent.tabs.indices.contains(index) else { return }
             withAnimation(.easeInOut(duration: 0.18)) {
                 parent.selection = parent.tabs[index]
@@ -363,25 +286,28 @@ private struct AppTabSegmentedControl: NSViewRepresentable {
     }
 }
 
-private final class FirstMouseSegmentedHostView: NSView {
-    private let control = FirstMouseSegmentedControl(labels: [], trackingMode: .selectOne, target: nil, action: nil)
+private final class FirstMouseTabBarHostView: NSView {
+    private let stackView = NSStackView()
+    private var buttons: [FirstMouseTabButton] = []
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         translatesAutoresizingMaskIntoConstraints = false
-        wantsLayer = false
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
 
-        control.translatesAutoresizingMaskIntoConstraints = false
-        control.segmentStyle = .rounded
-        control.controlSize = .large
-        control.focusRingType = .none
-        addSubview(control)
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.orientation = .horizontal
+        stackView.alignment = .centerY
+        stackView.distribution = .fillEqually
+        stackView.spacing = 4
+        addSubview(stackView)
 
         NSLayoutConstraint.activate([
-            control.leadingAnchor.constraint(equalTo: leadingAnchor),
-            control.trailingAnchor.constraint(equalTo: trailingAnchor),
-            control.topAnchor.constraint(equalTo: topAnchor),
-            control.bottomAnchor.constraint(equalTo: bottomAnchor)
+            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stackView.topAnchor.constraint(equalTo: topAnchor),
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
 
@@ -394,45 +320,73 @@ private final class FirstMouseSegmentedHostView: NSView {
         true
     }
 
-    override func layout() {
-        super.layout()
-
-        let segmentCount = control.segmentCount
-        guard segmentCount > 0 else { return }
-
-        let totalWidth = max(bounds.width, 1)
-        let segmentWidth = floor(totalWidth / CGFloat(segmentCount))
-        for index in 0..<segmentCount {
-            control.setWidth(segmentWidth, forSegment: index)
-        }
-    }
-
-    func configure(labels: [String], tint: NSColor, target: AnyObject, action: Selector) {
-        if control.segmentCount != labels.count {
-            control.segmentCount = labels.count
+    func configure(labels: [String], selectedIndex: Int, tint: NSColor, target: AnyObject, action: Selector) {
+        if buttons.count != labels.count {
+            rebuildButtons(count: labels.count)
         }
 
         for (index, label) in labels.enumerated() {
-            control.setLabel(label, forSegment: index)
-            control.setEnabled(true, forSegment: index)
+            let button = buttons[index]
+            button.tag = index
+            button.target = target
+            button.action = action
+            button.update(title: label, selected: index == selectedIndex, tint: tint)
         }
-
-        control.target = target
-        control.action = action
-        if #available(macOS 13.0, *) {
-            control.selectedSegmentBezelColor = tint
-        }
-        needsLayout = true
     }
 
-    func selectSegment(_ index: Int) {
-        control.selectedSegment = index
+    private func rebuildButtons(count: Int) {
+        buttons.forEach { button in
+            stackView.removeArrangedSubview(button)
+            button.removeFromSuperview()
+        }
+        buttons.removeAll()
+
+        for _ in 0..<count {
+            let button = FirstMouseTabButton()
+            buttons.append(button)
+            stackView.addArrangedSubview(button)
+        }
     }
 }
 
-private final class FirstMouseSegmentedControl: NSSegmentedControl {
+private final class FirstMouseTabButton: NSButton {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setButtonType(.momentaryChange)
+        isBordered = false
+        bezelStyle = .regularSquare
+        focusRingType = .none
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.cornerCurve = .continuous
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
+    }
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: super.intrinsicContentSize.width + 16, height: 30)
+    }
+
+    func update(title: String, selected: Bool, tint: NSColor) {
+        let textColor = selected ? tint.blended(withFraction: 0.1, of: .labelColor) ?? tint : NSColor.labelColor
+        let font = NSFont.systemFont(ofSize: 13, weight: selected ? .semibold : .medium)
+        attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [
+                .font: font,
+                .foregroundColor: textColor
+            ]
+        )
+        layer?.backgroundColor = (selected ? tint.withAlphaComponent(0.12) : NSColor.clear).cgColor
+        layer?.borderColor = (selected ? tint.withAlphaComponent(0.14) : NSColor.clear).cgColor
+        layer?.borderWidth = selected ? 1 : 0
     }
 }
 

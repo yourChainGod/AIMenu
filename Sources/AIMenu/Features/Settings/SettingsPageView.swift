@@ -47,13 +47,7 @@ struct SettingsPageView: View {
     private var settingsHeroCard: some View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [.indigo.opacity(0.20), .blue.opacity(0.10)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(.indigo.opacity(0.10))
                 .overlay {
                     Image(systemName: "slider.horizontal.3")
                         .font(.system(size: 17, weight: .semibold))
@@ -82,7 +76,7 @@ struct SettingsPageView: View {
             }
         }
         .padding(14)
-        .cardSurface(cornerRadius: LayoutRules.cardRadius, tint: .indigo.opacity(0.05))
+        .cardSurface(cornerRadius: LayoutRules.cardRadius, tint: .indigo.opacity(0.03))
     }
 
     private var launchSection: some View {

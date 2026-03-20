@@ -471,6 +471,34 @@ struct ToolsPageView: View {
         .cardSurface(cornerRadius: 14, tint: tint.opacity(0.05))
     }
 
+    private func flatToolsSectionHeader(
+        title: String,
+        icon: String,
+        iconColor: Color,
+        action: (() -> Void)? = nil,
+        actionHelp: String? = nil
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(iconColor)
+
+            Text(title)
+                .font(.headline.weight(.semibold))
+
+            Spacer(minLength: 0)
+
+            if let action {
+                Button(action: action) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .liquidGlassActionButtonStyle(density: .compact)
+                .help(actionHelp ?? title)
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+
     private var hasSkillsSearchQuery: Bool {
         skillsSearchText.trimmedNonEmpty != nil
     }
@@ -567,20 +595,15 @@ struct ToolsPageView: View {
     // MARK: - Managed Services
 
     private var servicesSection: some View {
-        SectionCard(
-            title: "本地服务",
-            icon: "switch.2",
-            iconColor: .teal,
-            headerTrailing: {
-                Button {
-                    Task { await model.refreshManagedToolStatus() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .liquidGlassActionButtonStyle(density: .compact)
-                .help("刷新本地服务状态")
-            }
-        ) {
+        VStack(alignment: .leading, spacing: 12) {
+            flatToolsSectionHeader(
+                title: "本地服务",
+                icon: "switch.2",
+                iconColor: .teal,
+                action: { Task { await model.refreshManagedToolStatus() } },
+                actionHelp: "刷新本地服务状态"
+            )
+
             VStack(spacing: 12) {
                 cursor2APIServiceCard
                 portToolsCard
@@ -691,7 +714,7 @@ struct ToolsPageView: View {
             }
         }
         .padding(14)
-        .cardSurface(cornerRadius: 14, tint: Color.blue.opacity(0.05))
+        .cardSurface(cornerRadius: 14, tint: Color.blue.opacity(0.03))
     }
 
     private var portToolsCard: some View {
@@ -708,7 +731,7 @@ struct ToolsPageView: View {
             }
         }
         .padding(14)
-        .cardSurface(cornerRadius: 14, tint: Color.orange.opacity(0.05))
+        .cardSurface(cornerRadius: 14, tint: Color.orange.opacity(0.025))
     }
 
     private var portQuickControlStrip: some View {
@@ -736,7 +759,7 @@ struct ToolsPageView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .cardSurface(cornerRadius: 12, tint: Color.orange.opacity(0.02))
     }
 
     private func portStatusRow(_ status: ManagedPortStatus) -> some View {
@@ -794,10 +817,10 @@ struct ToolsPageView: View {
         .padding(.vertical, 9)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(rowTint.opacity(0.05))
+                .fill(rowTint.opacity(0.025))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(rowTint.opacity(0.10), lineWidth: 1)
+                        .strokeBorder(rowTint.opacity(0.06), lineWidth: 1)
                 )
         )
     }
@@ -809,20 +832,15 @@ struct ToolsPageView: View {
     // MARK: - Local Config Overview
 
     private var configsSection: some View {
-        SectionCard(
-            title: "本地配置",
-            icon: "folder.badge.gearshape",
-            iconColor: .green,
-            headerTrailing: {
-                Button {
-                    Task { await model.refreshLocalConfigBundles() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .liquidGlassActionButtonStyle(density: .compact)
-                .help("刷新本地配置状态")
-            }
-        ) {
+        VStack(alignment: .leading, spacing: 12) {
+            flatToolsSectionHeader(
+                title: "本地配置",
+                icon: "folder.badge.gearshape",
+                iconColor: .green,
+                action: { Task { await model.refreshLocalConfigBundles() } },
+                actionHelp: "刷新本地配置状态"
+            )
+
             localConfigContent
         }
     }
@@ -945,7 +963,7 @@ struct ToolsPageView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     // MARK: - MCP Servers
@@ -2285,7 +2303,7 @@ struct ToolsPageView: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill((tint == .secondary ? Color.primary : tint).opacity(0.08))
+                .fill((tint == .secondary ? Color.primary : tint).opacity(0.06))
         )
     }
 
@@ -2340,46 +2358,16 @@ private struct ToolsModalPanel<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             ZStack {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(.regularMaterial)
-
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.14),
-                                Color.white.opacity(0.02),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.30), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color(nsColor: .windowBackgroundColor).opacity(0.985))
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(accent.opacity(0.03))
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.14), lineWidth: 1)
             }
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(accent.opacity(0.10))
-                    .blur(radius: 22)
-            )
         }
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(alignment: .top) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(accent.opacity(0.9))
-                .frame(width: 74, height: 4)
-                .padding(.top, 8)
-        }
-        .overlay(alignment: .topLeading) {
-            Circle()
-                .fill(accent.opacity(0.16))
-                .frame(width: 120, height: 120)
-                .blur(radius: 32)
-                .offset(x: -28, y: -34)
-        }
-        .shadow(color: .black.opacity(0.24), radius: 28, x: 0, y: 14)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 10)
     }
 }
 

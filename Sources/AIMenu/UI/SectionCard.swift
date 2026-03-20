@@ -36,21 +36,12 @@ struct SectionCard<Content: View, HeaderTrailing: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 6) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(iconColor)
-                        .frame(width: 26, height: 26)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(iconColor.opacity(0.14))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .strokeBorder(iconColor.opacity(0.16), lineWidth: 1)
-                                )
-                        )
                 }
                 Text(title)
                     .font(.subheadline.weight(.semibold))
@@ -59,28 +50,11 @@ struct SectionCard<Content: View, HeaderTrailing: View>: View {
             }
             content
         }
-        .padding(14)
+        .padding(12)
         .cardSurface(
             cornerRadius: LayoutRules.cardRadius,
-            tint: icon == nil ? nil : iconColor.opacity(0.03)
+            tint: icon == nil ? nil : iconColor.opacity(0.028)
         )
-        .overlay(alignment: .topLeading) {
-            Circle()
-                .fill(iconColor.opacity(icon == nil ? 0 : 0.12))
-                .frame(width: 84, height: 84)
-                .blur(radius: 24)
-                .offset(x: -16, y: -20)
-                .allowsHitTesting(false)
-        }
-        .overlay(alignment: .top) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(iconColor.opacity(icon == nil ? 0 : 0.32))
-                .frame(height: 2)
-                .padding(.horizontal, 16)
-                .padding(.top, 7)
-                .allowsHitTesting(false)
-        }
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -199,16 +173,16 @@ struct CardSurfaceModifier: ViewModifier {
     private var backgroundSurface: some View {
         ZStack {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(.regularMaterial)
+                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.96))
             if let tint {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(tint)
+                    .fill(tint.opacity(0.32))
             }
         }
     }
 
     private var separatorColor: Color {
-        Color(nsColor: .separatorColor).opacity(0.9)
+        Color(nsColor: .separatorColor).opacity(0.12)
     }
 }
 
@@ -225,10 +199,12 @@ private enum FrostedChromeTokens {
     }
 
     static func fallbackFill(prominent: Bool, tint: Color?) -> AnyShapeStyle {
-        if let tint, prominent {
-            return AnyShapeStyle(tint.opacity(0.14))
+        if let tint {
+            return AnyShapeStyle(tint.opacity(prominent ? 0.12 : 0.07))
         }
-        return AnyShapeStyle(prominent ? .regularMaterial : .ultraThinMaterial)
+        return AnyShapeStyle(
+            Color(nsColor: .controlBackgroundColor).opacity(prominent ? 0.98 : 0.94)
+        )
     }
 }
 
@@ -1091,11 +1067,12 @@ struct FrostedCapsuleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(font)
+            .foregroundStyle(.primary)
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
             .frame(minHeight: minimumHeight)
             .contentShape(Capsule())
-            .background(buttonBackground)
+            .background(buttonBackground(isPressed: configuration.isPressed))
             .overlay {
                 Capsule()
                     .strokeBorder(separatorColor, lineWidth: 1)
@@ -1105,16 +1082,15 @@ struct FrostedCapsuleButtonStyle: ButtonStyle {
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 
-    @ViewBuilder
-    private var buttonBackground: some View {
-        ZStack {
-            Capsule()
-                .fill(prominent ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial))
-            if prominent {
-                Capsule()
-                    .fill(effectiveTint.opacity(0.14))
-            }
-        }
+    private func buttonBackground(isPressed: Bool) -> some View {
+        Capsule()
+            .fill(backgroundFill(isPressed: isPressed))
+            .shadow(
+                color: prominent ? effectiveTint.opacity(isPressed ? 0.03 : 0.05) : .clear,
+                radius: prominent ? 4 : 0,
+                x: 0,
+                y: prominent ? 1 : 0
+            )
     }
 
     private var font: Font {
@@ -1139,12 +1115,21 @@ struct FrostedCapsuleButtonStyle: ButtonStyle {
     }
 
     private var separatorColor: Color {
-        let base = Color(nsColor: .separatorColor)
-        return prominent ? base.opacity(0.85) : base
+        if prominent {
+            return effectiveTint.opacity(0.16)
+        }
+        return Color(nsColor: .separatorColor).opacity(0.10)
     }
 
     private var effectiveTint: Color {
         tint ?? .accentColor
+    }
+
+    private func backgroundFill(isPressed: Bool) -> Color {
+        if prominent {
+            return effectiveTint.opacity(isPressed ? 0.18 : 0.13)
+        }
+        return Color.primary.opacity(isPressed ? 0.08 : 0.045)
     }
 }
 
