@@ -64,8 +64,8 @@ struct RootScene: View {
                 AppTabToolbarSwitcher(selection: $selectedTab, tabs: AppTab.allCases, tint: currentTabAccent)
                     .frame(maxWidth: LayoutRules.tabSwitcherMaxWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 10)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 18)
 
                 pageStage
                     .padding(.horizontal, 10)
@@ -259,7 +259,7 @@ private struct WindowSizeEnforcer: NSViewRepresentable {
         window.isMovableByWindowBackground = false
         window.tabbingMode = .disallowed
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
+        window.titlebarAppearsTransparent = false
         window.isOpaque = false
         window.backgroundColor = .clear
         window.contentMinSize = NSSize(width: minWidth, height: minHeight)
@@ -282,33 +282,17 @@ private struct AppTabToolbarSwitcher: View {
     let tint: Color
 
     var body: some View {
-        HStack(spacing: 6) {
+        Picker("导航分区", selection: $selection.animation(.easeInOut(duration: 0.18))) {
             ForEach(tabs, id: \.self) { tab in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        selection = tab
-                    }
-                } label: {
-                    Text(L10n.tr(tab.titleTranslationKey))
-                        .font(.callout.weight(selection == tab ? .semibold : .medium))
-                        .foregroundStyle(selection == tab ? tint : Color.secondary)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, minHeight: 42)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(L10n.tr(tab.titleTranslationKey))
-                .background {
-                    if selection == tab {
-                        selectedBackground
-                    }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                .accessibilityAddTraits(selection == tab ? .isSelected : [])
-                .accessibilityLabel(Text(tab.titleKey))
+                Text(L10n.tr(tab.titleTranslationKey))
+                    .tag(tab)
+                    .accessibilityLabel(Text(tab.titleKey))
             }
         }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .tint(tint)
+        .frame(maxWidth: .infinity, minHeight: 32)
         .padding(4)
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -323,18 +307,7 @@ private struct AppTabToolbarSwitcher: View {
                 .strokeBorder(separatorColor, lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("导航分区"))
-    }
-
-    @ViewBuilder
-    private var selectedBackground: some View {
-        RoundedRectangle(cornerRadius: 13, style: .continuous)
-            .fill(.regularMaterial)
-            .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(tint.opacity(0.18))
-            }
     }
 
     private var separatorColor: Color {
