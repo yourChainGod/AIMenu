@@ -128,24 +128,37 @@ struct ProviderPageView: View {
         model.providers.first(where: \.isCurrent)
     }
 
+    private var pageAccent: Color {
+        model.selectedApp.formAccent
+    }
+
     private var providerSummaryCard: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(pageAccent.opacity(0.14))
+                .overlay {
+                    Image(systemName: model.selectedApp.iconName)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(pageAccent)
+                }
+                .frame(width: 42, height: 42)
+
+            VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 8) {
                     Text(model.selectedApp.displayName)
-                        .font(.headline)
+                        .font(.headline.weight(.semibold))
                     ProviderConfigBadge(
                         text: currentProvider == nil ? "未接管" : "已接管",
                         tint: currentProvider == nil ? .secondary : .mint
                     )
                 }
 
-                HStack(spacing: 6) {
-                    Text(currentProvider?.name ?? "未启用")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(currentProvider == nil ? .secondary : .primary)
-                        .lineLimit(1)
+                Text(currentProvider?.name ?? "还没有启用接管提供商")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(currentProvider == nil ? .secondary : .primary)
+                    .lineLimit(1)
 
+                HStack(spacing: 6) {
                     if let provider = currentProvider,
                        let host = providerEndpointHost(provider) {
                         providerFeatureChip(text: host, tint: .secondary)
@@ -173,8 +186,24 @@ struct ProviderPageView: View {
                 )
             }
         }
-        .padding(12)
-        .cardSurface(cornerRadius: 12)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            pageAccent.opacity(0.11),
+                            Color.primary.opacity(0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(pageAccent.opacity(0.14), lineWidth: 1)
+                )
+        )
     }
 
     // MARK: - Provider Row
@@ -182,15 +211,19 @@ struct ProviderPageView: View {
     @ViewBuilder
     private func providerRow(_ provider: Provider) -> some View {
         let isHovered = hoveredProvider == provider.id
+        let rowAccent = providerIconColor(provider)
 
-        HStack(alignment: .top, spacing: 8) {
-            // 图标
-            Image(systemName: provider.displayIcon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(providerIconColor(provider))
-                .frame(width: 16, height: 16)
+        HStack(alignment: .center, spacing: 10) {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill((provider.isCurrent ? rowAccent : Color.primary).opacity(provider.isCurrent ? 0.16 : 0.05))
+                .overlay {
+                    Image(systemName: provider.displayIcon)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(provider.isCurrent ? rowAccent : Color.secondary)
+                }
+                .frame(width: 32, height: 32)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Text(provider.name)
                         .font(.system(size: 13, weight: .medium))
@@ -224,41 +257,69 @@ struct ProviderPageView: View {
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 4) {
-                // 速测结果
-                if let result = model.speedTestResults[provider.id] {
-                    HStack(spacing: 3) {
+            VStack(alignment: .trailing, spacing: 7) {
+                HStack(spacing: 4) {
+                    if let result = model.speedTestResults[provider.id] {
                         Circle()
                             .fill(providerSpeedColor(result.qualityLevel))
                             .frame(width: 5, height: 5)
                         Text(result.statusText)
-                            .font(.system(size: 10))
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(.secondary)
+                    } else {
+                        Text("未测速")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.tertiary)
                     }
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(Color.primary.opacity(0.04))
+                )
 
-                // 操作按钮（常驻显示）
-                if !provider.isCurrent {
-                    providerTinyButton(icon: "checkmark", tint: .mint, tooltip: "切换") {
-                        Task { await model.switchProvider(provider) }
+                HStack(spacing: 4) {
+                    if !provider.isCurrent {
+                        providerTinyButton(icon: "checkmark", tint: .mint, tooltip: "切换") {
+                            Task { await model.switchProvider(provider) }
+                        }
+                    }
+                    providerTinyButton(icon: "bolt", tint: .orange, tooltip: "测速") {
+                        Task { await model.speedTest(provider) }
+                    }
+                    providerTinyButton(icon: "pencil", tint: .secondary, tooltip: "编辑") {
+                        model.editingProvider = provider
+                    }
+                    providerTinyButton(icon: "trash", tint: .red, tooltip: "删除") {
+                        Task { await model.deleteProvider(provider) }
                     }
                 }
-                providerTinyButton(icon: "bolt", tint: .orange, tooltip: "测速") {
-                    Task { await model.speedTest(provider) }
-                }
-                providerTinyButton(icon: "pencil", tint: .secondary, tooltip: "编辑") {
-                    model.editingProvider = provider
-                }
-                providerTinyButton(icon: "trash", tint: .red, tooltip: "删除") {
-                    Task { await model.deleteProvider(provider) }
-                }
+                .padding(4)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.primary.opacity(0.035))
+                )
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(isHovered ? Color.primary.opacity(0.05) : Color.clear)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(
+                    provider.isCurrent
+                        ? rowAccent.opacity(isHovered ? 0.14 : 0.10)
+                        : Color.primary.opacity(isHovered ? 0.055 : 0.03)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(
+                            provider.isCurrent
+                                ? rowAccent.opacity(0.22)
+                                : Color.primary.opacity(isHovered ? 0.10 : 0.06),
+                            lineWidth: 1
+                        )
+                )
         )
         .contentShape(Rectangle())
         .onHover { hoveredProvider = $0 ? provider.id : nil }
@@ -270,10 +331,14 @@ struct ProviderPageView: View {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(tint == .secondary ? Color.secondary : tint)
-                .frame(width: 22, height: 22)
+                .frame(width: 24, height: 24)
                 .background(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .fill(tint == .secondary ? Color.primary.opacity(0.07) : tint.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.12), lineWidth: 1)
+                        )
                 )
         }
         .buttonStyle(.plain)
@@ -286,14 +351,19 @@ struct ProviderPageView: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.subheadline.weight(.semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(tint == .secondary ? .primary : tint)
+                .lineLimit(1)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill((tint == .secondary ? Color.primary : tint).opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.08), lineWidth: 1)
+                )
         )
     }
 
@@ -381,51 +451,99 @@ struct ProviderPageView: View {
     // MARK: - Toolbar
 
     private var toolBar: some View {
-        HStack(spacing: 6) {
-            // App type picker
-            ForEach(ProviderAppType.allCases) { app in
-                Button {
-                    Task { await model.switchApp(app) }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: app.iconName)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(pageAccent.opacity(0.14))
+                        .overlay {
+                            Image(systemName: model.selectedApp.iconName)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(pageAccent)
+                        }
+                        .frame(width: 36, height: 36)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("提供商管理")
+                            .font(.headline.weight(.semibold))
+                        Text("为 \(model.selectedApp.displayName) 管理模型接入与切换。")
                             .font(.caption)
-                        Text(app.displayName)
-                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
-                    .lineLimit(1)
                 }
-                .aimenuActionButtonStyle(
-                    prominent: model.selectedApp == app,
-                    tint: model.selectedApp == app ? .accentColor : nil,
-                    density: .compact
-                )
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 8) {
+                    Button {
+                        openAddProviderSheet()
+                    } label: {
+                        Label("添加", systemImage: "plus")
+                            .lineLimit(1)
+                    }
+                    .aimenuActionButtonStyle(prominent: true, tint: pageAccent, density: .compact)
+
+                    Button {
+                        Task { await model.speedTestAll() }
+                    } label: {
+                        Label("全部测速", systemImage: "bolt.horizontal.fill")
+                            .lineLimit(1)
+                    }
+                    .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
+                    .disabled(model.providers.isEmpty)
+                }
             }
 
-            Divider()
-                .frame(height: 16)
-                .padding(.horizontal, 2)
-
-            // Actions
-            Button {
-                openAddProviderSheet()
-            } label: {
-                Label("添加", systemImage: "plus")
-                    .lineLimit(1)
+            HStack(spacing: 6) {
+                ForEach(ProviderAppType.allCases) { app in
+                    Button {
+                        Task { await model.switchApp(app) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: app.iconName)
+                                .font(.caption.weight(.semibold))
+                            Text(app.displayName)
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .lineLimit(1)
+                    }
+                    .aimenuActionButtonStyle(
+                        prominent: model.selectedApp == app,
+                        tint: model.selectedApp == app ? app.formAccent : nil,
+                        density: .compact
+                    )
+                }
             }
-            .aimenuActionButtonStyle(prominent: true, density: .compact)
-
-            Button {
-                Task { await model.speedTestAll() }
-            } label: {
-                Label("全部测速", systemImage: "bolt.horizontal.fill")
-                    .lineLimit(1)
-            }
-            .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
-            .disabled(model.providers.isEmpty)
-
-            Spacer(minLength: 0)
+            .padding(4)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.primary.opacity(0.04))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.05), lineWidth: 1)
+                    )
+            )
         }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            pageAccent.opacity(0.10),
+                            Color.primary.opacity(0.025)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(pageAccent.opacity(0.14), lineWidth: 1)
+                )
+        )
     }
 
     private func openAddProviderSheet() {
@@ -450,17 +568,31 @@ private struct ProviderModalPanel<Content: View>: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.regularMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.30), lineWidth: 1)
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(accent.opacity(0.08))
-                        .blur(radius: 18)
-                )
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.regularMaterial)
+
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(0.14),
+                                Color.white.opacity(0.02),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.30), lineWidth: 1)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(accent.opacity(0.10))
+                    .blur(radius: 22)
+            )
         }
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(alignment: .top) {
@@ -468,6 +600,13 @@ private struct ProviderModalPanel<Content: View>: View {
                 .fill(accent.opacity(0.9))
                 .frame(width: 74, height: 4)
                 .padding(.top, 8)
+        }
+        .overlay(alignment: .topLeading) {
+            Circle()
+                .fill(accent.opacity(0.16))
+                .frame(width: 120, height: 120)
+                .blur(radius: 32)
+                .offset(x: -28, y: -34)
         }
         .shadow(color: .black.opacity(0.24), radius: 28, x: 0, y: 14)
     }
@@ -1675,17 +1814,18 @@ private struct AddProviderSheet: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            accentTint.opacity(emphasis ? 0.16 : 0.10),
-                            Color.primary.opacity(emphasis ? 0.04 : 0.03)
+                            accentTint.opacity(emphasis ? 0.15 : 0.08),
+                            Color.primary.opacity(emphasis ? 0.045 : 0.025)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
+                .shadow(color: accentTint.opacity(emphasis ? 0.12 : 0.05), radius: emphasis ? 18 : 10, y: 8)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(accentTint.opacity(emphasis ? 0.28 : 0.16), lineWidth: 1)
+                .strokeBorder(accentTint.opacity(emphasis ? 0.24 : 0.12), lineWidth: 1)
         )
     }
 
@@ -2512,17 +2652,18 @@ private struct EditProviderSheet: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            accentTint.opacity(emphasis ? 0.16 : 0.10),
-                            Color.primary.opacity(emphasis ? 0.04 : 0.03)
+                            accentTint.opacity(emphasis ? 0.15 : 0.08),
+                            Color.primary.opacity(emphasis ? 0.045 : 0.025)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
+                .shadow(color: accentTint.opacity(emphasis ? 0.12 : 0.05), radius: emphasis ? 18 : 10, y: 8)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(accentTint.opacity(emphasis ? 0.28 : 0.16), lineWidth: 1)
+                .strokeBorder(accentTint.opacity(emphasis ? 0.24 : 0.12), lineWidth: 1)
         )
     }
 
@@ -2628,21 +2769,27 @@ private struct ProviderConfigPreviewBlock: View {
                 }
             }
 
-            HStack(spacing: 6) {
-                Image(systemName: statusIsError ? "exclamationmark.circle.fill" : "pencil.tip.crop.circle")
-                    .font(.caption2)
-                Text(statusMessage ?? "可直接修改后点应用")
-                    .font(.caption2)
-                    .lineLimit(1)
+            HStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: statusIsError ? "exclamationmark.circle.fill" : "pencil.tip.crop.circle")
+                        .font(.caption2)
+                    Text(statusMessage ?? "可直接修改内容后点应用")
+                        .font(.caption2)
+                        .lineLimit(1)
+                }
+                .foregroundStyle(statusIsError ? .red : .secondary)
+
+                Spacer(minLength: 0)
+
+                ProviderConfigBadge(text: "实时可编辑", tint: accent)
             }
-            .foregroundStyle(statusIsError ? .red : .secondary)
 
             TextEditor(text: $draft)
                 .font(.system(size: 12, weight: .regular, design: .monospaced))
                 .foregroundStyle(.primary.opacity(0.92))
                 .scrollContentBackground(.hidden)
                 .padding(12)
-                .frame(minHeight: 280, alignment: .topLeading)
+                .frame(minHeight: 320, alignment: .topLeading)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(
@@ -2661,6 +2808,15 @@ private struct ProviderConfigPreviewBlock: View {
                         )
                 )
         }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(0.025))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                )
+        )
         .onChange(of: content) { _, newValue in
             if draft == lastGeneratedContent {
                 draft = newValue
@@ -2721,6 +2877,15 @@ private struct ProviderModelInputRow: View {
             .aimenuActionButtonStyle(prominent: true, tint: accent, density: .compact)
             .disabled(!canFetch || isFetching)
         }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(accent.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(accent.opacity(0.10), lineWidth: 1)
+                )
+        )
     }
 }
 
