@@ -802,7 +802,11 @@ final class ToolsPageModel: ObservableObject {
                     NI_NUMERICHOST
                 )
                 if result == 0 {
-                    let host = String(cString: hostname)
+                    let truncatedHostname = hostname.prefix { $0 != 0 }
+                    let host = String(
+                        decoding: truncatedHostname.map(UInt8.init(bitPattern:)),
+                        as: UTF8.self
+                    )
                     if !host.hasPrefix("169.254.") {
                         hosts.append(host)
                     }

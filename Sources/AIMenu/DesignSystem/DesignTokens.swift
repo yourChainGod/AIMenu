@@ -24,3 +24,13 @@ enum AnimationPreset {
     static let sheet:  Animation = .spring(response: 0.28, dampingFraction: 0.84)
     static let expand: Animation = .spring(response: 0.32, dampingFraction: 0.82)
 }
+
+// MARK: - Semantic Accent Palette
+
+enum InterfaceAccent {
+    static let remote = Color.teal
+    static let runtime = Color.indigo
+    static let workflow = Color.green
+    static let support = Color.mint
+    static let caution = Color.orange
+}

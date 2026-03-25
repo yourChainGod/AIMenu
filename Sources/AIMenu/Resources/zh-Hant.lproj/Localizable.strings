@@ -634,6 +634,7 @@
 "web_remote.action.copy_url" = "複製瀏覽器存取 URL";
 "web_remote.action.refresh_status" = "重新整理狀態";
 "web_remote.label.clients" = "用戶端";
+"web_remote.label.token" = "存取權杖";
 
 // Provider Import/Export
 "providers.action.export" = "Export";

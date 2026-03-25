@@ -4,6 +4,10 @@ import AppKit
 struct ToolsServicesSection: View {
     @ObservedObject var model: ToolsPageModel
     @State private var forceKillPort: Int?
+    private let remoteTint = InterfaceAccent.remote
+    private let runtimeTint = InterfaceAccent.runtime
+    private let workflowTint = InterfaceAccent.workflow
+    private let supportTint = InterfaceAccent.support
 
     var body: some View {
         VStack(alignment: .leading, spacing: LayoutRules.spacing12) {
@@ -35,11 +39,11 @@ struct ToolsServicesSection: View {
             HStack(alignment: .center, spacing: LayoutRules.spacing8) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.cyan.opacity(OpacityScale.muted))
+                        .fill(remoteTint.opacity(OpacityScale.muted))
                         .frame(width: 28, height: 28)
                     Image(systemName: "globe")
                         .font(.system(size: 13))
-                        .foregroundStyle(.cyan)
+                        .foregroundStyle(remoteTint)
                 }
 
                 Text(L10n.tr("tools.services.web_remote.title"))
@@ -47,7 +51,7 @@ struct ToolsServicesSection: View {
 
                 UnifiedBadge(
                     text: model.webRemoteStatus.running ? L10n.tr("web_remote.status.running") : L10n.tr("web_remote.status.stopped"),
-                    tint: model.webRemoteStatus.running ? Color.cyan : Color.secondary
+                    tint: model.webRemoteStatus.running ? remoteTint : Color.secondary
                 )
 
                 Spacer(minLength: 0)
@@ -65,26 +69,80 @@ struct ToolsServicesSection: View {
             // Port + Clients info
             if model.webRemoteStatus.running {
                 let reachableURLs = model.webRemoteReachableURLs
+                let preferredTarget = model.webRemoteQRCodeTarget
 
                 HStack(spacing: LayoutRules.spacing6) {
-                    compactMetric(label: L10n.tr("tools.services.metric.http"), value: "\(model.webRemoteStatus.httpPort ?? 0)", tint: .cyan)
-                    compactMetric(label: L10n.tr("tools.services.metric.ws"), value: "\(model.webRemoteStatus.wsPort ?? 0)", tint: .cyan)
+                    compactMetric(label: L10n.tr("tools.services.metric.http"), value: "\(model.webRemoteStatus.httpPort ?? 0)", tint: remoteTint)
+                    compactMetric(label: L10n.tr("tools.services.metric.ws"), value: "\(model.webRemoteStatus.wsPort ?? 0)", tint: remoteTint)
                     compactMetric(label: L10n.tr("web_remote.label.clients"), value: "\(model.webRemoteStatus.connectedClients)", tint: .secondary)
                 }
 
-                // Token display + copy
-                HStack(spacing: 4) {
-                    Text(model.webRemoteToken)
-                        .font(.caption2.monospaced())
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .textSelection(.enabled)
-                    Spacer(minLength: 0)
-                    CopyButton(text: model.webRemoteToken)
-                    Button(L10n.tr("web_remote.action.refresh_token")) {
-                        Task { await model.refreshWebRemoteToken() }
+                if let preferredTarget {
+                    VStack(alignment: .leading, spacing: LayoutRules.spacing6) {
+                        HStack(spacing: LayoutRules.spacing6) {
+                            UnifiedBadge(
+                                text: preferredTarget.label,
+                                icon: preferredTarget.isLAN ? "iphone.gen3.radiowaves.left.and.right" : "desktopcomputer",
+                                tint: preferredTarget.isLAN ? supportTint : remoteTint,
+                                density: .compact
+                            )
+
+                            Text(preferredTarget.displayURL)
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .textSelection(.enabled)
+                        }
+
+                        Text(
+                            preferredTarget.isLAN
+                            ? L10n.tr("web_remote.modal.qr_lan_hint")
+                            : L10n.tr("web_remote.modal.qr_local_hint")
+                        )
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                        HStack(spacing: LayoutRules.spacing6) {
+                            Button(L10n.tr("web_remote.action.show_qr")) {
+                                model.showWebRemoteQRCode()
+                            }
+                            .aimenuActionButtonStyle(prominent: true, tint: remoteTint, density: .compact)
+
+                            Button(L10n.tr("web_remote.action.copy_url")) {
+                                model.copyWebRemoteURL(preferredTarget.browserURL)
+                            }
+                            .aimenuActionButtonStyle(density: .compact)
+
+                            Button(L10n.tr("web_remote.action.open_url")) {
+                                model.openWebRemoteURL(preferredTarget.browserURL)
+                            }
+                            .aimenuActionButtonStyle(density: .compact)
+                        }
                     }
-                    .aimenuActionButtonStyle(density: .compact)
+                    .padding(LayoutRules.spacing8)
+                    .cardSurface(cornerRadius: LayoutRules.radiusSmall, tint: remoteTint.opacity(OpacityScale.faint))
+                }
+
+                // Token display + copy
+                VStack(alignment: .leading, spacing: LayoutRules.spacing4) {
+                    Text(L10n.tr("web_remote.label.token"))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 4) {
+                        Text(model.webRemoteToken)
+                            .font(.caption2.monospaced())
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                        Spacer(minLength: 0)
+                        CopyButton(text: model.webRemoteToken)
+                        Button(L10n.tr("web_remote.action.refresh_token")) {
+                            Task { await model.refreshWebRemoteToken() }
+                        }
+                        .aimenuActionButtonStyle(density: .compact)
+                    }
                 }
 
                 if !reachableURLs.isEmpty {
@@ -97,7 +155,7 @@ struct ToolsServicesSection: View {
                             HStack(spacing: LayoutRules.spacing6) {
                                 UnifiedBadge(
                                     text: target.label,
-                                    tint: target.isLAN ? .mint : .secondary,
+                                    tint: target.isLAN ? supportTint : .secondary,
                                     density: .compact
                                 )
 
@@ -128,13 +186,6 @@ struct ToolsServicesSection: View {
                 }
 
                 HStack(spacing: LayoutRules.spacing6) {
-                    if model.webRemoteQRCodeTarget != nil {
-                        Button(L10n.tr("web_remote.action.show_qr")) {
-                            model.showWebRemoteQRCode()
-                        }
-                        .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
-                    }
-
                     Button(L10n.tr("web_remote.action.open_url")) {
                         model.openWebRemoteURL()
                     }
@@ -192,14 +243,14 @@ struct ToolsServicesSection: View {
                     Button(L10n.tr("web_remote.action.start")) {
                         Task { await model.startWebRemote() }
                     }
-                    .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
+                    .aimenuActionButtonStyle(prominent: true, tint: remoteTint, density: .compact)
                     .disabled(model.loading)
                 }
                 Spacer(minLength: 0)
             }
         }
         .padding(LayoutRules.spacing10)
-        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: Color.cyan.opacity(OpacityScale.faint))
+        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: remoteTint.opacity(OpacityScale.faint))
     }
 
     // MARK: - Cursor2API
@@ -210,11 +261,11 @@ struct ToolsServicesSection: View {
             HStack(alignment: .center, spacing: LayoutRules.spacing8) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.blue.opacity(OpacityScale.muted))
+                        .fill(runtimeTint.opacity(OpacityScale.muted))
                         .frame(width: 28, height: 28)
                     Image(systemName: "bolt.horizontal.circle.fill")
                         .font(.system(size: 13))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(runtimeTint)
                 }
 
                 Text(L10n.tr("tools.services.cursor2api.title"))
@@ -226,7 +277,7 @@ struct ToolsServicesSection: View {
                         : (model.cursor2APIStatus.installed
                             ? L10n.tr("tools.services.cursor2api.status.installed")
                             : L10n.tr("tools.services.cursor2api.status.not_installed")),
-                    tint: model.cursor2APIStatus.running ? Color.mint : Color.secondary
+                    tint: model.cursor2APIStatus.running ? supportTint : Color.secondary
                 )
 
                 Spacer(minLength: 0)
@@ -243,8 +294,8 @@ struct ToolsServicesSection: View {
 
             // Compact info strip: port + API key + model in a single row
             HStack(spacing: LayoutRules.spacing6) {
-                compactMetric(label: L10n.tr("tools.services.metric.port"), value: "\(model.cursor2APIStatus.port)", tint: .blue)
-                compactMetric(label: L10n.tr("tools.services.metric.api_key"), value: ToolsHelpers.maskedSecret(model.cursor2APIStatus.apiKey), tint: .mint)
+                compactMetric(label: L10n.tr("tools.services.metric.port"), value: "\(model.cursor2APIStatus.port)", tint: runtimeTint)
+                compactMetric(label: L10n.tr("tools.services.metric.api_key"), value: ToolsHelpers.maskedSecret(model.cursor2APIStatus.apiKey), tint: supportTint)
                 compactMetric(
                     label: L10n.tr("tools.services.metric.model"),
                     value: model.cursor2APIStatus.models.first ?? "claude-sonnet-4.6",
@@ -275,47 +326,39 @@ struct ToolsServicesSection: View {
                     Button(L10n.tr("common.action.start")) {
                         Task { await model.startCursor2API() }
                     }
-                    .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
+                    .aimenuActionButtonStyle(prominent: true, tint: runtimeTint, density: .compact)
                     .disabled(!model.cursor2APIStatus.installed)
                 }
 
                 Button(L10n.tr("tools.services.action.apply_to_claude")) {
                     Task { await model.applyCursor2APIToClaude() }
                 }
-                .aimenuActionButtonStyle(prominent: true, tint: .mint, density: .compact)
+                .aimenuActionButtonStyle(prominent: true, tint: supportTint, density: .compact)
                 .disabled(!model.cursor2APIStatus.running)
 
                 Spacer(minLength: 0)
 
                 if model.cursor2APIStatus.logPath != nil {
-                    Button {
+                    Button(L10n.tr("tools.services.action.view_log")) {
                         if let logPath = model.cursor2APIStatus.logPath {
                             NSWorkspace.shared.selectFile(logPath, inFileViewerRootedAtPath: "")
                         }
-                    } label: {
-                        Image(systemName: "doc.text")
-                            .font(.caption2.weight(.bold))
                     }
                     .aimenuActionButtonStyle(density: .compact)
-                    .help(L10n.tr("tools.services.action.view_log"))
                 }
 
                 if model.cursor2APIStatus.configPath != nil {
-                    Button {
+                    Button(L10n.tr("tools.services.action.view_config")) {
                         if let configPath = model.cursor2APIStatus.configPath {
                             NSWorkspace.shared.selectFile(configPath, inFileViewerRootedAtPath: "")
                         }
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .font(.caption2.weight(.bold))
                     }
                     .aimenuActionButtonStyle(density: .compact)
-                    .help(L10n.tr("tools.services.action.view_config"))
                 }
             }
         }
         .padding(LayoutRules.spacing10)
-        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: Color.blue.opacity(OpacityScale.faint))
+        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: runtimeTint.opacity(OpacityScale.faint))
     }
 
     /// Compact inline metric chip — single-line label:value
@@ -349,7 +392,7 @@ struct ToolsServicesSection: View {
 
                 UnifiedBadge(
                     text: "\(model.trackedPorts.filter { $0.occupied }.count)/\(model.trackedPorts.count)",
-                    tint: model.trackedPorts.contains(where: \.occupied) ? .orange : .secondary
+                    tint: model.trackedPorts.contains(where: \.occupied) ? InterfaceAccent.caution : .secondary
                 )
 
                 Spacer(minLength: 0)
@@ -368,7 +411,7 @@ struct ToolsServicesSection: View {
                     Button(L10n.tr("tools.services.action.track")) {
                         Task { await model.addTrackedPort() }
                     }
-                    .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
+                    .aimenuActionButtonStyle(prominent: true, tint: workflowTint, density: .compact)
 
                     Button {
                         Task { await model.refreshTrackedPorts(showNotice: true) }
@@ -391,11 +434,11 @@ struct ToolsServicesSection: View {
             }
         }
         .padding(LayoutRules.spacing10)
-        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: Color.orange.opacity(OpacityScale.ghost))
+        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: workflowTint.opacity(OpacityScale.faint))
     }
 
     private func portStatusRow(_ status: ManagedPortStatus) -> some View {
-        let rowTint = status.occupied ? Color.orange : Color.mint
+        let rowTint = status.occupied ? InterfaceAccent.caution : supportTint
 
         return HStack(alignment: .center, spacing: LayoutRules.spacing8) {
             Circle()
@@ -421,7 +464,7 @@ struct ToolsServicesSection: View {
                 Button(L10n.tr("tools.services.action.release")) {
                     Task { await model.releaseTrackedPort(status.port) }
                 }
-                .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
+                .aimenuActionButtonStyle(prominent: true, tint: InterfaceAccent.caution, density: .compact)
                 .disabled(!status.occupied)
 
                 Button(L10n.tr("tools.services.action.force")) {

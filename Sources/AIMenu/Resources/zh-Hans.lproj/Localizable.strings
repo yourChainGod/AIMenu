@@ -644,6 +644,7 @@
 "web_remote.action.copy_url" = "复制浏览器访问 URL";
 "web_remote.action.refresh_status" = "刷新状态";
 "web_remote.label.clients" = "客户端";
+"web_remote.label.token" = "访问令牌";
 
 // Provider Import/Export
 "providers.action.export" = "导出";

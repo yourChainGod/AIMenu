@@ -160,7 +160,7 @@ struct ProviderPageView: View {
                         Label(L10n.tr("providers.action.speed_test_all"), systemImage: "bolt.horizontal.fill")
                             .lineLimit(1)
                     }
-                    .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
+                    .aimenuActionButtonStyle(prominent: true, tint: InterfaceAccent.remote, density: .compact)
                 }
             }
 
@@ -243,12 +243,11 @@ struct ProviderPageView: View {
                         .lineLimit(1)
 
                     if provider.isCurrent {
-                        Text(L10n.tr("providers.badge.current"))
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.mint)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(Color.mint.opacity(OpacityScale.muted), in: Capsule())
+                        UnifiedBadge(
+                            text: L10n.tr("providers.badge.current"),
+                            tint: pageAccent,
+                            density: .compact
+                        )
                     }
                 }
 
@@ -266,7 +265,7 @@ struct ProviderPageView: View {
                         UnifiedBadge(text: host, tint: .secondary, density: .compact)
                     }
                     if provider.proxyConfig?.enabled == true {
-                        UnifiedBadge(text: L10n.tr("providers.badge.proxy"), tint: .orange, density: .compact)
+                        UnifiedBadge(text: L10n.tr("providers.badge.proxy"), tint: InterfaceAccent.runtime, density: .compact)
                     }
                     if let billing = providerBillingSummary(provider) {
                         UnifiedBadge(text: billing, tint: .purple, density: .compact)
@@ -294,11 +293,11 @@ struct ProviderPageView: View {
 
                 HStack(spacing: 4) {
                     if !provider.isCurrent {
-                        providerTinyButton(icon: "checkmark", tint: .mint, tooltip: L10n.tr("providers.tooltip.switch")) {
+                        providerTinyButton(icon: "checkmark", tint: pageAccent, tooltip: L10n.tr("providers.tooltip.switch")) {
                             Task { await model.switchProvider(provider) }
                         }
                     }
-                    providerTinyButton(icon: "bolt", tint: .orange, tooltip: L10n.tr("providers.tooltip.speed_test")) {
+                    providerTinyButton(icon: "bolt", tint: InterfaceAccent.remote, tooltip: L10n.tr("providers.tooltip.speed_test")) {
                         Task { await model.speedTest(provider) }
                     }
                     providerTinyButton(icon: "pencil", tint: .secondary, tooltip: L10n.tr("providers.tooltip.edit")) {
@@ -474,7 +473,7 @@ struct ProviderPageView: View {
                     Label(L10n.tr("providers.action.speed_test_all"), systemImage: "bolt.horizontal.fill")
                         .lineLimit(1)
                 }
-                .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
+                .aimenuActionButtonStyle(prominent: true, tint: InterfaceAccent.remote, density: .compact)
                 .disabled(model.providers.isEmpty)
 
                 Button {

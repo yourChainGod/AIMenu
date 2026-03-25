@@ -634,6 +634,7 @@
 "web_remote.action.copy_url" = "Copy Browser URL";
 "web_remote.action.refresh_status" = "Refresh status";
 "web_remote.label.clients" = "Clients";
+"web_remote.label.token" = "Access Token";
 
 // Provider Import/Export
 "providers.action.export" = "Export";

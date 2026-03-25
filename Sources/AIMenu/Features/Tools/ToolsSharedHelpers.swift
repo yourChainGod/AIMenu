@@ -25,8 +25,8 @@ enum ToolsOverviewSection: CaseIterable, Identifiable {
 
     var tint: Color {
         switch self {
-        case .services: return .teal
-        case .configs: return .green
+        case .services: return InterfaceAccent.remote
+        case .configs: return InterfaceAccent.workflow
         }
     }
 }

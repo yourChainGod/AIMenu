@@ -100,7 +100,7 @@ struct ToolsPageView: View {
                     )
                 }
             } else if model.showingWebRemoteQRCode, let target = model.webRemoteQRCodeTarget {
-                ModalOverlay(accent: .cyan, onDismiss: closeWebRemoteQRCode) {
+                ModalOverlay(accent: InterfaceAccent.remote, onDismiss: closeWebRemoteQRCode) {
                     WebRemoteQRCodeSheet(
                         target: target,
                         onCopy: { model.copyWebRemoteURL(target.browserURL) },
@@ -343,13 +343,13 @@ struct ToolsPageView: View {
     private func workbenchSectionTint(for section: ToolsPageModel.ToolsSection) -> Color {
         switch section {
         case .mcp:
-            return .blue
+            return InterfaceAccent.remote
         case .prompts:
-            return .purple
+            return InterfaceAccent.runtime
         case .hooks:
-            return .indigo
+            return InterfaceAccent.workflow
         case .skills:
-            return .orange
+            return InterfaceAccent.support
         }
     }
 }
@@ -396,7 +396,7 @@ private struct WebRemoteQRCodeSheet: View {
         VStack(alignment: .leading, spacing: LayoutRules.spacing8) {
             UnifiedBadge(
                 text: target.label,
-                tint: target.isLAN ? .mint : .secondary
+                tint: target.isLAN ? InterfaceAccent.support : .secondary
             )
 
             Text(
@@ -409,7 +409,7 @@ private struct WebRemoteQRCodeSheet: View {
         }
         .padding(LayoutRules.spacing12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: Color.cyan.opacity(OpacityScale.faint))
+        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: InterfaceAccent.remote.opacity(OpacityScale.faint))
     }
 
     private var qrCodeCard: some View {
@@ -470,7 +470,7 @@ private struct WebRemoteQRCodeSheet: View {
             Button(L10n.tr("web_remote.action.copy_url")) {
                 onCopy()
             }
-            .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
+            .aimenuActionButtonStyle(prominent: true, tint: InterfaceAccent.remote, density: .compact)
 
             Spacer(minLength: 0)
 
