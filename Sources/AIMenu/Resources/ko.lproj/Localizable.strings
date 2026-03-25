@@ -687,3 +687,10 @@
 "tools.notice.port_force_released_format" = "포트 %@ 강제 해제됨";
 "tools.services.action.force_confirm_title" = "프로세스 강제 종료";
 "tools.services.action.force_confirm_message_format" = "포트 %@의 프로세스를 강제 종료합니다. 계속할까요?";
+
+"web_remote.notice.opened_in_browser" = "Opened in browser";
+"web_remote.action.open_url" = "Open";
+"web_remote.label.access_urls" = "Access URLs";
+"web_remote.label.local_device" = "This Mac";
+"web_remote.label.lan_format" = "LAN %@";
+"web_remote.description.lan_hint" = "Keep your phone on the same Wi-Fi as this Mac, then open one of the LAN addresses.";

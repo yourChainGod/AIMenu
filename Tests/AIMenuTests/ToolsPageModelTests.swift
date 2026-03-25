@@ -170,6 +170,35 @@ final class ToolsPageModelTests: XCTestCase {
         XCTAssertTrue(model.trackedPorts.contains(where: { $0.port == 9090 && $0.occupied }))
     }
 
+    func testMakeWebRemoteReachableURLsIncludesLocalAndLANTargets() {
+        let urls = ToolsPageModel.makeWebRemoteReachableURLs(
+            httpPort: 9090,
+            wsPort: 9091,
+            token: "token-123",
+            lanHosts: ["192.168.1.8", "10.0.0.6", "192.168.1.8"]
+        )
+
+        XCTAssertEqual(urls.count, 3)
+        XCTAssertEqual(urls.first?.host, "127.0.0.1")
+        XCTAssertEqual(urls.filter(\.isLAN).map(\.host), ["192.168.1.8", "10.0.0.6"])
+        XCTAssertEqual(urls.first?.displayURL, "http://127.0.0.1:9090?wsPort=9091")
+        XCTAssertEqual(urls.first?.browserURL, "http://127.0.0.1:9090?wsPort=9091#token=token-123")
+    }
+
+    func testWebRemoteAccessURLPrefersPrimaryReachableURL() async throws {
+        let model = try makeModel()
+        model.webRemoteStatus = WebRemoteStatus(
+            running: true,
+            httpPort: 9090,
+            wsPort: 9091,
+            connectedClients: 0,
+            lastError: nil
+        )
+        model.webRemoteToken = "token-xyz"
+
+        XCTAssertEqual(model.webRemoteAccessURL, "http://127.0.0.1:9090?wsPort=9091#token=token-xyz")
+    }
+
     private func makeModel(
         cursor2APIService: any Cursor2APIServiceProtocol = StubCursor2APIService(),
         portService: any PortManagementServiceProtocol = StubPortManagementService()

@@ -1,9 +1,19 @@
 import Foundation
 import Combine
 import AppKit
+import Darwin
 
 @MainActor
 final class ToolsPageModel: ObservableObject {
+    struct WebRemoteReachableURL: Identifiable, Equatable {
+        let id: String
+        let label: String
+        let host: String
+        let displayURL: String
+        let browserURL: String
+        let isLAN: Bool
+    }
+
     nonisolated static let defaultTrackedPorts = [8002, 8787]
     private let providerCoordinator: ProviderCoordinator
     private let mcpCoordinator: MCPCoordinator
@@ -646,19 +656,135 @@ final class ToolsPageModel: ObservableObject {
         notice = NoticeMessage(style: .success, text: L10n.tr("web_remote.notice.token_refreshed"))
     }
 
-    func copyWebRemoteURL() {
-        guard let httpPort = webRemoteStatus.httpPort,
-              let wsPort = webRemoteStatus.wsPort else { return }
-        // Use fragment (#) for token to avoid it appearing in server logs, browser history, or referrer headers
-        let url = "http://127.0.0.1:\(httpPort)?wsPort=\(wsPort)#token=\(webRemoteToken)"
+    func copyWebRemoteURL(_ urlString: String? = nil) {
+        let url = urlString ?? webRemoteAccessURL
+        guard !url.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(url, forType: .string)
         notice = NoticeMessage(style: .success, text: L10n.tr("web_remote.notice.url_copied"))
     }
 
-    var webRemoteAccessURL: String {
+    func openWebRemoteURL(_ urlString: String? = nil) {
+        let candidate = urlString ?? webRemoteAccessURL
+        guard let url = URL(string: candidate), !candidate.isEmpty else { return }
+        NSWorkspace.shared.open(url)
+        notice = NoticeMessage(style: .success, text: L10n.tr("web_remote.notice.opened_in_browser"))
+    }
+
+    var webRemoteReachableURLs: [WebRemoteReachableURL] {
         guard let httpPort = webRemoteStatus.httpPort,
-              let wsPort = webRemoteStatus.wsPort else { return "" }
-        return "http://127.0.0.1:\(httpPort)?wsPort=\(wsPort)"
+              let wsPort = webRemoteStatus.wsPort else { return [] }
+        return Self.makeWebRemoteReachableURLs(
+            httpPort: httpPort,
+            wsPort: wsPort,
+            token: webRemoteToken,
+            lanHosts: Self.currentLANIPv4Hosts()
+        )
+    }
+
+    var webRemoteAccessURL: String {
+        webRemoteReachableURLs.first?.browserURL ?? ""
+    }
+
+    nonisolated static func makeWebRemoteReachableURLs(
+        httpPort: Int,
+        wsPort: Int,
+        token: String,
+        lanHosts: [String]
+    ) -> [WebRemoteReachableURL] {
+        var urls: [WebRemoteReachableURL] = []
+        urls.append(
+            WebRemoteReachableURL(
+                id: "local",
+                label: L10n.tr("web_remote.label.local_device"),
+                host: "127.0.0.1",
+                displayURL: webRemoteDisplayURL(host: "127.0.0.1", httpPort: httpPort, wsPort: wsPort),
+                browserURL: webRemoteBrowserURL(host: "127.0.0.1", httpPort: httpPort, wsPort: wsPort, token: token),
+                isLAN: false
+            )
+        )
+
+        for host in deduplicatedLANHosts(lanHosts) {
+            urls.append(
+                WebRemoteReachableURL(
+                    id: "lan-\(host)",
+                    label: L10n.tr("web_remote.label.lan_format", host),
+                    host: host,
+                    displayURL: webRemoteDisplayURL(host: host, httpPort: httpPort, wsPort: wsPort),
+                    browserURL: webRemoteBrowserURL(host: host, httpPort: httpPort, wsPort: wsPort, token: token),
+                    isLAN: true
+                )
+            )
+        }
+        return urls
+    }
+
+    private nonisolated static func webRemoteDisplayURL(host: String, httpPort: Int, wsPort: Int) -> String {
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = host
+        components.port = httpPort
+        components.queryItems = [URLQueryItem(name: "wsPort", value: String(wsPort))]
+        return components.string ?? "http://\(host):\(httpPort)?wsPort=\(wsPort)"
+    }
+
+    private nonisolated static func webRemoteBrowserURL(host: String, httpPort: Int, wsPort: Int, token: String) -> String {
+        let baseURL = webRemoteDisplayURL(host: host, httpPort: httpPort, wsPort: wsPort)
+        guard !token.isEmpty else { return baseURL }
+        let encodedToken = token.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed) ?? token
+        return "\(baseURL)#token=\(encodedToken)"
+    }
+
+    private nonisolated static func deduplicatedLANHosts(_ hosts: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for host in hosts where !host.isEmpty && seen.insert(host).inserted {
+            result.append(host)
+        }
+        return result
+    }
+
+    private nonisolated static func currentLANIPv4Hosts() -> [String] {
+        var interfacePointer: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&interfacePointer) == 0, let firstInterface = interfacePointer else {
+            return []
+        }
+        defer { freeifaddrs(interfacePointer) }
+
+        var hosts: [String] = []
+        var cursor: UnsafeMutablePointer<ifaddrs>? = firstInterface
+
+        while let current = cursor {
+            let interface = current.pointee
+            let flags = Int32(interface.ifa_flags)
+            let isUp = (flags & IFF_UP) != 0
+            let isRunning = (flags & IFF_RUNNING) != 0
+            let isLoopback = (flags & IFF_LOOPBACK) != 0
+
+            if isUp, isRunning, !isLoopback,
+               let address = interface.ifa_addr,
+               address.pointee.sa_family == UInt8(AF_INET) {
+                var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                let result = getnameinfo(
+                    address,
+                    socklen_t(address.pointee.sa_len),
+                    &hostname,
+                    socklen_t(hostname.count),
+                    nil,
+                    0,
+                    NI_NUMERICHOST
+                )
+                if result == 0 {
+                    let host = String(cString: hostname)
+                    if !host.hasPrefix("169.254.") {
+                        hosts.append(host)
+                    }
+                }
+            }
+
+            cursor = interface.ifa_next
+        }
+
+        return deduplicatedLANHosts(hosts)
     }
 }

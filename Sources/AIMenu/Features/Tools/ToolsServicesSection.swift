@@ -64,6 +64,8 @@ struct ToolsServicesSection: View {
 
             // Port + Clients info
             if model.webRemoteStatus.running {
+                let reachableURLs = model.webRemoteReachableURLs
+
                 HStack(spacing: LayoutRules.spacing6) {
                     compactMetric(label: L10n.tr("tools.services.metric.http"), value: "\(model.webRemoteStatus.httpPort ?? 0)", tint: .cyan)
                     compactMetric(label: L10n.tr("tools.services.metric.ws"), value: "\(model.webRemoteStatus.wsPort ?? 0)", tint: .cyan)
@@ -85,11 +87,59 @@ struct ToolsServicesSection: View {
                     .aimenuActionButtonStyle(density: .compact)
                 }
 
-                // Copy URL
-                Button(L10n.tr("web_remote.action.copy_url")) {
-                    model.copyWebRemoteURL()
+                if !reachableURLs.isEmpty {
+                    VStack(alignment: .leading, spacing: LayoutRules.spacing6) {
+                        Text(L10n.tr("web_remote.label.access_urls"))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        ForEach(reachableURLs) { target in
+                            HStack(spacing: LayoutRules.spacing6) {
+                                UnifiedBadge(
+                                    text: target.label,
+                                    tint: target.isLAN ? .mint : .secondary,
+                                    density: .compact
+                                )
+
+                                Text(target.displayURL)
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .textSelection(.enabled)
+
+                                Spacer(minLength: 0)
+
+                                Button(L10n.tr("web_remote.action.open_url")) {
+                                    model.openWebRemoteURL(target.browserURL)
+                                }
+                                .aimenuActionButtonStyle(density: .compact)
+
+                                CopyButton(text: target.browserURL)
+                            }
+                        }
+
+                        if reachableURLs.contains(where: \.isLAN) {
+                            Text(L10n.tr("web_remote.description.lan_hint"))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
-                .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
+
+                HStack(spacing: LayoutRules.spacing6) {
+                    Button(L10n.tr("web_remote.action.open_url")) {
+                        model.openWebRemoteURL()
+                    }
+                    .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
+
+                    Button(L10n.tr("web_remote.action.copy_url")) {
+                        model.copyWebRemoteURL()
+                    }
+                    .aimenuActionButtonStyle(density: .compact)
+
+                    Spacer(minLength: 0)
+                }
             } else {
                 // Port inputs (editable when stopped)
                 HStack(spacing: LayoutRules.spacing6) {

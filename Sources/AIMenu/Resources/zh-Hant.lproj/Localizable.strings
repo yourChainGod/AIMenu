@@ -687,3 +687,10 @@
 "tools.notice.port_force_released_format" = "連接埠 %@ 已強制解除佔用";
 "tools.services.action.force_confirm_title" = "強制終止處理程序";
 "tools.services.action.force_confirm_message_format" = "這將強制終止連接埠 %@ 上的處理程序，確定嗎？";
+
+"web_remote.notice.opened_in_browser" = "已在瀏覽器中開啟";
+"web_remote.action.open_url" = "開啟";
+"web_remote.label.access_urls" = "存取位址";
+"web_remote.label.local_device" = "本機";
+"web_remote.label.lan_format" = "區域網路 %@";
+"web_remote.description.lan_hint" = "讓手機與這台 Mac 連上同一個 Wi‑Fi，再開啟任一區域網路位址。";

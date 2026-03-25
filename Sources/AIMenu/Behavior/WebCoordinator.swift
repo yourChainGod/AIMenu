@@ -51,11 +51,11 @@ actor WebCoordinator {
 
         do {
             let handler = WebRemoteHTTPHandler()
-            let http = try SimpleHTTPServer(port: UInt16(httpPort)) { request in
+            let http = try SimpleHTTPServer(port: UInt16(httpPort), loopbackOnly: false) { request in
                 await handler.handle(request: request)
             }
 
-            let ws = try WebSocketServer(port: UInt16(wsPort))
+            let ws = try WebSocketServer(port: UInt16(wsPort), loopbackOnly: false)
             let manager = WebSessionManager(authService: authService)
 
             let bridge = WebSocketBridge(sessionManager: manager, wsServer: ws)

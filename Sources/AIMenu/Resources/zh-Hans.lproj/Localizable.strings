@@ -697,3 +697,10 @@
 "tools.notice.port_force_released_format" = "端口 %@ 已强制解除占用";
 "tools.services.action.force_confirm_title" = "强制终止进程";
 "tools.services.action.force_confirm_message_format" = "这将强制终止端口 %@ 上的进程，确定吗？";
+
+"web_remote.notice.opened_in_browser" = "已在浏览器中打开";
+"web_remote.action.open_url" = "打开";
+"web_remote.label.access_urls" = "访问地址";
+"web_remote.label.local_device" = "本机";
+"web_remote.label.lan_format" = "局域网 %@";
+"web_remote.description.lan_hint" = "保持手机与这台 Mac 连接同一 Wi‑Fi，然后打开任一局域网地址。";
