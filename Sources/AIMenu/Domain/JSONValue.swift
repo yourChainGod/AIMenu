@@ -1,7 +1,7 @@
 import Foundation
 
 /// Type-safe dynamic JSON value used for auth payload and flexible store fields.
-enum JSONValue: Codable, Hashable {
+enum JSONValue: Codable, Hashable, Sendable {
     case string(String)
     case number(Double)
     case bool(Bool)

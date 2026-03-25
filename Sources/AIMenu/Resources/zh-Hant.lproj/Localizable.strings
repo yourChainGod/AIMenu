@@ -620,3 +620,70 @@
 "providers.placeholder.leave_blank_skip" = "留空跳過";
 "providers.placeholder.price_input_example" = "例：3.00";
 "providers.placeholder.price_output_example" = "例：15.00";
+
+// Web Remote
+"web_remote.notice.started" = "Web Remote 已啟動";
+"web_remote.notice.stopped" = "Web Remote 已停止";
+"web_remote.notice.token_refreshed" = "存取權杖已重新整理";
+"web_remote.notice.url_copied" = "存取 URL 已複製";
+"web_remote.status.running" = "執行中";
+"web_remote.status.stopped" = "已停止";
+"web_remote.action.start" = "啟動";
+"web_remote.action.stop" = "停止";
+"web_remote.action.refresh_token" = "重新整理 Token";
+"web_remote.action.copy_url" = "複製瀏覽器存取 URL";
+"web_remote.action.refresh_status" = "重新整理狀態";
+"web_remote.label.clients" = "用戶端";
+
+// Provider Import/Export
+"providers.action.export" = "Export";
+"providers.action.import" = "Import";
+"providers.export.title" = "Export Providers";
+"providers.import.title" = "Import Providers";
+"providers.notice.exported" = "Providers exported successfully";
+"providers.notice.imported_format" = "Imported %@ new providers";
+"error.provider.import_empty" = "No providers found in import file";
+
+/* Tools Services */
+"tools.services.web_remote.title" = "Web Remote";
+"tools.services.metric.http" = "HTTP";
+"tools.services.metric.ws" = "WS";
+"tools.services.cursor2api.title" = "Cursor2API";
+"tools.services.cursor2api.status.running" = "執行中";
+"tools.services.cursor2api.status.installed" = "已安裝";
+"tools.services.cursor2api.status.not_installed" = "未安裝";
+"tools.services.action.refresh_service_status" = "重新整理服務狀態";
+"tools.services.metric.port" = "連接埠";
+"tools.services.metric.api_key" = "Key";
+"tools.services.metric.model" = "模型";
+"tools.services.action.reinstall" = "重新安裝";
+"tools.services.action.install" = "安裝";
+"tools.services.action.apply_to_claude" = "套用到 Claude";
+"tools.services.action.view_log" = "查看日誌";
+"tools.services.action.view_config" = "查看設定";
+"tools.services.port_management.title" = "連接埠管理";
+"tools.services.port.placeholder" = "連接埠號";
+"tools.services.action.track" = "關注";
+"tools.services.action.refresh_port_status" = "重新整理連接埠狀態";
+"tools.services.port.default" = "預設";
+"tools.services.port.idle" = "閒置";
+"tools.services.action.release" = "解除";
+"tools.services.action.force" = "強制";
+"tools.services.action.untrack" = "取消關注";
+"tools.notice.port_untracked_format" = "連接埠 %@ 已設為不關注";
+
+// Common Actions
+"common.action.start" = "啟動";
+"common.action.stop" = "停止";
+"common.action.copy" = "複製";
+
+// Web Remote Errors
+"web_remote.error.ports_must_differ" = "HTTP 和 WebSocket 連接埠不能相同";
+"web_remote.error.port_range" = "連接埠號須在 1024–65535 之間";
+"web_remote.error.port_in_use_format" = "連接埠 %@ 已被 %@ 佔用";
+
+// Port Release
+"tools.notice.port_released_format" = "連接埠 %@ 已解除佔用";
+"tools.notice.port_force_released_format" = "連接埠 %@ 已強制解除佔用";
+"tools.services.action.force_confirm_title" = "強制終止處理程序";
+"tools.services.action.force_confirm_message_format" = "這將強制終止連接埠 %@ 上的處理程序，確定嗎？";

@@ -620,3 +620,70 @@
 "providers.placeholder.leave_blank_skip" = "Leave blank to skip";
 "providers.placeholder.price_input_example" = "Example: 3.00";
 "providers.placeholder.price_output_example" = "Example: 15.00";
+
+// Web Remote
+"web_remote.notice.started" = "Web Remote started";
+"web_remote.notice.stopped" = "Web Remote stopped";
+"web_remote.notice.token_refreshed" = "Access token refreshed";
+"web_remote.notice.url_copied" = "Access URL copied";
+"web_remote.status.running" = "Running";
+"web_remote.status.stopped" = "Stopped";
+"web_remote.action.start" = "Start";
+"web_remote.action.stop" = "Stop";
+"web_remote.action.refresh_token" = "Refresh Token";
+"web_remote.action.copy_url" = "Copy Browser URL";
+"web_remote.action.refresh_status" = "Refresh status";
+"web_remote.label.clients" = "Clients";
+
+// Provider Import/Export
+"providers.action.export" = "Export";
+"providers.action.import" = "Import";
+"providers.export.title" = "Export Providers";
+"providers.import.title" = "Import Providers";
+"providers.notice.exported" = "Providers exported successfully";
+"providers.notice.imported_format" = "Imported %@ new providers";
+"error.provider.import_empty" = "No providers found in import file";
+
+/* Tools Services */
+"tools.services.web_remote.title" = "Web Remote";
+"tools.services.metric.http" = "HTTP";
+"tools.services.metric.ws" = "WS";
+"tools.services.cursor2api.title" = "Cursor2API";
+"tools.services.cursor2api.status.running" = "Running";
+"tools.services.cursor2api.status.installed" = "Installed";
+"tools.services.cursor2api.status.not_installed" = "Not installed";
+"tools.services.action.refresh_service_status" = "Refresh service status";
+"tools.services.metric.port" = "Port";
+"tools.services.metric.api_key" = "Key";
+"tools.services.metric.model" = "Model";
+"tools.services.action.reinstall" = "Reinstall";
+"tools.services.action.install" = "Install";
+"tools.services.action.apply_to_claude" = "Apply to Claude";
+"tools.services.action.view_log" = "Open log";
+"tools.services.action.view_config" = "Open config";
+"tools.services.port_management.title" = "Port Management";
+"tools.services.port.placeholder" = "Port";
+"tools.services.action.track" = "Track";
+"tools.services.action.refresh_port_status" = "Refresh port status";
+"tools.services.port.default" = "Default";
+"tools.services.port.idle" = "Idle";
+"tools.services.action.release" = "Release";
+"tools.services.action.force" = "Force";
+"tools.services.action.untrack" = "Untrack";
+"tools.notice.port_untracked_format" = "Stopped showing port %@";
+
+// Common Actions
+"common.action.start" = "Iniciar";
+"common.action.stop" = "Detener";
+"common.action.copy" = "Copy";
+
+// Web Remote Errors
+"web_remote.error.ports_must_differ" = "HTTP and WebSocket ports must be different";
+"web_remote.error.port_range" = "Ports must be between 1024 and 65535";
+"web_remote.error.port_in_use_format" = "Port %@ is already in use by %@";
+
+// Port Release
+"tools.notice.port_released_format" = "Port %@ released";
+"tools.notice.port_force_released_format" = "Port %@ force released";
+"tools.services.action.force_confirm_title" = "Force Kill Process";
+"tools.services.action.force_confirm_message_format" = "This will forcefully terminate the process on port %@. Are you sure?";

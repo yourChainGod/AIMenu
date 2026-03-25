@@ -131,6 +131,8 @@ private struct MockPortManagementService: PortManagementServiceProtocol {
     func forceKill(port: Int) async throws -> ManagedPortStatus {
         ManagedPortStatus.idle(port: port)
     }
+
+    func scanListeningPorts() async -> [ManagedPortStatus] { [] }
 }
 
 private final class MockCursor2APIHealthURLProtocol: URLProtocol {

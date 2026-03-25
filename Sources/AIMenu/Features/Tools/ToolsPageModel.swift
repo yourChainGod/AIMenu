@@ -1,16 +1,20 @@
 import Foundation
 import Combine
+import AppKit
 
 @MainActor
 final class ToolsPageModel: ObservableObject {
-    private let defaultTrackedPorts = [8002, 8787]
+    nonisolated static let defaultTrackedPorts = [8002, 8787]
     private let providerCoordinator: ProviderCoordinator
     private let mcpCoordinator: MCPCoordinator
     private let promptCoordinator: PromptCoordinator
     private let skillCoordinator: SkillCoordinator
     private let cursor2APIService: Cursor2APIServiceProtocol
     private let portService: PortManagementServiceProtocol
+    private let webCoordinator: WebCoordinator
     private let noticeScheduler = NoticeAutoDismissScheduler()
+    private var ignoredPortNumbers = Set<Int>()
+    private nonisolated(unsafe) var deferredManagedStatusRefreshTask: Task<Void, Never>?
 
     enum ToolsSection: String, CaseIterable { case mcp, prompts, hooks, skills }
 
@@ -27,9 +31,14 @@ final class ToolsPageModel: ObservableObject {
     @Published var editingInstalledSkillDocument: InstalledSkillDocument?
     @Published var skillDiscoveryLoading = false
     @Published var cursor2APIStatus: Cursor2APIStatus = .idle
-    @Published var trackedPortNumbers: [Int] = [8002, 8787]
-    @Published var trackedPorts: [ManagedPortStatus] = [.idle(port: 8002), .idle(port: 8787)]
+    @Published var trackedPortNumbers: [Int]
+    @Published var trackedPorts: [ManagedPortStatus]
     @Published var customPortText = "3000"
+    // Web Remote
+    @Published var webRemoteStatus: WebRemoteStatus = .idle
+    @Published var webRemoteToken: String = ""
+    @Published var webRemoteHTTPPortText = "9090"
+    @Published var webRemoteWSPortText = "9091"
     @Published var loading = false
     @Published var notice: NoticeMessage? {
         didSet { noticeScheduler.schedule(notice) { [weak self] in self?.notice = nil } }
@@ -41,7 +50,8 @@ final class ToolsPageModel: ObservableObject {
         promptCoordinator: PromptCoordinator,
         skillCoordinator: SkillCoordinator,
         cursor2APIService: Cursor2APIServiceProtocol,
-        portService: PortManagementServiceProtocol
+        portService: PortManagementServiceProtocol,
+        webCoordinator: WebCoordinator
     ) {
         self.providerCoordinator = providerCoordinator
         self.mcpCoordinator = mcpCoordinator
@@ -49,17 +59,23 @@ final class ToolsPageModel: ObservableObject {
         self.skillCoordinator = skillCoordinator
         self.cursor2APIService = cursor2APIService
         self.portService = portService
+        self.webCoordinator = webCoordinator
+        self.trackedPortNumbers = Self.defaultTrackedPorts
+        self.trackedPorts = Self.defaultTrackedPorts.map { .idle(port: $0) }
+    }
+
+    deinit {
+        deferredManagedStatusRefreshTask?.cancel()
     }
 
     func loadOverview() async {
-        loading = true
-        defer { loading = false }
         do {
             localConfigBundles = try await mcpCoordinator.listLocalConfigBundles()
-            await refreshManagedToolStatus()
         } catch {
             notice = NoticeMessage(style: .error, text: error.localizedDescription)
         }
+        await refreshWebRemoteStatus()
+        scheduleDeferredManagedStatusRefresh()
     }
 
     func loadWorkbench() async {
@@ -426,6 +442,14 @@ final class ToolsPageModel: ObservableObject {
         await refreshTrackedPorts()
     }
 
+    private func scheduleDeferredManagedStatusRefresh() {
+        deferredManagedStatusRefreshTask?.cancel()
+        deferredManagedStatusRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            await self.refreshManagedToolStatus()
+        }
+    }
+
     func installCursor2API() async {
         loading = true
         defer { loading = false }
@@ -479,13 +503,8 @@ final class ToolsPageModel: ObservableObject {
     }
 
     func refreshTrackedPorts(showNotice: Bool = false) async {
-        trackedPortNumbers = Array(Set(trackedPortNumbers)).sorted()
-
-        var updated: [ManagedPortStatus] = []
-        for port in trackedPortNumbers {
-            updated.append(await portService.status(for: port))
-        }
-        trackedPorts = updated
+        let listeningPorts = await portService.scanListeningPorts()
+        rebuildTrackedPorts(from: listeningPorts)
 
         if showNotice {
             notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.port_status_refreshed"))
@@ -508,29 +527,34 @@ final class ToolsPageModel: ObservableObject {
             return
         }
 
-        guard !trackedPortNumbers.contains(port) else {
+        let wasIgnored = ignoredPortNumbers.remove(port) != nil
+        guard wasIgnored || !trackedPortNumbers.contains(port) else {
             notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.port_already_tracked_format", String(port)))
-            await refreshTrackedPorts()
             return
         }
 
-        trackedPortNumbers.append(port)
-        trackedPortNumbers.sort()
+        if !trackedPortNumbers.contains(port) {
+            trackedPortNumbers.append(port)
+            trackedPortNumbers.sort()
+        }
 
         if clearsInput {
             customPortText = ""
         }
 
-        await refreshTrackedPorts()
+        let status = await portService.status(for: port)
+        let scannedPorts = trackedPorts.filter { $0.occupied && $0.port != port }
+        rebuildTrackedPorts(from: scannedPorts + [status])
+
         notice = NoticeMessage(style: .success, text: L10n.tr("tools.notice.port_tracked_format", String(port)))
     }
 
-    func removeTrackedPort(_ port: Int) async {
-        guard !defaultTrackedPorts.contains(port) else { return }
-        guard trackedPortNumbers.contains(port) else { return }
+    func untrackPort(_ port: Int) async {
+        guard trackedPorts.contains(where: { $0.port == port }) || trackedPortNumbers.contains(port) else { return }
+        ignoredPortNumbers.insert(port)
         trackedPortNumbers.removeAll { $0 == port }
         trackedPorts.removeAll { $0.port == port }
-        notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.port_removed_format", String(port)))
+        notice = NoticeMessage(style: .info, text: L10n.tr("tools.notice.port_untracked_format", String(port)))
     }
 
     func releaseTrackedPort(_ port: Int, force: Bool = false) async {
@@ -552,10 +576,89 @@ final class ToolsPageModel: ObservableObject {
         }
     }
 
+    private func rebuildTrackedPorts(from listeningPorts: [ManagedPortStatus]) {
+        let listeningByPort = Dictionary(uniqueKeysWithValues: listeningPorts.map { ($0.port, $0) })
+        let visiblePorts = Set(trackedPortNumbers)
+            .union(listeningByPort.keys)
+            .subtracting(ignoredPortNumbers)
+            .sorted()
+        trackedPorts = visiblePorts.map { listeningByPort[$0] ?? .idle(port: $0) }
+    }
+
     private func refreshDiscoverableSkillPreviewIfNeeded() {
         guard var document = previewingDiscoverableSkillDocument else { return }
         guard let updatedSkill = discoverableSkills.first(where: { $0.key == document.skill.key }) else { return }
         document.skill = updatedSkill
         previewingDiscoverableSkillDocument = document
+    }
+
+    // MARK: - Web Remote
+
+    func startWebRemote() async {
+        loading = true
+        defer { loading = false }
+        do {
+            let httpPort = Int(webRemoteHTTPPortText) ?? 9090
+            let wsPort = Int(webRemoteWSPortText) ?? 9091
+            guard httpPort != wsPort else {
+                notice = NoticeMessage(style: .error, text: L10n.tr("web_remote.error.ports_must_differ"))
+                return
+            }
+            guard (1024...65535).contains(httpPort), (1024...65535).contains(wsPort) else {
+                notice = NoticeMessage(style: .error, text: L10n.tr("web_remote.error.port_range"))
+                return
+            }
+            // Check port availability
+            let httpStatus = await portService.status(for: httpPort)
+            let wsStatus = await portService.status(for: wsPort)
+            if httpStatus.occupied {
+                notice = NoticeMessage(style: .error, text: L10n.tr("web_remote.error.port_in_use_format", String(httpPort), httpStatus.command ?? "unknown"))
+                return
+            }
+            if wsStatus.occupied {
+                notice = NoticeMessage(style: .error, text: L10n.tr("web_remote.error.port_in_use_format", String(wsPort), wsStatus.command ?? "unknown"))
+                return
+            }
+            webRemoteStatus = try await webCoordinator.start(httpPort: httpPort, wsPort: wsPort)
+            webRemoteToken = await webCoordinator.currentToken()
+            notice = NoticeMessage(style: .success, text: L10n.tr("web_remote.notice.started"))
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    func stopWebRemote() async {
+        loading = true
+        defer { loading = false }
+        webRemoteStatus = await webCoordinator.stop()
+        notice = NoticeMessage(style: .info, text: L10n.tr("web_remote.notice.stopped"))
+    }
+
+    func refreshWebRemoteStatus() async {
+        webRemoteStatus = await webCoordinator.status()
+        if webRemoteStatus.running {
+            webRemoteToken = await webCoordinator.currentToken()
+        }
+    }
+
+    func refreshWebRemoteToken() async {
+        webRemoteToken = await webCoordinator.regenerateToken()
+        notice = NoticeMessage(style: .success, text: L10n.tr("web_remote.notice.token_refreshed"))
+    }
+
+    func copyWebRemoteURL() {
+        guard let httpPort = webRemoteStatus.httpPort,
+              let wsPort = webRemoteStatus.wsPort else { return }
+        // Use fragment (#) for token to avoid it appearing in server logs, browser history, or referrer headers
+        let url = "http://127.0.0.1:\(httpPort)?wsPort=\(wsPort)#token=\(webRemoteToken)"
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url, forType: .string)
+        notice = NoticeMessage(style: .success, text: L10n.tr("web_remote.notice.url_copied"))
+    }
+
+    var webRemoteAccessURL: String {
+        guard let httpPort = webRemoteStatus.httpPort,
+              let wsPort = webRemoteStatus.wsPort else { return "" }
+        return "http://127.0.0.1:\(httpPort)?wsPort=\(wsPort)"
     }
 }

@@ -22,6 +22,8 @@ struct ProviderConfigPreviewBlock: View {
     @State private var lastGeneratedContent: String
     @State private var statusMessage: String?
     @State private var statusIsError = false
+    @State private var debounceTask: Task<Void, Never>?
+    @State private var draftIsInvalidJSON = false
 
     init(
         title: String,
@@ -117,7 +119,10 @@ struct ProviderConfigPreviewBlock: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                .strokeBorder(accent.opacity(OpacityScale.subtle), lineWidth: 1)
+                                .strokeBorder(
+                                    draftIsInvalidJSON ? Color.red.opacity(0.4) : accent.opacity(OpacityScale.subtle),
+                                    lineWidth: draftIsInvalidJSON ? 1.5 : 1
+                                )
                         )
                 )
         }
@@ -145,6 +150,15 @@ struct ProviderConfigPreviewBlock: View {
             }
             lastGeneratedContent = newValue
         }
+        .onChange(of: draft) { _, _ in
+            // Debounce auto-apply: cancel previous and wait 500ms
+            debounceTask?.cancel()
+            debounceTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                guard !Task.isCancelled else { return }
+                autoApplyDraft()
+            }
+        }
     }
 
     private func applyDraft() {
@@ -152,10 +166,27 @@ struct ProviderConfigPreviewBlock: View {
             try onApply(draft)
             lastGeneratedContent = draft
             statusIsError = false
+            draftIsInvalidJSON = false
             statusMessage = L10n.tr("providers.preview.applied")
         } catch {
             statusIsError = true
+            draftIsInvalidJSON = true
             statusMessage = error.localizedDescription
+        }
+    }
+
+    /// Silently auto-apply JSON edits — no error popups, just sync valid JSON to form fields
+    private func autoApplyDraft() {
+        guard draft != lastGeneratedContent else { return }
+        do {
+            try onApply(draft)
+            lastGeneratedContent = draft
+            statusIsError = false
+            draftIsInvalidJSON = false
+            statusMessage = L10n.tr("providers.preview.applied")
+        } catch {
+            // Show subtle invalid indicator but don't interrupt typing
+            draftIsInvalidJSON = true
         }
     }
 }

@@ -15,7 +15,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "FE992FA021F035BA671AB297"
+               BlueprintIdentifier = "68F3A9170DE6CB5B871B9A9A"
                BuildableName = "AIMenu.app"
                BlueprintName = "AIMenu"
                ReferencedContainer = "container:AIMenu.xcodeproj">
@@ -29,7 +29,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "3EBBD4883F32E94097730AC9"
+               BlueprintIdentifier = "9EEF5B897517DAF894B96530"
                BuildableName = "AIMenuTests.xctest"
                BlueprintName = "AIMenuTests"
                ReferencedContainer = "container:AIMenu.xcodeproj">
@@ -46,7 +46,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "FE992FA021F035BA671AB297"
+            BlueprintIdentifier = "68F3A9170DE6CB5B871B9A9A"
             BuildableName = "AIMenu.app"
             BlueprintName = "AIMenu"
             ReferencedContainer = "container:AIMenu.xcodeproj">
@@ -58,7 +58,7 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "3EBBD4883F32E94097730AC9"
+               BlueprintIdentifier = "9EEF5B897517DAF894B96530"
                BuildableName = "AIMenuTests.xctest"
                BlueprintName = "AIMenuTests"
                ReferencedContainer = "container:AIMenu.xcodeproj">
@@ -82,7 +82,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "FE992FA021F035BA671AB297"
+            BlueprintIdentifier = "68F3A9170DE6CB5B871B9A9A"
             BuildableName = "AIMenu.app"
             BlueprintName = "AIMenu"
             ReferencedContainer = "container:AIMenu.xcodeproj">
@@ -99,7 +99,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "FE992FA021F035BA671AB297"
+            BlueprintIdentifier = "68F3A9170DE6CB5B871B9A9A"
             BuildableName = "AIMenu.app"
             BlueprintName = "AIMenu"
             ReferencedContainer = "container:AIMenu.xcodeproj">

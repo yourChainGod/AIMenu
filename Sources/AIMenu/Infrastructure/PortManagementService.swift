@@ -65,6 +65,50 @@ actor PortManagementService: PortManagementServiceProtocol {
         return await status(for: port)
     }
 
+    /// Scan all TCP LISTEN ports on the machine
+    func scanListeningPorts() async -> [ManagedPortStatus] {
+        guard let lsof = CommandRunner.resolveExecutable("lsof") else { return [] }
+
+        let result = try? CommandRunner.run(
+            lsof,
+            arguments: ["-nP", "-iTCP", "-sTCP:LISTEN"],
+            timeout: 5
+        )
+
+        guard let stdout = result?.stdout, !stdout.isEmpty else { return [] }
+
+        let lines = stdout.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        guard lines.count >= 2 else { return [] }
+
+        var seen = Set<Int>()
+        var statuses: [ManagedPortStatus] = []
+
+        for line in lines.dropFirst() {
+            let parts = line.split(whereSeparator: \.isWhitespace).map(String.init)
+            guard parts.count >= 9 else { continue }
+
+            let command = parts[0]
+            let pid = Int(parts[1])
+            let endpoint = parts[8]
+
+            // Extract port from endpoint like "*:8787" or "127.0.0.1:3000"
+            guard let colonIdx = endpoint.lastIndex(of: ":") else { continue }
+            let portStr = String(endpoint[endpoint.index(after: colonIdx)...])
+            guard let port = Int(portStr), port > 0, !seen.contains(port) else { continue }
+            seen.insert(port)
+
+            statuses.append(ManagedPortStatus(
+                port: port,
+                occupied: true,
+                processID: pid,
+                command: command,
+                endpoint: endpoint
+            ))
+        }
+
+        return statuses.sorted { $0.port < $1.port }
+    }
+
     private func listeningProcessIDs(for port: Int) throws -> [Int] {
         guard let lsof = CommandRunner.resolveExecutable("lsof") else {
             throw AppError.fileNotFound(L10n.tr("error.port.lsof_missing"))
@@ -96,5 +140,6 @@ actor PortManagementService: PortManagementServiceProtocol {
     func status(for port: Int) async -> ManagedPortStatus { .idle(port: port) }
     func terminate(port: Int) async throws -> ManagedPortStatus { .idle(port: port) }
     func forceKill(port: Int) async throws -> ManagedPortStatus { .idle(port: port) }
+    func scanListeningPorts() async -> [ManagedPortStatus] { [] }
 }
 #endif

@@ -43,9 +43,12 @@ actor ProviderCoordinator {
             newProvider.isCurrent = true
         }
         store.providers.append(newProvider)
-        try await configService.saveProviderStore(store)
         if shouldApplyToLiveConfig {
-            try await configService.switchProvider(newProvider)
+            try await applyLiveConfigThenSaveStore(store, for: provider.appType) {
+                try await self.configService.switchProvider(newProvider)
+            }
+        } else {
+            try await configService.saveProviderStore(store)
         }
         return ProviderSaveOutcome(provider: newProvider, didApplyToLiveConfig: shouldApplyToLiveConfig)
     }
@@ -60,9 +63,12 @@ actor ProviderCoordinator {
         let shouldApplyToLiveConfig = store.currentProviderId(for: provider.appType) == provider.id
         updated.isCurrent = shouldApplyToLiveConfig
         store.providers[index] = updated
-        try await configService.saveProviderStore(store)
         if shouldApplyToLiveConfig {
-            try await configService.switchProvider(updated)
+            try await applyLiveConfigThenSaveStore(store, for: provider.appType) {
+                try await self.configService.switchProvider(updated)
+            }
+        } else {
+            try await configService.saveProviderStore(store)
         }
         return ProviderSaveOutcome(provider: updated, didApplyToLiveConfig: shouldApplyToLiveConfig)
     }
@@ -76,13 +82,16 @@ actor ProviderCoordinator {
             fallbackProvider = store.providers(for: appType).first
             store.setCurrentProviderId(fallbackProvider?.id, for: appType)
         }
-        try await configService.saveProviderStore(store)
         if wasCurrent {
-            if let fallbackProvider {
-                try await configService.switchProvider(fallbackProvider)
-            } else {
-                try await configService.clearProvider(for: appType)
+            try await applyLiveConfigThenSaveStore(store, for: appType) {
+                if let fallbackProvider {
+                    try await self.configService.switchProvider(fallbackProvider)
+                } else {
+                    try await self.configService.clearProvider(for: appType)
+                }
             }
+        } else {
+            try await configService.saveProviderStore(store)
         }
         return ProviderDeletionOutcome(
             didDeleteCurrentProvider: wasCurrent,
@@ -96,8 +105,9 @@ actor ProviderCoordinator {
             throw AppError.invalidData(L10n.tr("error.provider.not_found"))
         }
         store.setCurrentProviderId(id, for: appType)
-        try await configService.saveProviderStore(store)
-        try await configService.switchProvider(provider)
+        try await applyLiveConfigThenSaveStore(store, for: appType) {
+            try await self.configService.switchProvider(provider)
+        }
     }
 
     func upsertManagedCodexProxyProvider(from status: ApiProxyStatus) async throws -> Provider? {
@@ -170,8 +180,9 @@ actor ProviderCoordinator {
         for index in store.providers.indices where store.providers[index].appType == .codex {
             store.providers[index].isCurrent = store.providers[index].id == provider.id
         }
-        try await configService.saveProviderStore(store)
-        try await configService.switchProvider(provider)
+        try await applyLiveConfigThenSaveStore(store, for: .codex) {
+            try await self.configService.switchProvider(provider)
+        }
         return provider
     }
 
@@ -259,9 +270,105 @@ actor ProviderCoordinator {
         for index in store.providers.indices where store.providers[index].appType == .claude {
             store.providers[index].isCurrent = store.providers[index].id == provider.id
         }
-        try await configService.saveProviderStore(store)
-        try await configService.switchProvider(provider)
+        try await applyLiveConfigThenSaveStore(store, for: .claude) {
+            try await self.configService.switchProvider(provider)
+        }
         return provider
+    }
+
+    // MARK: - Reorder
+
+    func reorderProvider(draggedID: String, beforeID: String, appType: ProviderAppType) async throws {
+        var store = try await configService.loadProviderStore()
+        var list = store.providers.filter { $0.appType == appType }.sorted { $0.sortIndex < $1.sortIndex }
+        guard let dragIdx = list.firstIndex(where: { $0.id == draggedID }),
+              let targetIdx = list.firstIndex(where: { $0.id == beforeID }) else { return }
+
+        let dragged = list.remove(at: dragIdx)
+        // After remove, if dragging forward the target index shifts down by 1
+        let insertIdx = dragIdx < targetIdx ? targetIdx - 1 : targetIdx
+        list.insert(dragged, at: insertIdx)
+
+        // Reassign sortIndex
+        for (i, provider) in list.enumerated() {
+            if let storeIdx = store.providers.firstIndex(where: { $0.id == provider.id }) {
+                store.providers[storeIdx].sortIndex = i
+            }
+        }
+        try await configService.saveProviderStore(store)
+    }
+
+    // MARK: - Import / Export
+
+    func exportProviders() async throws -> Data {
+        let store = try await configService.loadProviderStore()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(store)
+    }
+
+    func importProviders(from data: Data) async throws -> Int {
+        let decoder = JSONDecoder()
+        let imported = try decoder.decode(ProviderStore.self, from: data)
+        guard !imported.providers.isEmpty else {
+            throw AppError.invalidData(L10n.tr("error.provider.import_empty"))
+        }
+
+        // Backup current store
+        try await configService.backupProviderStore()
+
+        var current = try await configService.loadProviderStore()
+        var existingKeys = Set(current.providers.map(Self.providerImportKey))
+        var importedCurrentKeys: [ProviderAppType: String] = [:]
+        for appType in ProviderAppType.allCases {
+            if let selectedID = imported.currentProviderId(for: appType),
+               let selectedProvider = imported.providers.first(where: { $0.id == selectedID }) {
+                importedCurrentKeys[appType] = Self.providerImportKey(selectedProvider)
+            }
+        }
+
+        var resolvedProviderIDsByKey = Dictionary(
+            uniqueKeysWithValues: current.providers.map { (Self.providerImportKey($0), $0.id) }
+        )
+
+        var addedCount = 0
+        let now = Int64(Date().timeIntervalSince1970)
+        for provider in imported.providers {
+            let key = Self.providerImportKey(provider)
+            if !existingKeys.contains(key) {
+                var newProvider = provider
+                newProvider.id = UUID().uuidString
+                newProvider.sortIndex = (current.providers.map(\.sortIndex).max() ?? -1) + 1
+                newProvider.isCurrent = false
+                newProvider.createdAt = now
+                newProvider.updatedAt = now
+                current.providers.append(newProvider)
+                existingKeys.insert(key)
+                resolvedProviderIDsByKey[key] = newProvider.id
+                addedCount += 1
+            }
+        }
+
+        for appType in ProviderAppType.allCases where current.currentProviderId(for: appType) == nil {
+            guard let key = importedCurrentKeys[appType] else { continue }
+            current.setCurrentProviderId(resolvedProviderIDsByKey[key], for: appType)
+        }
+
+        try await configService.saveProviderStore(current)
+
+        // Sync live config for any newly-assigned current providers (best-effort, log failures)
+        for appType in ProviderAppType.allCases {
+            if let selectedId = current.currentProviderId(for: appType),
+               let provider = current.providers.first(where: { $0.id == selectedId }) {
+                do {
+                    try await configService.switchProvider(provider)
+                } catch {
+                    NSLog("[ProviderCoordinator] import: failed to sync live config for \(appType.rawValue): \(error.localizedDescription)")
+                }
+            }
+        }
+
+        return addedCount
     }
 
     // MARK: - Speed Test
@@ -416,5 +523,35 @@ actor ProviderCoordinator {
             codex: lhs.codex || rhs.codex,
             gemini: lhs.gemini || rhs.gemini
         )
+    }
+
+    private func applyLiveConfigThenSaveStore(
+        _ store: ProviderStore,
+        for appType: ProviderAppType,
+        mutation: () async throws -> Void
+    ) async throws {
+        let snapshot = try await configService.captureLiveConfigSnapshot(for: appType)
+        do {
+            try await mutation()
+            try await configService.saveProviderStore(store)
+        } catch {
+            // Surface restore failure as a logged warning, but re-throw the original error.
+            do {
+                try await configService.restoreLiveConfigSnapshot(snapshot)
+            } catch {
+                NSLog("[ProviderCoordinator] WARNING: rollback failed after mutation error: \(error.localizedDescription)")
+            }
+            throw error
+        }
+    }
+
+    private static func providerImportKey(_ provider: Provider) -> String {
+        let baseUrl: String
+        switch provider.appType {
+        case .claude: baseUrl = provider.claudeConfig?.baseUrl ?? ""
+        case .codex: baseUrl = provider.codexConfig?.baseUrl ?? ""
+        case .gemini: baseUrl = provider.geminiConfig?.baseUrl ?? ""
+        }
+        return "\(provider.name)|\(provider.appType.rawValue)|\(baseUrl)"
     }
 }

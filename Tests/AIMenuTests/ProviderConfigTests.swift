@@ -423,6 +423,49 @@ final class ProviderConfigTests: XCTestCase {
         XCTAssertTrue(configText.contains("reasoning_effort = \"medium\""))
     }
 
+    func testImportProvidersDeduplicatesPayloadAndMapsCurrentSelectionToNewIDs() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+
+        let first = makeCodexProvider(
+            id: "imported-primary",
+            name: "Imported",
+            apiKey: "sk-1",
+            baseUrl: "https://imported.example.com/v1",
+            model: "gpt-5-imported"
+        )
+        let duplicate = makeCodexProvider(
+            id: "imported-duplicate",
+            name: "Imported",
+            apiKey: "sk-2",
+            baseUrl: "https://imported.example.com/v1",
+            model: "gpt-5-duplicate"
+        )
+
+        let importedStore = ProviderStore(
+            version: 1,
+            providers: [first, duplicate],
+            currentClaudeProviderId: nil,
+            currentCodexProviderId: first.id,
+            currentGeminiProviderId: nil
+        )
+        let data = try JSONEncoder().encode(importedStore)
+
+        let addedCount = try await coordinator.importProviders(from: data)
+        XCTAssertEqual(addedCount, 1)
+
+        let savedStore = try await service.loadProviderStore()
+        XCTAssertEqual(savedStore.providers.count, 1)
+
+        let selectedID = try XCTUnwrap(savedStore.currentCodexProviderId)
+        XCTAssertNotEqual(selectedID, first.id)
+        XCTAssertEqual(savedStore.providers.first?.id, selectedID)
+        XCTAssertEqual(savedStore.providers.first?.name, "Imported")
+    }
+
     func testListPromptsReflectsLivePromptFileContent() async throws {
         let tempHome = try makeTemporaryHome()
         defer { try? FileManager.default.removeItem(at: tempHome) }

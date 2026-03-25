@@ -620,3 +620,70 @@
 "providers.placeholder.leave_blank_skip" = "空欄でスキップ";
 "providers.placeholder.price_input_example" = "例: 3.00";
 "providers.placeholder.price_output_example" = "例: 15.00";
+
+// Web Remote
+"web_remote.notice.started" = "Web Remote started";
+"web_remote.notice.stopped" = "Web Remote stopped";
+"web_remote.notice.token_refreshed" = "Access token refreshed";
+"web_remote.notice.url_copied" = "Access URL copied";
+"web_remote.status.running" = "Running";
+"web_remote.status.stopped" = "Stopped";
+"web_remote.action.start" = "Start";
+"web_remote.action.stop" = "Stop";
+"web_remote.action.refresh_token" = "Refresh Token";
+"web_remote.action.copy_url" = "Copy Browser URL";
+"web_remote.action.refresh_status" = "Refresh status";
+"web_remote.label.clients" = "Clients";
+
+// Provider Import/Export
+"providers.action.export" = "Export";
+"providers.action.import" = "Import";
+"providers.export.title" = "Export Providers";
+"providers.import.title" = "Import Providers";
+"providers.notice.exported" = "Providers exported successfully";
+"providers.notice.imported_format" = "Imported %@ new providers";
+"error.provider.import_empty" = "インポートファイルにプロバイダーが見つかりません";
+
+/* Tools Services */
+"tools.services.web_remote.title" = "Web Remote";
+"tools.services.metric.http" = "HTTP";
+"tools.services.metric.ws" = "WS";
+"tools.services.cursor2api.title" = "Cursor2API";
+"tools.services.cursor2api.status.running" = "実行中";
+"tools.services.cursor2api.status.installed" = "インストール済み";
+"tools.services.cursor2api.status.not_installed" = "未インストール";
+"tools.services.action.refresh_service_status" = "サービス状態を更新";
+"tools.services.metric.port" = "ポート";
+"tools.services.metric.api_key" = "Key";
+"tools.services.metric.model" = "モデル";
+"tools.services.action.reinstall" = "再インストール";
+"tools.services.action.install" = "インストール";
+"tools.services.action.apply_to_claude" = "Claude に適用";
+"tools.services.action.view_log" = "ログを表示";
+"tools.services.action.view_config" = "設定を表示";
+"tools.services.port_management.title" = "ポート管理";
+"tools.services.port.placeholder" = "ポート番号";
+"tools.services.action.track" = "監視";
+"tools.services.action.refresh_port_status" = "ポート状態を更新";
+"tools.services.port.default" = "既定";
+"tools.services.port.idle" = "待機中";
+"tools.services.action.release" = "解放";
+"tools.services.action.force" = "強制";
+"tools.services.action.untrack" = "非表示";
+"tools.notice.port_untracked_format" = "ポート %@ を非表示にしました";
+
+// Common Actions
+"common.action.start" = "開始";
+"common.action.stop" = "停止";
+"common.action.copy" = "コピー";
+
+// Web Remote Errors
+"web_remote.error.ports_must_differ" = "HTTP と WebSocket のポートを同じにはできません";
+"web_remote.error.port_range" = "ポート番号は 1024〜65535 の範囲で指定してください";
+"web_remote.error.port_in_use_format" = "ポート %@ は %@ で使用中です";
+
+// Port Release
+"tools.notice.port_released_format" = "ポート %@ を解放しました";
+"tools.notice.port_force_released_format" = "ポート %@ を強制解放しました";
+"tools.services.action.force_confirm_title" = "プロセスを強制終了";
+"tools.services.action.force_confirm_message_format" = "ポート %@ のプロセスを強制終了します。よろしいですか？";

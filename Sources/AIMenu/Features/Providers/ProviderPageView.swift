@@ -60,11 +60,6 @@ struct ProviderPageView: View {
                 toolBar
                     .padding(.horizontal, LayoutRules.pagePadding)
 
-                if currentProvider != nil {
-                    providerSummaryCard
-                        .padding(.horizontal, LayoutRules.pagePadding)
-                }
-
                 if model.loading && model.providers.isEmpty {
                     ProgressView(L10n.tr("providers.loading"))
                         .frame(maxWidth: .infinity, minHeight: 120)
@@ -81,6 +76,24 @@ struct ProviderPageView: View {
                     LazyVStack(spacing: 2) {
                         ForEach(model.providers) { provider in
                             providerRow(provider)
+                                .draggable(provider.id) {
+                                    // Drag preview: icon + name in a card chip
+                                    HStack(spacing: 6) {
+                                        Image(systemName: provider.icon ?? model.selectedApp.iconName)
+                                            .font(.caption2)
+                                        Text(provider.name)
+                                            .font(.caption.weight(.medium))
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                                }
+                                .dropDestination(for: String.self) { droppedIDs, _ in
+                                    guard let draggedID = droppedIDs.first, draggedID != provider.id else { return false }
+                                    Task { await model.moveProvider(draggedID: draggedID, toID: provider.id) }
+                                    return true
+                                }
                         }
                     }
                     .padding(.horizontal, LayoutRules.pagePadding)
@@ -95,54 +108,8 @@ struct ProviderPageView: View {
 
     // MARK: - Toolbar (App Picker + Actions)
 
-    private var currentProvider: Provider? {
-        model.providers.first(where: \.isCurrent)
-    }
-
     private var pageAccent: Color {
         model.selectedApp.formAccent
-    }
-
-    private var providerSummaryCard: some View {
-        Group {
-            if let currentProvider {
-                HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(pageAccent.opacity(OpacityScale.muted))
-                        .overlay {
-                            Image(systemName: model.selectedApp.iconName)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(pageAccent)
-                        }
-                        .frame(width: 38, height: 38)
-
-                    VStack(alignment: .leading, spacing: 7) {
-                        HStack(spacing: 8) {
-                            Text(model.selectedApp.displayName)
-                                .font(.headline.weight(.semibold))
-                            UnifiedBadge(text: L10n.tr("providers.badge.managed"), tint: .mint)
-                        }
-
-                        Text(currentProvider.name)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-
-                        HStack(spacing: 6) {
-                            if let host = providerEndpointHost(currentProvider) {
-                                UnifiedBadge(text: host, tint: .secondary, density: .compact)
-                            }
-
-                            if let modelName = providerModelName(currentProvider) {
-                                UnifiedBadge(text: modelName, tint: .accentColor, density: .compact)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .padding(12)
-        .cardSurface(cornerRadius: 14, tint: pageAccent.opacity(OpacityScale.faint))
     }
 
     // MARK: - Provider Row
@@ -178,10 +145,16 @@ struct ProviderPageView: View {
                     }
                 }
 
+                // Model name (prominent display)
+                if let modelName = providerModelName(provider) {
+                    Text(modelName)
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(provider.isCurrent ? rowAccent : .secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+
                 HStack(spacing: 6) {
-                    if let modelName = providerModelName(provider) {
-                        UnifiedBadge(text: modelName, tint: .accentColor, density: .compact)
-                    }
                     if let host = providerEndpointHost(provider) {
                         UnifiedBadge(text: host, tint: .secondary, density: .compact)
                     }
@@ -385,8 +358,24 @@ struct ProviderPageView: View {
                 }
                 .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
                 .disabled(model.providers.isEmpty)
+
+                Button {
+                    Task { await model.exportProviders() }
+                } label: {
+                    Label(L10n.tr("providers.action.export"), systemImage: "square.and.arrow.up")
+                        .lineLimit(1)
+                }
+                .aimenuActionButtonStyle(density: .compact)
+
+                Button {
+                    Task { await model.importProviders() }
+                } label: {
+                    Label(L10n.tr("providers.action.import"), systemImage: "square.and.arrow.down")
+                        .lineLimit(1)
+                }
+                .aimenuActionButtonStyle(density: .compact)
             }
-            .frame(maxWidth: 220)
+            .frame(maxWidth: 340)
             .frame(maxWidth: .infinity, alignment: .center)
         }
     }

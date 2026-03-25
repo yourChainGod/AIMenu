@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>AIMenu - Web Remote</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
+      font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+    body{background:#0f1117;color:#e8e8e8;min-height:100vh;min-height:100dvh;overflow:hidden}
+    #app-loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      background:#0f1117;z-index:9999;transition:opacity .3s ease}
+    #app-loader.hidden{opacity:0;pointer-events:none}
+    #app-loader .spinner{width:40px;height:40px;border:3px solid #22263a;border-top-color:#00d4ff;
+      border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div id="app-loader"><div class="spinner"></div></div>
+
+  <!-- 认证页 -->
+  <div id="auth-overlay" class="overlay" aria-modal="true" role="dialog">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+          <rect width="36" height="36" rx="8" fill="#00d4ff" fill-opacity="0.12"/>
+          <path d="M10 26V14l8-6 8 6v12H20v-6h-4v6H10z" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h1>AIMenu</h1>
+      </div>
+      <p class="auth-subtitle">远程控制面板</p>
+      <form id="auth-form" autocomplete="off">
+        <input id="auth-token-input" type="password" placeholder="输入访问令牌" autocomplete="off" spellcheck="false" required>
+        <button type="submit" id="auth-submit-btn">
+          <span class="btn-text">连接</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+        <p id="auth-error" class="auth-error" role="alert" aria-live="polite"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- 主界面 -->
+  <div id="app" class="app" aria-hidden="true">
+
+    <header class="topbar" role="banner">
+      <div class="topbar-left">
+        <button id="sidebar-toggle" class="icon-btn hamburger-btn" aria-label="会话列表" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
+          </svg>
+        </button>
+        <div class="brand">
+          <svg width="24" height="24" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <rect width="36" height="36" rx="8" fill="#00d4ff" fill-opacity="0.15"/>
+            <path d="M10 26V14l8-6 8 6v12H20v-6h-4v6H10z" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="brand-name">AIMenu</span>
+        </div>
+      </div>
+      <nav class="tab-nav" role="tablist">
+        <button class="tab-btn active" role="tab" aria-selected="true" data-tab="chat">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h12v8H5l-3 3V3z"/></svg>
+          <span>对话</span>
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="providers">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+          <span>提供商</span>
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="settings">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.05 3.05l1.4 1.4M11.55 11.55l1.4 1.4M3.05 12.95l1.4-1.4M11.55 4.45l1.4-1.4"/></svg>
+          <span>设置</span>
+        </button>
+      </nav>
+      <div class="topbar-right">
+        <div id="conn-status" class="conn-indicator disconnected" title="离线">
+          <span class="conn-dot"></span>
+          <span class="conn-label">离线</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============ 对话 TAB ============ -->
+    <div id="panel-chat" class="tab-panel active" role="tabpanel">
+      <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+      <aside id="session-sidebar" class="session-sidebar">
+        <div class="sidebar-header">
+          <h2>会话</h2>
+          <button id="new-session-btn" class="btn btn-accent btn-sm">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+            新建
+          </button>
+        </div>
+        <div id="session-list" class="session-list" role="list"></div>
+      </aside>
+
+      <main class="chat-main">
+        <div id="message-stream" class="message-stream" role="log" aria-live="polite">
+          <div class="empty-state" id="chat-empty">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <rect width="48" height="48" rx="12" fill="#00d4ff" fill-opacity="0.08"/>
+              <path d="M14 34V18l10-8 10 8v16H26v-8h-4v8H14z" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+            </svg>
+            <h3>欢迎使用 AIMenu</h3>
+            <p>新建或选择一个会话，开始与 AI 对话。</p>
+          </div>
+        </div>
+
+        <!-- 底部控制区（含斜杠命令弹出层） -->
+        <div class="chat-controls">
+          <div id="slash-popup" class="slash-popup" role="listbox" hidden></div>
+          <div class="controls-row">
+            <div class="control-group">
+              <select id="agent-select" class="select-control" aria-label="选择 Agent">
+                <option value="claude">Claude</option>
+                <option value="codex">Codex</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <select id="mode-select" class="select-control" aria-label="选择模式">
+                <option value="default">Default</option>
+                <option value="plan">Plan</option>
+                <option value="yolo">YOLO</option>
+              </select>
+            </div>
+            <div class="control-group control-group-grow">
+              <div style="display:flex;gap:4px;">
+                <input id="cwd-input" type="text" class="text-input" placeholder="工作目录..." list="cwd-datalist" autocomplete="off" spellcheck="false" style="flex:1;">
+                <datalist id="cwd-datalist"></datalist>
+                <button id="browse-dir-btn" class="icon-btn" aria-label="浏览目录" style="min-width:36px;min-height:36px;">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h4l2 2h6v7H2V4z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="input-row">
+            <textarea id="message-input" class="message-input" placeholder="输入消息或 /命令..." rows="1" autocomplete="off" spellcheck="true"></textarea>
+            <button id="send-btn" class="icon-btn send-btn" aria-label="发送">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 10l14-7-4 7 4 7L3 10z" fill="currentColor"/></svg>
+            </button>
+            <button id="stop-btn" class="icon-btn stop-btn" aria-label="停止" style="display:none;">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="5" y="5" width="10" height="10" rx="2" fill="currentColor"/></svg>
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ============ 提供商 TAB ============ -->
+    <div id="panel-providers" class="tab-panel" role="tabpanel" hidden>
+      <div class="panel-content">
+        <div class="panel-header">
+          <h2>提供商</h2>
+          <button id="add-provider-btn" class="btn btn-accent">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+            添加提供商
+          </button>
+        </div>
+
+        <div class="filter-tabs" role="tablist">
+          <button class="filter-tab active" role="tab" aria-selected="true" data-filter="all">全部</button>
+          <button class="filter-tab" role="tab" aria-selected="false" data-filter="claude">Claude</button>
+          <button class="filter-tab" role="tab" aria-selected="false" data-filter="codex">Codex</button>
+          <button class="filter-tab" role="tab" aria-selected="false" data-filter="gemini">Gemini</button>
+        </div>
+
+        <div id="add-provider-form" class="provider-form-card" hidden>
+          <h3>添加新提供商</h3>
+          <form id="provider-form" autocomplete="off">
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="pf-name">名称</label>
+                <input id="pf-name" type="text" class="text-input" placeholder="例如 OpenRouter" required>
+              </div>
+              <div class="form-field">
+                <label for="pf-type">应用类型</label>
+                <select id="pf-type" class="select-control" required>
+                  <option value="claude">Claude</option>
+                  <option value="codex">Codex</option>
+                  <option value="gemini">Gemini</option>
+                </select>
+              </div>
+              <div class="form-field form-field-full">
+                <label for="pf-apikey">API Key</label>
+                <input id="pf-apikey" type="password" class="text-input" placeholder="sk-..." required>
+              </div>
+              <div class="form-field form-field-full">
+                <label for="pf-baseurl">Base URL</label>
+                <input id="pf-baseurl" type="url" class="text-input" placeholder="https://api.example.com/v1">
+              </div>
+              <div class="form-field form-field-full">
+                <label for="pf-model">模型</label>
+                <input id="pf-model" type="text" class="text-input" placeholder="claude-sonnet-4-20250514">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" id="pf-cancel" class="btn btn-ghost">取消</button>
+              <button type="submit" class="btn btn-accent">保存</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="provider-list" class="provider-list" role="list"></div>
+      </div>
+    </div>
+
+    <!-- ============ 设置 TAB ============ -->
+    <div id="panel-settings" class="tab-panel" role="tabpanel" hidden>
+      <div class="panel-content">
+        <h2 class="panel-header-title">设置</h2>
+
+        <section class="settings-section">
+          <h3 class="section-title">访问令牌</h3>
+          <div class="settings-card">
+            <div class="token-display">
+              <input id="settings-token" type="password" class="text-input token-input" readonly>
+              <button id="token-toggle-vis" class="icon-btn" aria-label="显示/隐藏令牌">
+                <svg class="eye-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 9s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z"/><circle cx="9" cy="9" r="2.5"/></svg>
+              </button>
+              <button id="token-copy" class="icon-btn" aria-label="复制令牌">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="10" height="10" rx="2"/><path d="M4 12H3a1 1 0 01-1-1V3a1 1 0 011-1h8a1 1 0 011 1v1"/></svg>
+              </button>
+            </div>
+            <p class="text-muted" style="font-size:0.75rem;margin-top:8px;">令牌由软件端管理，如需修改请在 AIMenu 应用中设置。</p>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="section-title">代理状态</h3>
+          <div class="settings-card">
+            <div class="proxy-status-grid">
+              <div class="status-item">
+                <span class="status-label">状态</span>
+                <span id="proxy-status-badge" class="status-badge stopped">已停止</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">端口</span>
+                <span id="proxy-port" class="status-value">--</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">账号数</span>
+                <span id="proxy-accounts" class="status-value">--</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="section-title">连接</h3>
+          <div class="settings-card">
+            <div class="proxy-status-grid">
+              <div class="status-item">
+                <span class="status-label">WebSocket</span>
+                <span id="ws-status-badge" class="status-badge stopped">未连接</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">服务器</span>
+                <span id="ws-server-url" class="status-value mono">--</span>
+              </div>
+            </div>
+            <div class="connection-actions">
+              <button id="disconnect-btn" class="btn btn-outline btn-danger">断开连接</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="section-title">关于</h3>
+          <div class="settings-card about-card">
+            <p><strong>AIMenu Web Remote</strong></p>
+            <p class="text-muted">基于浏览器的 AI 编程助手远程控制面板。连接 AIMenu 服务管理会话、提供商和代理设置。</p>
+            <p class="text-muted text-sm">版本 1.0.0</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
+  <script src="app.js"></script>
+</body>
+</html>

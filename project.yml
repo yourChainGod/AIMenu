@@ -14,15 +14,19 @@ targets:
       - path: Sources/AIMenu
     resources:
       - path: Sources/AIMenu/Resources
+    info:
+      path: Sources/AIMenu/Info.plist
+      properties:
+        LSUIElement: true
+        LSMinimumSystemVersion: "14.0"
+        CFBundleName: AIMenu
+        CFBundleDisplayName: AIMenu
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.aimenu.app
         PRODUCT_NAME: AIMenu
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleName: AIMenu
-        INFOPLIST_KEY_CFBundleDisplayName: AIMenu
-        INFOPLIST_KEY_LSMinimumSystemVersion: "14.0"
-        INFOPLIST_KEY_LSUIElement: YES
         CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 1.0.0
@@ -32,6 +36,9 @@ targets:
     deploymentTarget: "14.0"
     sources:
       - path: Tests/AIMenuTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: AIMenu
 schemes:

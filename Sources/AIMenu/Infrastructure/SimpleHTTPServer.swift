@@ -40,11 +40,17 @@ final class SimpleHTTPServer: @unchecked Sendable {
     private let queue: DispatchQueue
     private let handler: RequestHandler
 
-    init(port: UInt16, handler: @escaping RequestHandler) throws {
+    init(port: UInt16, loopbackOnly: Bool = true, handler: @escaping RequestHandler) throws {
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
             throw AppError.invalidData(L10n.tr("error.http_server.invalid_port_format", String(port)))
         }
-        self.listener = try NWListener(using: .tcp, on: nwPort)
+        let parameters: NWParameters = .tcp
+        if loopbackOnly {
+            parameters.requiredLocalEndpoint = NWEndpoint.hostPort(host: .ipv4(.loopback), port: nwPort)
+            self.listener = try NWListener(using: parameters)
+        } else {
+            self.listener = try NWListener(using: parameters, on: nwPort)
+        }
         self.queue = DispatchQueue(label: "codex.tools.swift.proxy.listener", qos: .userInitiated)
         self.handler = handler
     }
@@ -54,6 +60,31 @@ final class SimpleHTTPServer: @unchecked Sendable {
             self?.handle(connection: connection)
         }
         listener.start(queue: queue)
+    }
+
+    /// Start and wait for the listener to become ready (or fail).
+    func startAndWaitReady(timeout: TimeInterval = 5) async throws {
+        listener.newConnectionHandler = { [weak self] connection in
+            self?.handle(connection: connection)
+        }
+        let gate = HTTPReadinessGate()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            listener.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    gate.resume(continuation, with: .success(()))
+                case .failed(let error):
+                    gate.resume(continuation, with: .failure(error))
+                default:
+                    break
+                }
+            }
+            listener.start(queue: queue)
+
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
+                gate.resume(continuation, with: .failure(AppError.network("HTTP server failed to start within \(Int(timeout))s")))
+            }
+        }
     }
 
     func stop() {
@@ -237,5 +268,20 @@ final class SimpleHTTPServer: @unchecked Sendable {
         case 502: return "Bad Gateway"
         default: return "HTTP"
         }
+    }
+}
+
+// MARK: - Readiness Gate
+
+private final class HTTPReadinessGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var resumed = false
+
+    func resume(_ continuation: CheckedContinuation<Void, Error>, with result: Result<Void, Error>) {
+        lock.lock()
+        guard !resumed else { lock.unlock(); return }
+        resumed = true
+        lock.unlock()
+        continuation.resume(with: result)
     }
 }

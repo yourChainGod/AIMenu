@@ -1,5 +1,7 @@
 import Foundation
 import Combine
+import AppKit
+import UniformTypeIdentifiers
 
 @MainActor
 final class ProviderPageModel: ObservableObject {
@@ -108,5 +110,57 @@ final class ProviderPageModel: ObservableObject {
     func speedTest(_ provider: Provider) async {
         let result = await coordinator.testSpeed(for: provider)
         speedTestResults[provider.id] = result
+    }
+
+    // MARK: - Reorder
+
+    func moveProvider(draggedID: String, toID: String) async {
+        guard draggedID != toID else { return }
+        do {
+            try await coordinator.reorderProvider(draggedID: draggedID, beforeID: toID, appType: selectedApp)
+            await load()
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    // MARK: - Import / Export
+
+    func exportProviders() async {
+        do {
+            let data = try await coordinator.exportProviders()
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.json]
+            panel.nameFieldStringValue = "aimenu-providers-\(formattedDate()).json"
+            panel.title = L10n.tr("providers.export.title")
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            try data.write(to: url, options: .atomic)
+            notice = NoticeMessage(style: .success, text: L10n.tr("providers.notice.exported"))
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    func importProviders() async {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.title = L10n.tr("providers.import.title")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let imported = try await coordinator.importProviders(from: data)
+            await load()
+            notice = NoticeMessage(style: .success, text: L10n.tr("providers.notice.imported_format", String(imported)))
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    private func formattedDate() -> String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyyMMdd-HHmm"
+        return df.string(from: Date())
     }
 }

@@ -16,6 +16,7 @@ struct FileSystemPaths {
     var cursor2APIBinaryPath: URL
     var cursor2APIConfigPath: URL
     var cursor2APILogDirectory: URL
+    var webRemoteTokenPath: URL
 
     init(
         applicationSupportDirectory: URL,
@@ -29,7 +30,8 @@ struct FileSystemPaths {
         cursor2APIDirectory: URL? = nil,
         cursor2APIBinaryPath: URL? = nil,
         cursor2APIConfigPath: URL? = nil,
-        cursor2APILogDirectory: URL? = nil
+        cursor2APILogDirectory: URL? = nil,
+        webRemoteTokenPath: URL? = nil
     ) {
         let resolvedManagedToolsDirectory = managedToolsDirectory
             ?? applicationSupportDirectory.appendingPathComponent("managed-tools", isDirectory: true)
@@ -51,6 +53,8 @@ struct FileSystemPaths {
             ?? resolvedCursor2APIDirectory.appendingPathComponent("config.yaml", isDirectory: false)
         self.cursor2APILogDirectory = cursor2APILogDirectory
             ?? resolvedCursor2APIDirectory.appendingPathComponent("logs", isDirectory: true)
+        self.webRemoteTokenPath = webRemoteTokenPath
+            ?? applicationSupportDirectory.appendingPathComponent("web-remote.token", isDirectory: false)
     }
 
     init(
@@ -110,7 +114,8 @@ struct FileSystemPaths {
             cursor2APIDirectory: cursor2APIDirectory,
             cursor2APIBinaryPath: cursor2APIDirectory.appendingPathComponent("cursor2api-go", isDirectory: false),
             cursor2APIConfigPath: cursor2APIDirectory.appendingPathComponent("config.yaml", isDirectory: false),
-            cursor2APILogDirectory: cursor2APILogDirectory
+            cursor2APILogDirectory: cursor2APILogDirectory,
+            webRemoteTokenPath: appSupportDirectory.appendingPathComponent("web-remote.token", isDirectory: false)
         )
     }
 

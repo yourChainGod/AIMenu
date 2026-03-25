@@ -8,6 +8,7 @@ struct AppContainer {
     let toolsModel: ToolsPageModel
     let settingsModel: SettingsPageModel
     let trayModel: TrayMenuModel
+    let webCoordinator: WebCoordinator
 
     static func liveOrCrash() -> AppContainer {
         do {
@@ -63,6 +64,20 @@ struct AppContainer {
                 cloudflaredService: cloudflaredService,
                 providerCoordinator: providerCoordinator
             )
+            let webAuthService = WebRemoteAuthService(tokenFilePath: paths.webRemoteTokenPath)
+            let agentSessionStore = AgentSessionStore(
+                directory: paths.applicationSupportDirectory
+                    .appendingPathComponent("agent-sessions", isDirectory: true)
+            )
+            let agentRuntime = AgentRuntimeCoordinator(sessionStore: agentSessionStore)
+            let webCoordinator = WebCoordinator(
+                accountsCoordinator: accountsCoordinator,
+                providerCoordinator: providerCoordinator,
+                proxyCoordinator: proxyCoordinator,
+                authService: webAuthService,
+                agentRuntime: agentRuntime,
+                skillCoordinator: skillCoordinator
+            )
             let trayModel = TrayMenuModel(
                 accountsCoordinator: accountsCoordinator,
                 settingsCoordinator: settingsCoordinator,
@@ -106,10 +121,12 @@ struct AppContainer {
                     promptCoordinator: promptCoordinator,
                     skillCoordinator: skillCoordinator,
                     cursor2APIService: cursor2APIService,
-                    portService: portManagementService
+                    portService: portManagementService,
+                    webCoordinator: webCoordinator
                 ),
                 settingsModel: settingsModel,
-                trayModel: trayModel
+                trayModel: trayModel,
+                webCoordinator: webCoordinator
             )
         } catch {
             fatalError("Failed to bootstrap Swift migration app: \(error.localizedDescription)")

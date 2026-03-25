@@ -3,12 +3,146 @@ import AppKit
 
 struct ToolsServicesSection: View {
     @ObservedObject var model: ToolsPageModel
+    @State private var forceKillPort: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: LayoutRules.spacing12) {
+            webRemoteServiceCard
             cursor2APIServiceCard
             portToolsCard
         }
+        .confirmationDialog(
+            L10n.tr("tools.services.action.force_confirm_title"),
+            isPresented: Binding(get: { forceKillPort != nil }, set: { if !$0 { forceKillPort = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button(L10n.tr("tools.services.action.force"), role: .destructive) {
+                guard let port = forceKillPort else { return }
+                Task { await model.releaseTrackedPort(port, force: true) }
+            }
+        } message: {
+            if let port = forceKillPort {
+                Text(L10n.tr("tools.services.action.force_confirm_message_format", String(port)))
+            }
+        }
+    }
+
+    // MARK: - Web Remote
+
+    private var webRemoteServiceCard: some View {
+        VStack(alignment: .leading, spacing: LayoutRules.spacing8) {
+            // Header
+            HStack(alignment: .center, spacing: LayoutRules.spacing8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.cyan.opacity(OpacityScale.muted))
+                        .frame(width: 28, height: 28)
+                    Image(systemName: "globe")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.cyan)
+                }
+
+                Text(L10n.tr("tools.services.web_remote.title"))
+                    .font(.subheadline.weight(.semibold))
+
+                UnifiedBadge(
+                    text: model.webRemoteStatus.running ? L10n.tr("web_remote.status.running") : L10n.tr("web_remote.status.stopped"),
+                    tint: model.webRemoteStatus.running ? Color.cyan : Color.secondary
+                )
+
+                Spacer(minLength: 0)
+
+                Button {
+                    Task { await model.refreshWebRemoteStatus() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption.weight(.semibold))
+                }
+                .aimenuActionButtonStyle(density: .compact)
+                .help(L10n.tr("web_remote.action.refresh_status"))
+            }
+
+            // Port + Clients info
+            if model.webRemoteStatus.running {
+                HStack(spacing: LayoutRules.spacing6) {
+                    compactMetric(label: L10n.tr("tools.services.metric.http"), value: "\(model.webRemoteStatus.httpPort ?? 0)", tint: .cyan)
+                    compactMetric(label: L10n.tr("tools.services.metric.ws"), value: "\(model.webRemoteStatus.wsPort ?? 0)", tint: .cyan)
+                    compactMetric(label: L10n.tr("web_remote.label.clients"), value: "\(model.webRemoteStatus.connectedClients)", tint: .secondary)
+                }
+
+                // Token display + copy
+                HStack(spacing: 4) {
+                    Text(model.webRemoteToken)
+                        .font(.caption2.monospaced())
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                    Spacer(minLength: 0)
+                    CopyButton(text: model.webRemoteToken)
+                    Button(L10n.tr("web_remote.action.refresh_token")) {
+                        Task { await model.refreshWebRemoteToken() }
+                    }
+                    .aimenuActionButtonStyle(density: .compact)
+                }
+
+                // Copy URL
+                Button(L10n.tr("web_remote.action.copy_url")) {
+                    model.copyWebRemoteURL()
+                }
+                .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
+            } else {
+                // Port inputs (editable when stopped)
+                HStack(spacing: LayoutRules.spacing6) {
+                    HStack(spacing: 4) {
+                        Text(L10n.tr("tools.services.metric.http"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        TextField("9090", text: $model.webRemoteHTTPPortText)
+                            .font(.caption2.monospaced())
+                            .frame(width: 50)
+                            .multilineTextAlignment(.center)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    HStack(spacing: 4) {
+                        Text(L10n.tr("tools.services.metric.ws"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        TextField("9091", text: $model.webRemoteWSPortText)
+                            .font(.caption2.monospaced())
+                            .frame(width: 50)
+                            .multilineTextAlignment(.center)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                }
+            }
+
+            if let error = model.webRemoteStatus.lastError?.trimmedNonEmpty {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+            }
+
+            // Action buttons
+            HStack(spacing: LayoutRules.spacing6) {
+                if model.webRemoteStatus.running {
+                    Button(L10n.tr("web_remote.action.stop")) {
+                        Task { await model.stopWebRemote() }
+                    }
+                    .aimenuActionButtonStyle(prominent: true, tint: .red, density: .compact)
+                    .disabled(model.loading)
+                } else {
+                    Button(L10n.tr("web_remote.action.start")) {
+                        Task { await model.startWebRemote() }
+                    }
+                    .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
+                    .disabled(model.loading)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(LayoutRules.spacing10)
+        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: Color.cyan.opacity(OpacityScale.faint))
     }
 
     // MARK: - Cursor2API
@@ -26,11 +160,15 @@ struct ToolsServicesSection: View {
                         .foregroundStyle(.blue)
                 }
 
-                Text("Cursor2API")
+                Text(L10n.tr("tools.services.cursor2api.title"))
                     .font(.subheadline.weight(.semibold))
 
                 UnifiedBadge(
-                    text: model.cursor2APIStatus.running ? "运行中" : (model.cursor2APIStatus.installed ? "已安装" : "未安装"),
+                    text: model.cursor2APIStatus.running
+                        ? L10n.tr("tools.services.cursor2api.status.running")
+                        : (model.cursor2APIStatus.installed
+                            ? L10n.tr("tools.services.cursor2api.status.installed")
+                            : L10n.tr("tools.services.cursor2api.status.not_installed")),
                     tint: model.cursor2APIStatus.running ? Color.mint : Color.secondary
                 )
 
@@ -43,15 +181,15 @@ struct ToolsServicesSection: View {
                         .font(.caption.weight(.semibold))
                 }
                 .aimenuActionButtonStyle(density: .compact)
-                .help("刷新服务状态")
+                .help(L10n.tr("tools.services.action.refresh_service_status"))
             }
 
             // Compact info strip: port + API key + model in a single row
             HStack(spacing: LayoutRules.spacing6) {
-                compactMetric(label: "端口", value: "\(model.cursor2APIStatus.port)", tint: .blue)
-                compactMetric(label: "Key", value: ToolsHelpers.maskedSecret(model.cursor2APIStatus.apiKey), tint: .mint)
+                compactMetric(label: L10n.tr("tools.services.metric.port"), value: "\(model.cursor2APIStatus.port)", tint: .blue)
+                compactMetric(label: L10n.tr("tools.services.metric.api_key"), value: ToolsHelpers.maskedSecret(model.cursor2APIStatus.apiKey), tint: .mint)
                 compactMetric(
-                    label: "模型",
+                    label: L10n.tr("tools.services.metric.model"),
                     value: model.cursor2APIStatus.models.first ?? "claude-sonnet-4.6",
                     tint: .secondary
                 )
@@ -66,25 +204,25 @@ struct ToolsServicesSection: View {
 
             // Action buttons row
             HStack(spacing: LayoutRules.spacing6) {
-                Button(model.cursor2APIStatus.installed ? "重新安装" : "安装") {
+                Button(model.cursor2APIStatus.installed ? L10n.tr("tools.services.action.reinstall") : L10n.tr("tools.services.action.install")) {
                     Task { await model.installCursor2API() }
                 }
                 .aimenuActionButtonStyle(density: .compact)
 
                 if model.cursor2APIStatus.running {
-                    Button("停止") {
+                    Button(L10n.tr("common.action.stop")) {
                         Task { await model.stopCursor2API() }
                     }
                     .aimenuActionButtonStyle(prominent: true, tint: .red, density: .compact)
                 } else {
-                    Button("启动") {
+                    Button(L10n.tr("common.action.start")) {
                         Task { await model.startCursor2API() }
                     }
                     .aimenuActionButtonStyle(prominent: true, tint: .blue, density: .compact)
                     .disabled(!model.cursor2APIStatus.installed)
                 }
 
-                Button("应用到 Claude") {
+                Button(L10n.tr("tools.services.action.apply_to_claude")) {
                     Task { await model.applyCursor2APIToClaude() }
                 }
                 .aimenuActionButtonStyle(prominent: true, tint: .mint, density: .compact)
@@ -102,7 +240,7 @@ struct ToolsServicesSection: View {
                             .font(.caption2.weight(.bold))
                     }
                     .aimenuActionButtonStyle(density: .compact)
-                    .help("查看日志")
+                    .help(L10n.tr("tools.services.action.view_log"))
                 }
 
                 if model.cursor2APIStatus.configPath != nil {
@@ -115,7 +253,7 @@ struct ToolsServicesSection: View {
                             .font(.caption2.weight(.bold))
                     }
                     .aimenuActionButtonStyle(density: .compact)
-                    .help("查看配置")
+                    .help(L10n.tr("tools.services.action.view_config"))
                 }
             }
         }
@@ -149,7 +287,7 @@ struct ToolsServicesSection: View {
         VStack(alignment: .leading, spacing: LayoutRules.spacing8) {
             // Header with inline port input
             HStack(spacing: LayoutRules.spacing8) {
-                Label("端口管理", systemImage: "wave.3.right")
+                Label(L10n.tr("tools.services.port_management.title"), systemImage: "wave.3.right")
                     .font(.caption.weight(.semibold))
 
                 UnifiedBadge(
@@ -161,7 +299,7 @@ struct ToolsServicesSection: View {
 
                 // Inline port input + actions
                 HStack(spacing: LayoutRules.spacing4) {
-                    TextField("端口号", text: $model.customPortText)
+                    TextField(L10n.tr("tools.services.port.placeholder"), text: $model.customPortText)
                         .font(.caption2.monospaced())
                         .multilineTextAlignment(.center)
                         .frame(width: 68)
@@ -170,7 +308,7 @@ struct ToolsServicesSection: View {
                             Task { await model.addTrackedPort() }
                         }
 
-                    Button("关注") {
+                    Button(L10n.tr("tools.services.action.track")) {
                         Task { await model.addTrackedPort() }
                     }
                     .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
@@ -182,7 +320,7 @@ struct ToolsServicesSection: View {
                             .font(.caption2.weight(.bold))
                     }
                     .aimenuActionButtonStyle(density: .compact)
-                    .help("刷新端口状态")
+                    .help(L10n.tr("tools.services.action.refresh_port_status"))
                 }
             }
 
@@ -211,10 +349,10 @@ struct ToolsServicesSection: View {
                 .font(.system(.caption, design: .monospaced).weight(.semibold))
 
             if isDefaultTrackedPort(status.port) {
-                UnifiedBadge(text: "默认", tint: .secondary)
+                UnifiedBadge(text: L10n.tr("tools.services.port.default"), tint: .secondary)
             }
 
-            Text(status.command?.trimmedNonEmpty ?? "空闲")
+            Text(status.command?.trimmedNonEmpty ?? L10n.tr("tools.services.port.idle"))
                 .font(.caption2)
                 .foregroundStyle(status.occupied ? .primary : .tertiary)
                 .lineLimit(1)
@@ -223,28 +361,23 @@ struct ToolsServicesSection: View {
             Spacer(minLength: 0)
 
             HStack(spacing: LayoutRules.spacing4) {
-                Button("解除") {
+                Button(L10n.tr("tools.services.action.release")) {
                     Task { await model.releaseTrackedPort(status.port) }
                 }
                 .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
                 .disabled(!status.occupied)
 
-                Button("强制") {
-                    Task { await model.releaseTrackedPort(status.port, force: true) }
+                Button(L10n.tr("tools.services.action.force")) {
+                    forceKillPort = status.port
                 }
                 .aimenuActionButtonStyle(density: .compact)
                 .disabled(!status.occupied)
 
-                if !isDefaultTrackedPort(status.port) {
-                    Button {
-                        Task { await model.removeTrackedPort(status.port) }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption2.weight(.bold))
-                    }
-                    .liquidGlassActionButtonStyle(density: .compact)
-                    .help("移除此端口")
+                Button(L10n.tr("tools.services.action.untrack")) {
+                    Task { await model.untrackPort(status.port) }
                 }
+                .liquidGlassActionButtonStyle(density: .compact)
+                .help(L10n.tr("tools.services.action.untrack"))
             }
         }
         .padding(.horizontal, 8)
@@ -260,6 +393,30 @@ struct ToolsServicesSection: View {
     }
 
     private func isDefaultTrackedPort(_ port: Int) -> Bool {
-        [8002, 8787].contains(port)
+        ToolsPageModel.defaultTrackedPorts.contains(port)
+    }
+}
+
+// MARK: - Copy Button with Feedback
+
+private struct CopyButton: View {
+    let text: String
+    @State private var showCheckmark = false
+
+    var body: some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            withAnimation(.easeInOut(duration: 0.2)) { showCheckmark = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeInOut(duration: 0.2)) { showCheckmark = false }
+            }
+        } label: {
+            Image(systemName: showCheckmark ? "checkmark" : "doc.on.doc")
+                .font(.caption2)
+                .foregroundStyle(showCheckmark ? .green : .secondary)
+        }
+        .buttonStyle(.plain)
+        .help(L10n.tr("common.action.copy"))
     }
 }

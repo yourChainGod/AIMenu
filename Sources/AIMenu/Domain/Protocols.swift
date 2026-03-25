@@ -61,6 +61,7 @@ protocol PortManagementServiceProtocol: Sendable {
     func status(for port: Int) async -> ManagedPortStatus
     func terminate(port: Int) async throws -> ManagedPortStatus
     func forceKill(port: Int) async throws -> ManagedPortStatus
+    func scanListeningPorts() async -> [ManagedPortStatus]
 }
 
 protocol UpdateCheckingService: Sendable {

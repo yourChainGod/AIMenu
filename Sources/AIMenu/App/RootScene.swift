@@ -186,7 +186,7 @@ private struct WindowSizeEnforcer: NSViewRepresentable {
         if !window.styleMask.contains(.fullSizeContentView) {
             window.styleMask.insert(.fullSizeContentView)
         }
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
         window.tabbingMode = .disallowed
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true

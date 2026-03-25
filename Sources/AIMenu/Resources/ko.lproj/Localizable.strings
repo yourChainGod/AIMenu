@@ -620,3 +620,70 @@
 "providers.placeholder.leave_blank_skip" = "비워 두면 건너뜀";
 "providers.placeholder.price_input_example" = "예: 3.00";
 "providers.placeholder.price_output_example" = "예: 15.00";
+
+// Web Remote
+"web_remote.notice.started" = "Web Remote started";
+"web_remote.notice.stopped" = "Web Remote stopped";
+"web_remote.notice.token_refreshed" = "Access token refreshed";
+"web_remote.notice.url_copied" = "Access URL copied";
+"web_remote.status.running" = "Running";
+"web_remote.status.stopped" = "Stopped";
+"web_remote.action.start" = "Start";
+"web_remote.action.stop" = "Stop";
+"web_remote.action.refresh_token" = "Refresh Token";
+"web_remote.action.copy_url" = "Copy Browser URL";
+"web_remote.action.refresh_status" = "Refresh status";
+"web_remote.label.clients" = "Clients";
+
+// Provider Import/Export
+"providers.action.export" = "Export";
+"providers.action.import" = "Import";
+"providers.export.title" = "Export Providers";
+"providers.import.title" = "Import Providers";
+"providers.notice.exported" = "Providers exported successfully";
+"providers.notice.imported_format" = "Imported %@ new providers";
+"error.provider.import_empty" = "가져오기 파일에서 제공업체를 찾을 수 없습니다";
+
+/* Tools Services */
+"tools.services.web_remote.title" = "Web Remote";
+"tools.services.metric.http" = "HTTP";
+"tools.services.metric.ws" = "WS";
+"tools.services.cursor2api.title" = "Cursor2API";
+"tools.services.cursor2api.status.running" = "실행 중";
+"tools.services.cursor2api.status.installed" = "설치됨";
+"tools.services.cursor2api.status.not_installed" = "설치되지 않음";
+"tools.services.action.refresh_service_status" = "서비스 상태 새로고침";
+"tools.services.metric.port" = "포트";
+"tools.services.metric.api_key" = "Key";
+"tools.services.metric.model" = "모델";
+"tools.services.action.reinstall" = "다시 설치";
+"tools.services.action.install" = "설치";
+"tools.services.action.apply_to_claude" = "Claude에 적용";
+"tools.services.action.view_log" = "로그 보기";
+"tools.services.action.view_config" = "설정 보기";
+"tools.services.port_management.title" = "포트 관리";
+"tools.services.port.placeholder" = "포트 번호";
+"tools.services.action.track" = "추적";
+"tools.services.action.refresh_port_status" = "포트 상태 새로고침";
+"tools.services.port.default" = "기본";
+"tools.services.port.idle" = "유휴";
+"tools.services.action.release" = "해제";
+"tools.services.action.force" = "강제";
+"tools.services.action.untrack" = "숨기기";
+"tools.notice.port_untracked_format" = "포트 %@를 더 이상 표시하지 않습니다";
+
+// Common Actions
+"common.action.start" = "시작";
+"common.action.stop" = "중지";
+"common.action.copy" = "복사";
+
+// Web Remote Errors
+"web_remote.error.ports_must_differ" = "HTTP와 WebSocket 포트는 달라야 합니다";
+"web_remote.error.port_range" = "포트 번호는 1024~65535 사이여야 합니다";
+"web_remote.error.port_in_use_format" = "포트 %@는 %@에 의해 사용 중입니다";
+
+// Port Release
+"tools.notice.port_released_format" = "포트 %@ 해제됨";
+"tools.notice.port_force_released_format" = "포트 %@ 강제 해제됨";
+"tools.services.action.force_confirm_title" = "프로세스 강제 종료";
+"tools.services.action.force_confirm_message_format" = "포트 %@의 프로세스를 강제 종료합니다. 계속할까요?";

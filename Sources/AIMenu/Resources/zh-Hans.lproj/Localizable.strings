@@ -630,3 +630,70 @@
 "providers.placeholder.leave_blank_skip" = "留空跳过";
 "providers.placeholder.price_input_example" = "例：3.00";
 "providers.placeholder.price_output_example" = "例：15.00";
+
+// Web Remote
+"web_remote.notice.started" = "Web Remote 已启动";
+"web_remote.notice.stopped" = "Web Remote 已停止";
+"web_remote.notice.token_refreshed" = "访问令牌已刷新";
+"web_remote.notice.url_copied" = "访问 URL 已复制";
+"web_remote.status.running" = "运行中";
+"web_remote.status.stopped" = "已停止";
+"web_remote.action.start" = "启动";
+"web_remote.action.stop" = "停止";
+"web_remote.action.refresh_token" = "刷新 Token";
+"web_remote.action.copy_url" = "复制浏览器访问 URL";
+"web_remote.action.refresh_status" = "刷新状态";
+"web_remote.label.clients" = "客户端";
+
+// Provider Import/Export
+"providers.action.export" = "导出";
+"providers.action.import" = "导入";
+"providers.export.title" = "导出提供商";
+"providers.import.title" = "导入提供商";
+"providers.notice.exported" = "提供商已导出";
+"providers.notice.imported_format" = "已导入 %@ 个新提供商";
+"error.provider.import_empty" = "导入文件中没有找到提供商";
+
+/* Tools Services */
+"tools.services.web_remote.title" = "Web Remote";
+"tools.services.metric.http" = "HTTP";
+"tools.services.metric.ws" = "WS";
+"tools.services.cursor2api.title" = "Cursor2API";
+"tools.services.cursor2api.status.running" = "运行中";
+"tools.services.cursor2api.status.installed" = "已安装";
+"tools.services.cursor2api.status.not_installed" = "未安装";
+"tools.services.action.refresh_service_status" = "刷新服务状态";
+"tools.services.metric.port" = "端口";
+"tools.services.metric.api_key" = "Key";
+"tools.services.metric.model" = "模型";
+"tools.services.action.reinstall" = "重新安装";
+"tools.services.action.install" = "安装";
+"tools.services.action.apply_to_claude" = "应用到 Claude";
+"tools.services.action.view_log" = "查看日志";
+"tools.services.action.view_config" = "查看配置";
+"tools.services.port_management.title" = "端口管理";
+"tools.services.port.placeholder" = "端口号";
+"tools.services.action.track" = "关注";
+"tools.services.action.refresh_port_status" = "刷新端口状态";
+"tools.services.port.default" = "默认";
+"tools.services.port.idle" = "空闲";
+"tools.services.action.release" = "解除";
+"tools.services.action.force" = "强制";
+"tools.services.action.untrack" = "不关注";
+"tools.notice.port_untracked_format" = "端口 %@ 已设为不关注";
+
+// Common Actions
+"common.action.start" = "启动";
+"common.action.stop" = "停止";
+"common.action.copy" = "复制";
+
+// Web Remote Errors
+"web_remote.error.ports_must_differ" = "HTTP 和 WebSocket 端口不能相同";
+"web_remote.error.port_range" = "端口号须在 1024–65535 之间";
+"web_remote.error.port_in_use_format" = "端口 %@ 已被 %@ 占用";
+
+// Port Release
+"tools.notice.port_released_format" = "端口 %@ 已解除占用";
+"tools.notice.port_force_released_format" = "端口 %@ 已强制解除占用";
+"tools.services.action.force_confirm_title" = "强制终止进程";
+"tools.services.action.force_confirm_message_format" = "这将强制终止端口 %@ 上的进程，确定吗？";

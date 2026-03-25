@@ -1,6 +1,19 @@
 import Foundation
 
 actor ProviderConfigService {
+    struct LiveConfigFileSnapshot {
+        let path: URL
+        /// `nil` means the file did not exist at capture time (restore will skip/delete).
+        /// A non-nil value means the file existed and was read successfully.
+        let data: Data?
+        /// Whether the file existed on disk when the snapshot was captured.
+        let existedOnDisk: Bool
+    }
+
+    struct LiveConfigSnapshot {
+        let files: [LiveConfigFileSnapshot]
+    }
+
     struct ClaudeLiveOverrides: Equatable {
         var maxOutputTokens: Int?
         var apiTimeoutMs: Int?
@@ -66,6 +79,75 @@ actor ProviderConfigService {
         try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
         let data = try JSONEncoder.pretty.encode(store)
         try data.write(to: path, options: .atomic)
+    }
+
+    // MARK: - Backup
+
+    func backupProviderStore() throws {
+        let path = providerStorePath
+        guard fileManager.fileExists(atPath: path.path) else { return }
+        let backupDir = appSupportDirectory.appendingPathComponent("backups", isDirectory: true)
+        try fileManager.createDirectory(at: backupDir, withIntermediateDirectories: true)
+
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        let backupPath = backupDir.appendingPathComponent("providers-\(timestamp).json")
+        try fileManager.copyItem(at: path, to: backupPath)
+
+        // Keep only last 5 backups
+        let backups = (try? fileManager.contentsOfDirectory(at: backupDir, includingPropertiesForKeys: [.creationDateKey]))?.filter { $0.lastPathComponent.hasPrefix("providers-") }.sorted { $0.lastPathComponent > $1.lastPathComponent } ?? []
+        for old in backups.dropFirst(5) {
+            try? fileManager.removeItem(at: old)
+        }
+    }
+
+    func backupLiveConfig(for appType: ProviderAppType) throws {
+        let (path, name): (URL, String)
+        switch appType {
+        case .claude:
+            path = claudeSettingsPath
+            name = "settings.json"
+        case .codex:
+            path = codexConfigPath
+            name = "config.toml"
+        case .gemini:
+            path = geminiEnvPath
+            name = ".env"
+        }
+        guard fileManager.fileExists(atPath: path.path) else { return }
+        // Atomic backup: write to temp file then replace
+        let backupPath = path.deletingLastPathComponent().appendingPathComponent("\(name).backup")
+        let data = try Data(contentsOf: path)
+        try data.write(to: backupPath, options: .atomic)
+    }
+
+    /// Capture a strict snapshot: if a file exists but cannot be read, throw immediately.
+    func captureLiveConfigSnapshot(for appType: ProviderAppType) throws -> LiveConfigSnapshot {
+        let files = try liveConfigPaths(for: appType).map { path -> LiveConfigFileSnapshot in
+            let exists = fileManager.fileExists(atPath: path.path)
+            let data: Data? = exists ? try Data(contentsOf: path) : nil
+            return LiveConfigFileSnapshot(path: path, data: data, existedOnDisk: exists)
+        }
+        return LiveConfigSnapshot(files: files)
+    }
+
+    /// Restore a snapshot: only delete files that were absent at capture time.
+    func restoreLiveConfigSnapshot(_ snapshot: LiveConfigSnapshot) throws {
+        for file in snapshot.files {
+            if let data = file.data {
+                try fileManager.createDirectory(
+                    at: file.path.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                try data.write(to: file.path, options: .atomic)
+                applyPrivatePermissionsIfNeeded(to: file.path)
+            } else if !file.existedOnDisk, fileManager.fileExists(atPath: file.path.path) {
+                // File was absent at snapshot time but appeared after — remove it (rollback creation)
+                try fileManager.removeItem(at: file.path)
+            }
+            // If file existed but data was captured, it was already restored above.
+            // If file existed and data is nil, that's impossible with strict capture.
+        }
     }
 
     // MARK: - Switch Provider (Write to Live Config)
@@ -313,6 +395,17 @@ actor ProviderConfigService {
         homeDirectory.appendingPathComponent(".gemini/skills", isDirectory: true)
     }
 
+    private func liveConfigPaths(for appType: ProviderAppType) -> [URL] {
+        switch appType {
+        case .claude:
+            return [claudeSettingsPath]
+        case .codex:
+            return [codexAuthPath, codexConfigPath]
+        case .gemini:
+            return [geminiEnvPath]
+        }
+    }
+
     func writeGeminiConfig(_ config: GeminiSettingsConfig) throws {
         let envPath = geminiEnvPath
         try fileManager.createDirectory(at: envPath.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -348,7 +441,6 @@ actor ProviderConfigService {
         let testUrl: String
         switch appType {
         case .claude:
-            // Use a lightweight endpoint
             let base = baseUrl.isEmpty ? "https://api.anthropic.com" : baseUrl
             testUrl = "\(base.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/v1/models"
         case .codex:
@@ -1232,6 +1324,15 @@ actor ProviderConfigService {
         try fileManager.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
         let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: path, options: .atomic)
+        applyPrivatePermissionsIfNeeded(to: path)
+    }
+
+    private func applyPrivatePermissionsIfNeeded(to path: URL) {
+        #if canImport(Darwin)
+        if path == codexAuthPath {
+            _ = chmod(path.path, S_IRUSR | S_IWUSR)
+        }
+        #endif
     }
 
     private func installedSkillDirectoryURL(directory: String) -> URL {
