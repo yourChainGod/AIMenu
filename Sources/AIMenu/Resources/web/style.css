@@ -38,6 +38,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left:   env(safe-area-inset-left, 0px);
   --safe-right:  env(safe-area-inset-right, 0px);
+  --mobile-tabbar-h: 72px;
 }
 
 /* ---------- Reset & Base ---------- */
@@ -228,6 +229,30 @@ body {
   min-height: 1.2em;
 }
 
+.connection-guide {
+  display: none;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.connection-guide-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.connection-guide-list {
+  padding-left: 18px;
+  color: var(--text-sec);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
 /* ---------- App Shell ---------- */
 .app {
   display: flex;
@@ -326,6 +351,10 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.mobile-tabbar {
+  display: none;
 }
 
 /* Connection indicator */
@@ -777,6 +806,37 @@ body {
   border-top: 1px solid var(--border);
   padding: 10px 16px;
   padding-bottom: calc(10px + var(--safe-bottom));
+  flex-shrink: 0;
+}
+
+.mobile-quick-actions {
+  display: none;
+}
+
+.quick-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  color: var(--text-sec);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.quick-action-btn:hover {
+  color: var(--text);
+  border-color: var(--border-light);
+  background: rgba(255,255,255,0.06);
+}
+
+.quick-action-btn svg {
   flex-shrink: 0;
 }
 
@@ -1490,6 +1550,10 @@ body {
     display: none;
   }
 
+  .tab-nav {
+    display: none;
+  }
+
   .tab-btn span {
     display: none;
   }
@@ -1500,6 +1564,45 @@ body {
 
   .conn-label {
     display: none;
+  }
+
+  .connection-guide {
+    display: block;
+  }
+
+  .mobile-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px 12px;
+    padding-bottom: calc(10px + var(--safe-bottom));
+    background: rgba(26, 29, 39, 0.94);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(18px);
+    z-index: 260;
+  }
+
+  .mobile-tabbar .tab-btn {
+    flex-direction: column;
+    gap: 4px;
+    min-height: 52px;
+    padding: 8px 6px;
+    color: var(--text-dim);
+  }
+
+  .mobile-tabbar .tab-btn span {
+    display: block;
+    font-size: 0.6875rem;
+    line-height: 1.1;
+  }
+
+  .mobile-tabbar .tab-btn.active {
+    color: var(--accent);
+    background: var(--accent-bg);
   }
 
   /* Sidebar becomes a drawer */
@@ -1558,7 +1661,26 @@ body {
   /* Chat controls more compact */
   .chat-controls {
     padding: 8px 10px;
-    padding-bottom: calc(8px + var(--safe-bottom));
+    padding-bottom: calc(16px + var(--mobile-tabbar-h) + var(--safe-bottom));
+  }
+
+  .mobile-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .quick-action-btn {
+    flex-direction: column;
+    gap: 4px;
+    min-height: 52px;
+    padding: 8px 6px;
+  }
+
+  .quick-action-btn span {
+    font-size: 0.6875rem;
+    line-height: 1.1;
   }
 
   .controls-row {
@@ -1617,6 +1739,7 @@ body {
   /* Panel content */
   .panel-content {
     padding: 14px;
+    padding-bottom: calc(96px + var(--safe-bottom));
   }
 
   .form-grid {

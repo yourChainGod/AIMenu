@@ -82,6 +82,7 @@
     dom.messageInput    = $('#message-input');
     dom.sendBtn         = $('#send-btn');
     dom.stopBtn         = $('#stop-btn');
+    dom.mobileQuickActionBtns = $$('[data-quick-action]');
     dom.addProviderBtn  = $('#add-provider-btn');
     dom.addProviderForm = $('#add-provider-form');
     dom.providerForm    = $('#provider-form');
@@ -1371,6 +1372,27 @@
     }
   }
 
+  function handleQuickAction(action) {
+    switch (action) {
+      case 'sessions':
+        switchTab('chat');
+        toggleSidebar();
+        break;
+      case 'new-session':
+        switchTab('chat');
+        createSession();
+        break;
+      case 'providers':
+        switchTab('providers');
+        break;
+      case 'settings':
+        switchTab('settings');
+        break;
+      default:
+        break;
+    }
+  }
+
   // ── Input Handling ─────────────────────────────────────────────────────
 
   function autoResizeInput() {
@@ -1521,6 +1543,12 @@
     dom.tabBtns.forEach(function (btn) {
       btn.addEventListener('click', function () {
         switchTab(btn.dataset.tab);
+      });
+    });
+
+    dom.mobileQuickActionBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        handleQuickAction(btn.dataset.quickAction);
       });
     });
 
