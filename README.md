@@ -11,9 +11,20 @@
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black?logo=apple&logoColor=white)](https://www.apple.com/macos/)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![Menu Bar App](https://img.shields.io/badge/App-Menu%20Bar-4F46E5)](https://github.com/yourChainGod/AIMenu)
+[![Release](https://img.shields.io/badge/Release-v1.0.6-2563EB)](https://github.com/yourChainGod/AIMenu/releases/tag/v1.0.6)
 [![i18n: 11 languages](https://img.shields.io/badge/i18n-11%20languages-2563EB)](#国际化)
 
 </div>
+
+---
+
+## 下载
+
+- 最新版本：[`v1.0.6`](https://github.com/yourChainGod/AIMenu/releases/tag/v1.0.6)
+- DMG 安装包：[`AIMenu-1.0.6.dmg`](https://github.com/yourChainGod/AIMenu/releases/download/v1.0.6/AIMenu-1.0.6.dmg)
+- 安装方式：打开 DMG，把 `AIMenu.app` 拖到 `Applications`
+
+当前 release 已提供可下载 DMG。若后续补上 Developer ID 与 notarization，README 会再同步更新分发说明。
 
 ---
 
@@ -110,6 +121,13 @@ Claude Code、Codex、Gemini 都在写各自的本地配置：
 - 托管 [cursor2api-go](https://github.com/yourChainGod/cursor2api-go)，自动生成配置、拉起进程、健康检查、收集日志
 - 内置端口管理，可查看 PID、进程名，并执行解除占用 / 强制解除占用
 
+### 6. Web Remote
+
+- 提供局域网可访问的 Web Remote 页面
+- Tools 页支持直接打开浏览器、复制访问链接、二维码扫码连接
+- 移动端补齐底部标签栏、快捷操作区、连接摘要与认证提示
+- 适合在手机或平板上远程查看状态、切换账号与执行快捷操作
+
 ---
 
 ## 写入哪些文件
@@ -156,7 +174,7 @@ AIMenu
 - 原子写入与损坏恢复
 - 认证文件权限控制（如 `chmod 600`）
 - Rust 本地代理内核
-- 17 个测试文件覆盖账号、供应商、代理、工具页、本地服务等核心逻辑
+- 26 个测试文件覆盖账号、供应商、代理、工具页、本地服务、Web Remote 等核心逻辑
 
 ---
 
