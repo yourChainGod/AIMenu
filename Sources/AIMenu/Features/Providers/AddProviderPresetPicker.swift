@@ -24,23 +24,7 @@ extension AddProviderSheet {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.primary.opacity(OpacityScale.ghost),
-                                    accentTint.opacity(0.02)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
-                        )
-                )
+                .providerInsetSurface(accent: accentTint)
 
                 HStack(spacing: 8) {
                     if searchText.isEmpty {
@@ -141,17 +125,20 @@ extension AddProviderSheet {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 8)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color.primary.opacity(OpacityScale.ghost),
-                        accentTint.opacity(0.02),
-                        Color.clear
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .background {
+                ZStack {
+                    Color(nsColor: .windowBackgroundColor).opacity(0.96)
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.015),
+                            accentTint.opacity(0.008),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            }
             .overlay(alignment: .top) {
                 Rectangle()
                     .fill(Color.primary.opacity(OpacityScale.subtle))
@@ -174,7 +161,7 @@ extension AddProviderSheet {
                     .font(.caption2.weight(.bold))
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
-                    .background((isActive ? accentTint : Color.primary).opacity(isActive ? 0.15 : 0.08), in: Capsule())
+                    .background((isActive ? accentTint : Color.primary).opacity(isActive ? 0.10 : 0.06), in: Capsule())
             }
             .lineLimit(1)
         }
@@ -198,7 +185,11 @@ extension AddProviderSheet {
         .padding(.vertical, 6)
         .background(
             Capsule()
-                .fill((tint == .secondary ? Color.primary : tint).opacity(OpacityScale.subtle))
+                .fill((tint == .secondary ? Color.primary : tint).opacity(tint == .secondary ? 0.05 : 0.08))
+                .overlay(
+                    Capsule()
+                        .strokeBorder((tint == .secondary ? Color.primary : tint).opacity(0.10), lineWidth: 1)
+                )
         )
     }
 }

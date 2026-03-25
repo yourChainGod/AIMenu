@@ -9,6 +9,63 @@ struct ProviderPreviewBlockData {
     let onApply: (String) throws -> Void
 }
 
+// MARK: - Provider Modal Inset Surface
+
+struct ProviderInsetSurfaceModifier: ViewModifier {
+    let accent: Color
+    let cornerRadius: CGFloat
+    let emphasis: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
+                                Color.white.opacity(emphasis ? 0.018 : 0.012),
+                                accent.opacity(emphasis ? 0.018 : 0.008)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(
+                        emphasis
+                            ? accent.opacity(0.14)
+                            : Color.primary.opacity(OpacityScale.subtle),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(
+                color: .black.opacity(emphasis ? 0.035 : OpacityScale.ghost),
+                radius: emphasis ? 6 : 2,
+                x: 0,
+                y: emphasis ? 3 : 1
+            )
+    }
+}
+
+extension View {
+    func providerInsetSurface(
+        accent: Color,
+        cornerRadius: CGFloat = 12,
+        emphasis: Bool = false
+    ) -> some View {
+        modifier(
+            ProviderInsetSurfaceModifier(
+                accent: accent,
+                cornerRadius: cornerRadius,
+                emphasis: emphasis
+            )
+        )
+    }
+}
+
 // MARK: - Provider Config Preview Block
 
 struct ProviderConfigPreviewBlock: View {
@@ -49,7 +106,7 @@ struct ProviderConfigPreviewBlock: View {
                         Text(title)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.primary)
-                        UnifiedBadge(text: L10n.tr("providers.preview.badge.editable"), tint: accent)
+                        UnifiedBadge(text: L10n.tr("providers.preview.badge.editable"), tint: .secondary)
                     }
                     Text(subtitle)
                         .font(.caption2)
@@ -96,7 +153,7 @@ struct ProviderConfigPreviewBlock: View {
 
                 Spacer(minLength: 0)
 
-                UnifiedBadge(text: L10n.tr("providers.preview.badge.live_editable"), tint: accent)
+                UnifiedBadge(text: L10n.tr("providers.preview.badge.live_editable"), tint: .secondary)
             }
 
             TextEditor(text: $draft)
@@ -107,44 +164,18 @@ struct ProviderConfigPreviewBlock: View {
                 .frame(minHeight: 360, alignment: .topLeading)
                 .background(
                     RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.primary.opacity(OpacityScale.ghost),
-                                    accent.opacity(0.018)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(Color(nsColor: .textBackgroundColor).opacity(0.94))
                         .overlay(
                             RoundedRectangle(cornerRadius: 11, style: .continuous)
                                 .strokeBorder(
-                                    draftIsInvalidJSON ? Color.red.opacity(0.4) : accent.opacity(OpacityScale.subtle),
+                                    draftIsInvalidJSON ? Color.red.opacity(0.4) : Color.primary.opacity(OpacityScale.subtle),
                                     lineWidth: draftIsInvalidJSON ? 1.5 : 1
                                 )
                         )
                 )
         }
         .padding(11)
-        .background(
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
-                            Color.white.opacity(OpacityScale.ghost),
-                            accent.opacity(0.015)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
-                )
-        )
+        .providerInsetSurface(accent: accent, cornerRadius: 13)
         .onChange(of: content) { _, newValue in
             if draft == lastGeneratedContent {
                 draft = newValue
@@ -235,23 +266,7 @@ struct ProviderModelInputRow: View {
             .frame(minWidth: 132)
         }
         .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.primary.opacity(OpacityScale.ghost),
-                            accent.opacity(0.018)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
-                )
-        )
+        .providerInsetSurface(accent: accent)
     }
 }
 
@@ -301,24 +316,7 @@ struct ClaudeCommonConfigControls: View {
                 .foregroundStyle(.secondary)
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
-                            Color.white.opacity(OpacityScale.ghost),
-                            accent.opacity(0.015)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
-                )
-        )
+        .providerInsetSurface(accent: accent)
     }
 
     private func claudeQuickToggle(_ title: String, isOn: Binding<Bool>) -> some View {
@@ -765,7 +763,7 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
                 } label: {
                     Text(option.title)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(isSelected ? accent : .secondary)
+                        .foregroundStyle(isSelected ? Color.primary : Color.secondary)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .minimumScaleFactor(0.82)
@@ -773,15 +771,25 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
                         .frame(minHeight: 34)
                         .padding(.horizontal, 8)
                         .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(
+                                    isSelected
+                                        ? Color(nsColor: .windowBackgroundColor).opacity(OpacityScale.opaque)
+                                        : Color.clear
+                                )
+                                .overlay(
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(isSelected ? accent.opacity(OpacityScale.subtle) : Color.clear)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .strokeBorder(
-                                                    isSelected ? accent.opacity(OpacityScale.muted) : Color.primary.opacity(OpacityScale.subtle),
-                                                    lineWidth: 1
-                                                )
+                                        .strokeBorder(
+                                            isSelected ? accent.opacity(0.16) : Color.primary.opacity(OpacityScale.subtle),
+                                            lineWidth: 1
                                         )
+                                )
+                                .shadow(
+                                    color: isSelected ? accent.opacity(0.05) : .clear,
+                                    radius: 4,
+                                    x: 0,
+                                    y: 2
+                                )
                         )
                 }
                 .frame(maxWidth: .infinity)
@@ -789,24 +797,7 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
             }
         }
         .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
-                            Color.white.opacity(OpacityScale.ghost),
-                            accent.opacity(0.015)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
-                )
-        )
+        .providerInsetSurface(accent: accent, cornerRadius: 13)
     }
 }
 
@@ -847,15 +838,15 @@ struct PresetRow: View {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(
                                 isSelected
-                                    ? rowTint.opacity(OpacityScale.subtle)
-                                    : Color.primary.opacity(OpacityScale.subtle)
+                                    ? rowTint.opacity(0.10)
+                                    : Color.primary.opacity(OpacityScale.faint)
                             )
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(preset.name)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(isSelected ? rowTint : .primary)
+                        .foregroundStyle(.primary)
                         .lineLimit(2)
 
                     HStack(spacing: 6) {
@@ -864,7 +855,7 @@ struct PresetRow: View {
                             .foregroundStyle(isSelected ? rowTint : .secondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background((isSelected ? rowTint : Color.primary).opacity(isSelected ? 0.08 : 0.05), in: Capsule())
+                            .background((isSelected ? rowTint : Color.primary).opacity(isSelected ? 0.10 : 0.05), in: Capsule())
 
                         if preset.isPartner {
                             Text(L10n.tr("providers.preset.partner"))
@@ -879,7 +870,7 @@ struct PresetRow: View {
 
                 Spacer(minLength: 0)
 
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "arrow.up.right.circle")
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "chevron.right")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(isSelected ? rowTint : Color.secondary.opacity(OpacityScale.solid))
             }
@@ -896,23 +887,7 @@ struct PresetRow: View {
         .frame(maxWidth: .infinity)
         .frame(minHeight: 108, alignment: .topLeading)
         .padding(13)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            isSelected ? rowTint.opacity(OpacityScale.subtle) : Color.primary.opacity(OpacityScale.subtle),
-                            Color.primary.opacity(isSelected ? 0.02 : 0.016)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(isSelected ? rowTint.opacity(OpacityScale.muted) : Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
-                )
-        )
+        .providerInsetSurface(accent: rowTint, cornerRadius: 14, emphasis: isSelected)
         .contentShape(RoundedRectangle(cornerRadius: 14))
     }
 

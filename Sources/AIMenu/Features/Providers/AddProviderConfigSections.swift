@@ -26,6 +26,8 @@ extension AddProviderSheet {
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(showConfigPreview ? 90 : 0))
                 }
+                .padding(10)
+                .providerInsetSurface(accent: accentTint)
             }
             .buttonStyle(.plain)
 
@@ -84,6 +86,8 @@ extension AddProviderSheet {
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(showProxyConfig ? 90 : 0))
                 }
+                .padding(10)
+                .providerInsetSurface(accent: accentTint)
             }
             .buttonStyle(.plain)
 
@@ -143,6 +147,8 @@ extension AddProviderSheet {
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(showBillingConfig ? 90 : 0))
                 }
+                .padding(10)
+                .providerInsetSurface(accent: accentTint)
             }
             .buttonStyle(.plain)
 

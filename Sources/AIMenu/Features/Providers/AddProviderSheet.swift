@@ -408,17 +408,20 @@ struct AddProviderSheet: View {
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color.primary.opacity(OpacityScale.ghost),
-                        accentTint.opacity(0.02),
-                        Color.clear
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .background {
+                ZStack {
+                    Color(nsColor: .windowBackgroundColor).opacity(0.96)
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.015),
+                            accentTint.opacity(0.008),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            }
             .overlay(alignment: .top) {
                 Rectangle()
                     .fill(Color.primary.opacity(OpacityScale.subtle))
@@ -468,10 +471,19 @@ struct AddProviderSheet: View {
                                 .padding(.vertical, 5)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(selection.wrappedValue == modelID ? accentTint.opacity(OpacityScale.muted) : Color.primary.opacity(OpacityScale.faint))
+                                        .fill(
+                                            selection.wrappedValue == modelID
+                                                ? accentTint.opacity(0.08)
+                                                : Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque)
+                                        )
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                .strokeBorder(selection.wrappedValue == modelID ? accentTint.opacity(OpacityScale.accent) : Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
+                                                .strokeBorder(
+                                                    selection.wrappedValue == modelID
+                                                        ? accentTint.opacity(0.18)
+                                                        : Color.primary.opacity(OpacityScale.subtle),
+                                                    lineWidth: 1
+                                                )
                                         )
                                 )
                                 .foregroundStyle(selection.wrappedValue == modelID ? accentTint : .secondary)

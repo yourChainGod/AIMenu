@@ -60,6 +60,8 @@ extension AddProviderSheet {
                             .foregroundStyle(.tertiary)
                             .rotationEffect(.degrees(claude.showAdvanced ? 90 : 0))
                     }
+                    .padding(10)
+                    .providerInsetSurface(accent: accentTint)
                 }
                 .buttonStyle(.plain)
 
