@@ -694,6 +694,13 @@
 "web_remote.label.local_device" = "This Mac";
 "web_remote.label.lan_format" = "LAN %@";
 "web_remote.description.lan_hint" = "Keep your phone on the same Wi-Fi as this Mac, then open one of the LAN addresses.";
+"web_remote.action.show_qr" = "Scan QR";
+"web_remote.modal.qr_title" = "Scan to Connect";
+"web_remote.modal.qr_description" = "Use your phone camera to open Web Remote in the browser.";
+"web_remote.modal.qr_lan_hint" = "Recommended for phones: keep this Mac and your phone on the same Wi-Fi.";
+"web_remote.modal.qr_local_hint" = "No LAN address detected. You can still open this URL on the same Mac.";
+"web_remote.modal.qr_unavailable" = "QR code unavailable";
+"web_remote.modal.qr_copy_hint" = "The copied link includes the access token. Paste it into your phone browser if scanning fails.";
 
 "providers.action.move_to_top" = "Move to Top";
 "providers.action.move_to_bottom" = "Move to Bottom";

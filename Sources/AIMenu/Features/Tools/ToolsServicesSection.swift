@@ -128,10 +128,17 @@ struct ToolsServicesSection: View {
                 }
 
                 HStack(spacing: LayoutRules.spacing6) {
+                    if model.webRemoteQRCodeTarget != nil {
+                        Button(L10n.tr("web_remote.action.show_qr")) {
+                            model.showWebRemoteQRCode()
+                        }
+                        .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
+                    }
+
                     Button(L10n.tr("web_remote.action.open_url")) {
                         model.openWebRemoteURL()
                     }
-                    .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
+                    .aimenuActionButtonStyle(density: .compact)
 
                     Button(L10n.tr("web_remote.action.copy_url")) {
                         model.copyWebRemoteURL()

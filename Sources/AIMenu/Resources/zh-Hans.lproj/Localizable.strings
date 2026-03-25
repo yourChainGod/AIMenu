@@ -704,6 +704,13 @@
 "web_remote.label.local_device" = "本机";
 "web_remote.label.lan_format" = "局域网 %@";
 "web_remote.description.lan_hint" = "保持手机与这台 Mac 连接同一 Wi‑Fi，然后打开任一局域网地址。";
+"web_remote.action.show_qr" = "扫码连接";
+"web_remote.modal.qr_title" = "扫码连接 Web Remote";
+"web_remote.modal.qr_description" = "用手机相机扫描后，即可在浏览器中打开 Web Remote。";
+"web_remote.modal.qr_lan_hint" = "建议手机使用：请让手机与这台 Mac 连接同一 Wi‑Fi。";
+"web_remote.modal.qr_local_hint" = "当前未检测到局域网地址，仍可在这台 Mac 上直接打开。";
+"web_remote.modal.qr_unavailable" = "当前无法生成二维码";
+"web_remote.modal.qr_copy_hint" = "复制的链接已包含访问令牌；如果扫码失败，可粘贴到手机浏览器打开。";
 
 "providers.action.move_to_top" = "置顶";
 "providers.action.move_to_bottom" = "置底";

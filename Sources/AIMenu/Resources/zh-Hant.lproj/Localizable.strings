@@ -694,6 +694,13 @@
 "web_remote.label.local_device" = "本機";
 "web_remote.label.lan_format" = "區域網路 %@";
 "web_remote.description.lan_hint" = "讓手機與這台 Mac 連上同一個 Wi‑Fi，再開啟任一區域網路位址。";
+"web_remote.action.show_qr" = "掃碼連線";
+"web_remote.modal.qr_title" = "掃碼連線 Web Remote";
+"web_remote.modal.qr_description" = "用手機相機掃描後，即可在瀏覽器中開啟 Web Remote。";
+"web_remote.modal.qr_lan_hint" = "建議手機使用：請讓手機與這台 Mac 連上同一個 Wi‑Fi。";
+"web_remote.modal.qr_local_hint" = "目前未偵測到區域網路位址，仍可在這台 Mac 上直接開啟。";
+"web_remote.modal.qr_unavailable" = "目前無法產生 QR Code";
+"web_remote.modal.qr_copy_hint" = "複製的連結已包含存取權杖；若掃碼失敗，可貼到手機瀏覽器開啟。";
 
 "providers.action.move_to_top" = "置頂";
 "providers.action.move_to_bottom" = "置底";

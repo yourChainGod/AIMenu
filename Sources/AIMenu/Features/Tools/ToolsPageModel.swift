@@ -49,6 +49,7 @@ final class ToolsPageModel: ObservableObject {
     @Published var webRemoteToken: String = ""
     @Published var webRemoteHTTPPortText = "9090"
     @Published var webRemoteWSPortText = "9091"
+    @Published var showingWebRemoteQRCode = false
     @Published var loading = false
     @Published var notice: NoticeMessage? {
         didSet { noticeScheduler.schedule(notice) { [weak self] in self?.notice = nil } }
@@ -641,6 +642,7 @@ final class ToolsPageModel: ObservableObject {
         loading = true
         defer { loading = false }
         webRemoteStatus = await webCoordinator.stop()
+        showingWebRemoteQRCode = false
         notice = NoticeMessage(style: .info, text: L10n.tr("web_remote.notice.stopped"))
     }
 
@@ -648,6 +650,8 @@ final class ToolsPageModel: ObservableObject {
         webRemoteStatus = await webCoordinator.status()
         if webRemoteStatus.running {
             webRemoteToken = await webCoordinator.currentToken()
+        } else {
+            showingWebRemoteQRCode = false
         }
     }
 
@@ -671,6 +675,15 @@ final class ToolsPageModel: ObservableObject {
         notice = NoticeMessage(style: .success, text: L10n.tr("web_remote.notice.opened_in_browser"))
     }
 
+    func showWebRemoteQRCode() {
+        guard webRemoteQRCodeTarget != nil else { return }
+        showingWebRemoteQRCode = true
+    }
+
+    func hideWebRemoteQRCode() {
+        showingWebRemoteQRCode = false
+    }
+
     var webRemoteReachableURLs: [WebRemoteReachableURL] {
         guard let httpPort = webRemoteStatus.httpPort,
               let wsPort = webRemoteStatus.wsPort else { return [] }
@@ -684,6 +697,14 @@ final class ToolsPageModel: ObservableObject {
 
     var webRemoteAccessURL: String {
         webRemoteReachableURLs.first?.browserURL ?? ""
+    }
+
+    var webRemoteQRCodeTarget: WebRemoteReachableURL? {
+        Self.preferredMobileWebRemoteURL(from: webRemoteReachableURLs)
+    }
+
+    var webRemoteQRCodeURL: String {
+        webRemoteQRCodeTarget?.browserURL ?? ""
     }
 
     nonisolated static func makeWebRemoteReachableURLs(
@@ -717,6 +738,12 @@ final class ToolsPageModel: ObservableObject {
             )
         }
         return urls
+    }
+
+    nonisolated static func preferredMobileWebRemoteURL(
+        from urls: [WebRemoteReachableURL]
+    ) -> WebRemoteReachableURL? {
+        urls.first(where: \.isLAN) ?? urls.first
     }
 
     private nonisolated static func webRemoteDisplayURL(host: String, httpPort: Int, wsPort: Int) -> String {

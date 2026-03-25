@@ -1,5 +1,7 @@
 import SwiftUI
 import AppKit
+import CoreImage
+import CoreImage.CIFilterBuiltins
 
 struct ToolsPageView: View {
     enum PageMode {
@@ -97,6 +99,14 @@ struct ToolsPageView: View {
                         onCancel: closeInstalledSkillEditor
                     )
                 }
+            } else if model.showingWebRemoteQRCode, let target = model.webRemoteQRCodeTarget {
+                ModalOverlay(accent: .cyan, onDismiss: closeWebRemoteQRCode) {
+                    WebRemoteQRCodeSheet(
+                        target: target,
+                        onCopy: { model.copyWebRemoteURL(target.browserURL) },
+                        onDismiss: closeWebRemoteQRCode
+                    )
+                }
             }
         }
         .task {
@@ -127,7 +137,8 @@ struct ToolsPageView: View {
         showPromptEditor ||
         showSkillRepoEditor ||
         model.previewingDiscoverableSkillDocument != nil ||
-        model.editingInstalledSkillDocument != nil
+        model.editingInstalledSkillDocument != nil ||
+        (model.showingWebRemoteQRCode && model.webRemoteQRCodeTarget != nil)
     }
 
     private func closeMCPForm() {
@@ -150,6 +161,10 @@ struct ToolsPageView: View {
 
     private func closeInstalledSkillEditor() {
         model.editingInstalledSkillDocument = nil
+    }
+
+    private func closeWebRemoteQRCode() {
+        model.hideWebRemoteQRCode()
     }
 
     // MARK: - Content Routing
@@ -336,5 +351,155 @@ struct ToolsPageView: View {
         case .skills:
             return .orange
         }
+    }
+}
+
+private struct WebRemoteQRCodeSheet: View {
+    let target: ToolsPageModel.WebRemoteReachableURL
+    let onCopy: () -> Void
+    let onDismiss: () -> Void
+
+    private let qrCodeSize: CGFloat = 250
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            header
+            hintCard
+            qrCodeCard
+            linkCard
+            footer
+        }
+        .padding(LayoutRules.spacing20)
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: LayoutRules.spacing12) {
+            VStack(alignment: .leading, spacing: LayoutRules.spacing6) {
+                Text(L10n.tr("web_remote.modal.qr_title"))
+                    .font(.title3.weight(.semibold))
+
+                Text(L10n.tr("web_remote.modal.qr_description"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Button(L10n.tr("common.close")) {
+                onDismiss()
+            }
+            .aimenuActionButtonStyle(density: .compact)
+        }
+    }
+
+    private var hintCard: some View {
+        VStack(alignment: .leading, spacing: LayoutRules.spacing8) {
+            UnifiedBadge(
+                text: target.label,
+                tint: target.isLAN ? .mint : .secondary
+            )
+
+            Text(
+                target.isLAN
+                ? L10n.tr("web_remote.modal.qr_lan_hint")
+                : L10n.tr("web_remote.modal.qr_local_hint")
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(LayoutRules.spacing12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: Color.cyan.opacity(OpacityScale.faint))
+    }
+
+    private var qrCodeCard: some View {
+        VStack(spacing: LayoutRules.spacing12) {
+            if let qrCodeImage {
+                Image(nsImage: qrCodeImage)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: qrCodeSize, height: qrCodeSize)
+                    .padding(LayoutRules.spacing12)
+                    .background(
+                        RoundedRectangle(cornerRadius: LayoutRules.radiusCard, style: .continuous)
+                            .fill(Color.white)
+                    )
+            } else {
+                VStack(spacing: LayoutRules.spacing8) {
+                    Image(systemName: "qrcode")
+                        .font(.system(size: 42, weight: .medium))
+                        .foregroundStyle(.secondary)
+
+                    Text(L10n.tr("web_remote.modal.qr_unavailable"))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: qrCodeSize + 24)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(16)
+        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: Color.secondary.opacity(OpacityScale.faint))
+    }
+
+    private var linkCard: some View {
+        VStack(alignment: .leading, spacing: LayoutRules.spacing8) {
+            Text(L10n.tr("common.url"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(target.browserURL)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .lineLimit(3)
+                .truncationMode(.middle)
+
+            Text(L10n.tr("web_remote.modal.qr_copy_hint"))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(LayoutRules.spacing12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: Color.secondary.opacity(OpacityScale.faint))
+    }
+
+    private var footer: some View {
+        HStack(spacing: LayoutRules.spacing8) {
+            Button(L10n.tr("web_remote.action.copy_url")) {
+                onCopy()
+            }
+            .aimenuActionButtonStyle(prominent: true, tint: .cyan, density: .compact)
+
+            Spacer(minLength: 0)
+
+            Button(L10n.tr("common.close")) {
+                onDismiss()
+            }
+            .aimenuActionButtonStyle(density: .compact)
+        }
+    }
+
+    private var qrCodeImage: NSImage? {
+        Self.makeQRCodeImage(from: target.browserURL, size: qrCodeSize)
+    }
+
+    private static func makeQRCodeImage(from text: String, size: CGFloat) -> NSImage? {
+        guard let payload = text.data(using: .utf8) else { return nil }
+
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = payload
+        filter.correctionLevel = "M"
+
+        guard let outputImage = filter.outputImage else { return nil }
+
+        let scaleX = size / outputImage.extent.width
+        let scaleY = size / outputImage.extent.height
+        let scaledImage = outputImage.transformed(by: .init(scaleX: scaleX, y: scaleY))
+        let context = CIContext()
+
+        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
+        return NSImage(cgImage: cgImage, size: NSSize(width: size, height: size))
     }
 }

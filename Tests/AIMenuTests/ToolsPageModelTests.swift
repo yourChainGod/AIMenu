@@ -199,6 +199,34 @@ final class ToolsPageModelTests: XCTestCase {
         XCTAssertEqual(model.webRemoteAccessURL, "http://127.0.0.1:9090?wsPort=9091#token=token-xyz")
     }
 
+    func testPreferredMobileWebRemoteURLPrefersLANTarget() {
+        let urls = ToolsPageModel.makeWebRemoteReachableURLs(
+            httpPort: 9090,
+            wsPort: 9091,
+            token: "token-123",
+            lanHosts: ["192.168.1.8", "10.0.0.6"]
+        )
+
+        let target = ToolsPageModel.preferredMobileWebRemoteURL(from: urls)
+
+        XCTAssertEqual(target?.host, "192.168.1.8")
+        XCTAssertEqual(target?.browserURL, "http://192.168.1.8:9090?wsPort=9091#token=token-123")
+    }
+
+    func testPreferredMobileWebRemoteURLFallsBackToLocalTarget() {
+        let urls = ToolsPageModel.makeWebRemoteReachableURLs(
+            httpPort: 9090,
+            wsPort: 9091,
+            token: "token-123",
+            lanHosts: []
+        )
+
+        let target = ToolsPageModel.preferredMobileWebRemoteURL(from: urls)
+
+        XCTAssertEqual(target?.host, "127.0.0.1")
+        XCTAssertFalse(target?.isLAN ?? true)
+    }
+
     private func makeModel(
         cursor2APIService: any Cursor2APIServiceProtocol = StubCursor2APIService(),
         portService: any PortManagementServiceProtocol = StubPortManagementService()
