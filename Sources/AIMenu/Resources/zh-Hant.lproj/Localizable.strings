@@ -694,3 +694,6 @@
 "web_remote.label.local_device" = "本機";
 "web_remote.label.lan_format" = "區域網路 %@";
 "web_remote.description.lan_hint" = "讓手機與這台 Mac 連上同一個 Wi‑Fi，再開啟任一區域網路位址。";
+
+"providers.action.move_to_top" = "置頂";
+"providers.action.move_to_bottom" = "置底";

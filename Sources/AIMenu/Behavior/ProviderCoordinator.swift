@@ -298,6 +298,44 @@ actor ProviderCoordinator {
         try await configService.saveProviderStore(store)
     }
 
+    func moveProviderToTop(id: String, appType: ProviderAppType) async throws {
+        try await moveProvider(id: id, appType: appType, destination: .top)
+    }
+
+    func moveProviderToBottom(id: String, appType: ProviderAppType) async throws {
+        try await moveProvider(id: id, appType: appType, destination: .bottom)
+    }
+
+    private enum ProviderMoveDestination {
+        case top
+        case bottom
+    }
+
+    private func moveProvider(
+        id: String,
+        appType: ProviderAppType,
+        destination: ProviderMoveDestination
+    ) async throws {
+        var store = try await configService.loadProviderStore()
+        var list = store.providers.filter { $0.appType == appType }.sorted { $0.sortIndex < $1.sortIndex }
+        guard let index = list.firstIndex(where: { $0.id == id }) else { return }
+
+        let provider = list.remove(at: index)
+        switch destination {
+        case .top:
+            list.insert(provider, at: 0)
+        case .bottom:
+            list.append(provider)
+        }
+
+        for (sortIndex, provider) in list.enumerated() {
+            if let storeIndex = store.providers.firstIndex(where: { $0.id == provider.id }) {
+                store.providers[storeIndex].sortIndex = sortIndex
+            }
+        }
+        try await configService.saveProviderStore(store)
+    }
+
     // MARK: - Import / Export
 
     func exportProviders() async throws -> Data {

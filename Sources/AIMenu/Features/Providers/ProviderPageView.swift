@@ -223,6 +223,8 @@ struct ProviderPageView: View {
     private func providerRow(_ provider: Provider) -> some View {
         let isHovered = hoveredProvider == provider.id
         let rowAccent = providerIconColor(provider)
+        let isTopProvider = model.providers.first?.id == provider.id
+        let isBottomProvider = model.providers.last?.id == provider.id
 
         HStack(alignment: .center, spacing: 10) {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -330,6 +332,17 @@ struct ProviderPageView: View {
         .contentShape(Rectangle())
         .onHover { hoveredProvider = $0 ? provider.id : nil }
         .animation(AnimationPreset.snappy, value: isHovered)
+        .contextMenu {
+            Button(L10n.tr("providers.action.move_to_top")) {
+                Task { await model.moveProviderToTop(provider) }
+            }
+            .disabled(isTopProvider)
+
+            Button(L10n.tr("providers.action.move_to_bottom")) {
+                Task { await model.moveProviderToBottom(provider) }
+            }
+            .disabled(isBottomProvider)
+        }
     }
 
     private func providerTinyButton(icon: String, tint: Color, tooltip: String, action: @escaping () -> Void) -> some View {

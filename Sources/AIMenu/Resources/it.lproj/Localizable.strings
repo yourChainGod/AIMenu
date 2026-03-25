@@ -694,3 +694,6 @@
 "web_remote.label.local_device" = "This Mac";
 "web_remote.label.lan_format" = "LAN %@";
 "web_remote.description.lan_hint" = "Keep your phone on the same Wi-Fi as this Mac, then open one of the LAN addresses.";
+
+"providers.action.move_to_top" = "Move to Top";
+"providers.action.move_to_bottom" = "Move to Bottom";

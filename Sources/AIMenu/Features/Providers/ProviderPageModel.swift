@@ -137,6 +137,24 @@ final class ProviderPageModel: ObservableObject {
         }
     }
 
+    func moveProviderToTop(_ provider: Provider) async {
+        do {
+            try await coordinator.moveProviderToTop(id: provider.id, appType: selectedApp)
+            await load()
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
+    func moveProviderToBottom(_ provider: Provider) async {
+        do {
+            try await coordinator.moveProviderToBottom(id: provider.id, appType: selectedApp)
+            await load()
+        } catch {
+            notice = NoticeMessage(style: .error, text: error.localizedDescription)
+        }
+    }
+
     // MARK: - Import / Export
 
     func exportProviders() async {

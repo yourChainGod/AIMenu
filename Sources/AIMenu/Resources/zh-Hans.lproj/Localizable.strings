@@ -704,3 +704,6 @@
 "web_remote.label.local_device" = "本机";
 "web_remote.label.lan_format" = "局域网 %@";
 "web_remote.description.lan_hint" = "保持手机与这台 Mac 连接同一 Wi‑Fi，然后打开任一局域网地址。";
+
+"providers.action.move_to_top" = "置顶";
+"providers.action.move_to_bottom" = "置底";

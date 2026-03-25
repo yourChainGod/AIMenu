@@ -63,6 +63,40 @@ final class ProviderPageModelTests: XCTestCase {
         XCTAssertEqual(model.currentProvider?.id, "second")
     }
 
+    func testMoveProviderToTopAndBottomUpdatesOrdering() async throws {
+        let tempHome = try makeTemporaryHome()
+        defer { try? FileManager.default.removeItem(at: tempHome) }
+
+        let service = ProviderConfigService(homeDirectory: tempHome)
+        let coordinator = ProviderCoordinator(configService: service)
+        let model = ProviderPageModel(coordinator: coordinator)
+
+        var first = ProviderPresets.claudePresets[0].makeProvider(apiKey: "sk-first")
+        first.id = "first"
+        first.name = "First"
+
+        var second = ProviderPresets.claudePresets[1].makeProvider(apiKey: "sk-second")
+        second.id = "second"
+        second.name = "Second"
+
+        var third = ProviderPresets.claudePresets[2].makeProvider(apiKey: "sk-third")
+        third.id = "third"
+        third.name = "Third"
+
+        _ = try await coordinator.addProvider(first)
+        _ = try await coordinator.addProvider(second)
+        _ = try await coordinator.addProvider(third)
+
+        await model.load()
+        let secondProvider = try XCTUnwrap(model.providers.first(where: { $0.id == "second" }))
+        await model.moveProviderToTop(secondProvider)
+        XCTAssertEqual(model.providers.map(\.id), ["second", "first", "third"])
+
+        let movedProvider = try XCTUnwrap(model.providers.first(where: { $0.id == "second" }))
+        await model.moveProviderToBottom(movedProvider)
+        XCTAssertEqual(model.providers.map(\.id), ["first", "third", "second"])
+    }
+
     private func makeTemporaryHome() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
