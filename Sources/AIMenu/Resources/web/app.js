@@ -64,6 +64,13 @@
     dom.connStatus      = $('#conn-status');
     dom.connDot         = dom.connStatus.querySelector('.conn-dot');
     dom.connLabel       = dom.connStatus.querySelector('.conn-label');
+    dom.connSummary     = $('#connection-summary');
+    dom.connSummaryBadge= $('#conn-summary-badge');
+    dom.connSummaryTitle= $('#conn-summary-title');
+    dom.connSummaryHint = $('#conn-summary-hint');
+    dom.connSummaryUrl  = $('#conn-summary-url');
+    dom.connSettingsBtn = $('#conn-settings-btn');
+    dom.connActionBtn   = $('#conn-action-btn');
     dom.tabBtns         = $$('.tab-btn');
     dom.tabPanels       = $$('.tab-panel');
     dom.sidebarToggle   = $('#sidebar-toggle');
@@ -171,13 +178,29 @@
     }).join('');
   }
 
+  function getEntryUrl() {
+    if (location.origin && location.origin !== 'null') {
+      return location.origin;
+    }
+    var port = location.port ? ':' + location.port : '';
+    return location.protocol + '//' + (location.hostname || '127.0.0.1') + port;
+  }
+
+  function clearReconnectTimer() {
+    if (state.reconnectTimer) {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = null;
+    }
+  }
+
   // ── WebSocket ──────────────────────────────────────────────────────────
 
   function getWsUrl() {
     var params = new URLSearchParams(location.search);
     var wsPort = params.get('wsPort') || (parseInt(location.port || '9090') + 1).toString();
     var host = location.hostname || '127.0.0.1';
-    return 'ws://' + host + ':' + wsPort;
+    var protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    return protocol + host + ':' + wsPort;
   }
 
   function connect() {
@@ -226,10 +249,7 @@
   }
 
   function disconnect() {
-    if (state.reconnectTimer) {
-      clearTimeout(state.reconnectTimer);
-      state.reconnectTimer = null;
-    }
+    clearReconnectTimer();
     state.reconnectAttempts = 0;
     if (state.ws) {
       state.ws.onclose = null;
@@ -262,25 +282,101 @@
     }
   }
 
-  function updateConnectionStatus(status) {
-    dom.connStatus.className = 'conn-indicator ' + status;
+  function reconnectNow() {
+    if (!state.token) {
+      showAuth();
+      return;
+    }
 
+    clearReconnectTimer();
+    state.reconnectAttempts = 0;
+
+    if (state.ws) {
+      try {
+        state.ws.onclose = null;
+        state.ws.close();
+      } catch (e) {
+        // ignore close failure
+      }
+      state.ws = null;
+    }
+
+    state.connected = false;
+    connect();
+  }
+
+  function handleDisconnectRequest() {
+    disconnect();
+    stopPing();
+    state.token = '';
+    localStorage.removeItem(STORAGE_TOKEN_KEY);
+    showAuth();
+    toast('已断开连接', 'info');
+  }
+
+  function updateConnectionStatus(status) {
     var labels = {
       connected: '在线',
       connecting: '连接中',
       disconnected: '离线'
     };
-    dom.connLabel.textContent = labels[status] || status;
-    dom.connStatus.title = labels[status] || status;
-    dom.connStatus.setAttribute('aria-label', 'Connection status: ' + (labels[status] || status));
+    var badgeStates = {
+      connected: 'running',
+      connecting: 'pending',
+      disconnected: 'stopped'
+    };
+    var summaryBadges = {
+      connected: '已连接',
+      connecting: '重连中',
+      disconnected: '未连接'
+    };
+    var summaryTitles = {
+      connected: '已连接桌面端',
+      connecting: '正在恢复连接',
+      disconnected: '桌面端暂时不可达'
+    };
+    var summaryHints = {
+      connected: '会话、提供商和设置都可以直接同步操作。',
+      connecting: '保持页面开启，系统会自动重连桌面端。',
+      disconnected: '确认 AIMenu 仍在运行，并优先使用同一局域网入口。'
+    };
+    var label = labels[status] || status;
+    var wsUrl = getWsUrl();
+    var entryUrl = getEntryUrl();
+
+    dom.connStatus.className = 'conn-indicator ' + status;
+    dom.connLabel.textContent = label;
+    dom.connStatus.title = label;
+    dom.connStatus.setAttribute('aria-label', '连接状态：' + label);
+
+    dom.connSummary.className = 'connection-summary ' + status;
+    dom.connSummaryBadge.className = 'status-badge ' + (badgeStates[status] || 'stopped');
+    dom.connSummaryBadge.textContent = summaryBadges[status] || status;
+    dom.connSummaryTitle.textContent = summaryTitles[status] || summaryTitles.disconnected;
+    dom.connSummaryHint.textContent = summaryHints[status] || summaryHints.disconnected;
+    dom.connSummaryUrl.textContent = entryUrl;
+    dom.connSummaryUrl.title = entryUrl;
+    dom.wsServerUrl.textContent = wsUrl;
 
     // Settings panel WS status
     if (status === 'connected') {
       dom.wsStatusBadge.className = 'status-badge running';
       dom.wsStatusBadge.textContent = '已连接';
+      dom.connActionBtn.className = 'btn btn-outline btn-danger btn-sm';
+      dom.connActionBtn.textContent = '断开';
+      dom.connActionBtn.disabled = false;
+    } else if (status === 'connecting') {
+      dom.wsStatusBadge.className = 'status-badge pending';
+      dom.wsStatusBadge.textContent = '连接中';
+      dom.connActionBtn.className = 'btn btn-outline btn-sm';
+      dom.connActionBtn.textContent = '连接中';
+      dom.connActionBtn.disabled = true;
     } else {
       dom.wsStatusBadge.className = 'status-badge stopped';
-      dom.wsStatusBadge.textContent = status === 'connecting' ? '连接中...' : '未连接';
+      dom.wsStatusBadge.textContent = '未连接';
+      dom.connActionBtn.className = 'btn btn-accent btn-sm';
+      dom.connActionBtn.textContent = '重新连接';
+      dom.connActionBtn.disabled = false;
     }
   }
 
@@ -374,6 +470,8 @@
       // Start ping interval
       startPing();
     } else {
+      state.connected = false;
+      updateConnectionStatus('disconnected');
       dom.authError.textContent = msg.message || '认证失败';
       showAuth();
     }
@@ -1552,6 +1650,17 @@
       });
     });
 
+    dom.connSettingsBtn.addEventListener('click', function () {
+      switchTab('settings');
+    });
+    dom.connActionBtn.addEventListener('click', function () {
+      if (state.connected) {
+        handleDisconnectRequest();
+      } else if (!dom.connActionBtn.disabled) {
+        reconnectNow();
+      }
+    });
+
     // Sidebar
     dom.sidebarToggle.addEventListener('click', toggleSidebar);
     dom.sidebarBackdrop.addEventListener('click', closeSidebar);
@@ -1599,14 +1708,7 @@
     dom.tokenCopy.addEventListener('click', copyToken);
 
     // Settings - Disconnect
-    dom.disconnectBtn.addEventListener('click', function () {
-      disconnect();
-      stopPing();
-      state.token = '';
-      localStorage.removeItem(STORAGE_TOKEN_KEY);
-      showAuth();
-      toast('已断开连接', 'info');
-    });
+    dom.disconnectBtn.addEventListener('click', handleDisconnectRequest);
 
     // Directory browse
     dom.browseDirBtn.addEventListener('click', function () {
@@ -1643,6 +1745,7 @@
     cacheDom();
     bindEvents();
     updateCwdDatalist();
+    updateConnectionStatus(state.token ? 'connecting' : 'disconnected');
 
     // Ensure stop button is hidden initially
     dom.stopBtn.style.display = 'none';
