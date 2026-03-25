@@ -29,8 +29,8 @@ extension AddProviderSheet {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    accentTint.opacity(OpacityScale.muted),
-                                    Color.primary.opacity(OpacityScale.faint)
+                                    Color.primary.opacity(OpacityScale.ghost),
+                                    accentTint.opacity(0.02)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -38,7 +38,7 @@ extension AddProviderSheet {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(accentTint.opacity(OpacityScale.accent), lineWidth: 1)
+                                .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
                         )
                 )
 
@@ -144,7 +144,8 @@ extension AddProviderSheet {
             .background(
                 LinearGradient(
                     colors: [
-                        accentTint.opacity(OpacityScale.faint),
+                        Color.primary.opacity(OpacityScale.ghost),
+                        accentTint.opacity(0.02),
                         Color.clear
                     ],
                     startPoint: .topLeading,
@@ -153,7 +154,7 @@ extension AddProviderSheet {
             )
             .overlay(alignment: .top) {
                 Rectangle()
-                    .fill(accentTint.opacity(OpacityScale.muted))
+                    .fill(Color.primary.opacity(OpacityScale.subtle))
                     .frame(height: 1)
             }
         }
@@ -197,7 +198,7 @@ extension AddProviderSheet {
         .padding(.vertical, 6)
         .background(
             Capsule()
-                .fill((tint == .secondary ? Color.primary : tint).opacity(OpacityScale.muted))
+                .fill((tint == .secondary ? Color.primary : tint).opacity(OpacityScale.subtle))
         )
     }
 }

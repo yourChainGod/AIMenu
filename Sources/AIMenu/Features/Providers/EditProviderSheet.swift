@@ -162,7 +162,7 @@ struct EditProviderSheet: View {
             .padding(.bottom, 6)
 
             Rectangle()
-                .fill(accentTint.opacity(OpacityScale.subtle))
+                .fill(Color.primary.opacity(OpacityScale.subtle))
                 .frame(height: 1)
 
             ScrollView {
@@ -255,7 +255,8 @@ struct EditProviderSheet: View {
             .background(
                 LinearGradient(
                     colors: [
-                        accentTint.opacity(OpacityScale.subtle),
+                        Color.primary.opacity(OpacityScale.ghost),
+                        accentTint.opacity(0.02),
                         Color.clear
                     ],
                     startPoint: .topLeading,
@@ -264,7 +265,7 @@ struct EditProviderSheet: View {
             )
             .overlay(alignment: .top) {
                 Rectangle()
-                    .fill(accentTint.opacity(OpacityScale.muted))
+                    .fill(Color.primary.opacity(OpacityScale.subtle))
                     .frame(height: 1)
             }
         }

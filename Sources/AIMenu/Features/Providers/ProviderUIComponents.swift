@@ -110,8 +110,8 @@ struct ProviderConfigPreviewBlock: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.black.opacity(OpacityScale.ghost),
-                                    accent.opacity(OpacityScale.ghost)
+                                    Color.primary.opacity(OpacityScale.ghost),
+                                    accent.opacity(0.018)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -133,7 +133,8 @@ struct ProviderConfigPreviewBlock: View {
                     LinearGradient(
                         colors: [
                             Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
-                            accent.opacity(OpacityScale.ghost)
+                            Color.white.opacity(OpacityScale.ghost),
+                            accent.opacity(0.015)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -141,7 +142,7 @@ struct ProviderConfigPreviewBlock: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .strokeBorder(accent.opacity(OpacityScale.subtle), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
                 )
         )
         .onChange(of: content) { _, newValue in
@@ -239,8 +240,8 @@ struct ProviderModelInputRow: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            accent.opacity(OpacityScale.faint),
-                            accent.opacity(0.012)
+                            Color.primary.opacity(OpacityScale.ghost),
+                            accent.opacity(0.018)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -248,7 +249,7 @@ struct ProviderModelInputRow: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(accent.opacity(OpacityScale.subtle), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
                 )
         )
     }
@@ -306,7 +307,8 @@ struct ClaudeCommonConfigControls: View {
                     LinearGradient(
                         colors: [
                             Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
-                            accent.opacity(OpacityScale.ghost)
+                            Color.white.opacity(OpacityScale.ghost),
+                            accent.opacity(0.015)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -314,7 +316,7 @@ struct ClaudeCommonConfigControls: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(accent.opacity(OpacityScale.subtle), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
                 )
         )
     }
@@ -544,11 +546,11 @@ extension ProviderAppType {
     var formAccent: Color {
         switch self {
         case .claude:
-            return Color(hex: "#D4915D")
+            return Color(hex: "#B88B68")
         case .codex:
-            return Color(hex: "#3A82F7")
+            return Color(hex: "#5F89E2")
         case .gemini:
-            return Color(hex: "#1FA67A")
+            return Color(hex: "#4FA58C")
         }
     }
 
@@ -771,15 +773,15 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
                         .frame(minHeight: 34)
                         .padding(.horizontal, 8)
                         .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(isSelected ? accent.opacity(OpacityScale.muted) : Color.clear)
-                                .overlay(
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .strokeBorder(
-                                            isSelected ? accent.opacity(OpacityScale.accent) : Color.primary.opacity(OpacityScale.subtle),
-                                            lineWidth: 1
+                                        .fill(isSelected ? accent.opacity(OpacityScale.subtle) : Color.clear)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .strokeBorder(
+                                                    isSelected ? accent.opacity(OpacityScale.muted) : Color.primary.opacity(OpacityScale.subtle),
+                                                    lineWidth: 1
+                                                )
                                         )
-                                )
                         )
                 }
                 .frame(maxWidth: .infinity)
@@ -793,7 +795,8 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
                     LinearGradient(
                         colors: [
                             Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
-                            accent.opacity(OpacityScale.faint)
+                            Color.white.opacity(OpacityScale.ghost),
+                            accent.opacity(0.015)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -801,7 +804,7 @@ struct ProviderSegmentedControl<Selection: Hashable>: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .strokeBorder(accent.opacity(OpacityScale.muted), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
                 )
         )
     }
@@ -844,7 +847,7 @@ struct PresetRow: View {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(
                                 isSelected
-                                    ? rowTint.opacity(OpacityScale.medium)
+                                    ? rowTint.opacity(OpacityScale.subtle)
                                     : Color.primary.opacity(OpacityScale.subtle)
                             )
                     )
@@ -861,7 +864,7 @@ struct PresetRow: View {
                             .foregroundStyle(isSelected ? rowTint : .secondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background((isSelected ? rowTint : Color.primary).opacity(isSelected ? 0.12 : 0.06), in: Capsule())
+                            .background((isSelected ? rowTint : Color.primary).opacity(isSelected ? 0.08 : 0.05), in: Capsule())
 
                         if preset.isPartner {
                             Text(L10n.tr("providers.preset.partner"))
@@ -898,8 +901,8 @@ struct PresetRow: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            isSelected ? rowTint.opacity(OpacityScale.medium) : Color.primary.opacity(OpacityScale.subtle),
-                            Color.primary.opacity(isSelected ? 0.028 : 0.02)
+                            isSelected ? rowTint.opacity(OpacityScale.subtle) : Color.primary.opacity(OpacityScale.subtle),
+                            Color.primary.opacity(isSelected ? 0.02 : 0.016)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -907,7 +910,7 @@ struct PresetRow: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(isSelected ? rowTint.opacity(OpacityScale.overlay) : Color.primary.opacity(OpacityScale.muted), lineWidth: 1)
+                        .strokeBorder(isSelected ? rowTint.opacity(OpacityScale.muted) : Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
                 )
         )
         .contentShape(RoundedRectangle(cornerRadius: 14))

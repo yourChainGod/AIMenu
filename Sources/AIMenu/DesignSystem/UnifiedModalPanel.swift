@@ -22,29 +22,28 @@ struct UnifiedModalPanel<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             ZStack {
-                // 1. Opaque base
                 RoundedRectangle(cornerRadius: LayoutRules.radiusModal, style: .continuous)
                     .fill(Color(nsColor: .windowBackgroundColor).opacity(OpacityScale.opaque))
-                // 2. Accent gradient tint
+
                 RoundedRectangle(cornerRadius: LayoutRules.radiusModal, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                accent.opacity(OpacityScale.medium),
-                                accent.opacity(OpacityScale.faint),
-                                Color.white.opacity(OpacityScale.ghost)
+                                Color.white.opacity(OpacityScale.ghost),
+                                accent.opacity(OpacityScale.ghost),
+                                accent.opacity(0.015)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                // 3. Top gloss layer
+
                 VStack(spacing: 0) {
                     RoundedRectangle(cornerRadius: LayoutRules.radiusModal, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(OpacityScale.accent),
+                                    Color.white.opacity(OpacityScale.subtle),
                                     Color.white.opacity(OpacityScale.ghost),
                                     Color.clear
                                 ],
@@ -52,17 +51,17 @@ struct UnifiedModalPanel<Content: View>: View {
                                 endPoint: .bottom
                             )
                         )
-                        .frame(height: 110)
+                        .frame(height: 88)
                     Spacer(minLength: 0)
                 }
-                // 4. Gradient border
+
                 RoundedRectangle(cornerRadius: LayoutRules.radiusModal, style: .continuous)
                     .strokeBorder(
                         LinearGradient(
                             colors: [
-                                accent.opacity(OpacityScale.accent),
-                                Color.white.opacity(OpacityScale.medium),
-                                Color.black.opacity(OpacityScale.subtle)
+                                Color.white.opacity(OpacityScale.subtle),
+                                accent.opacity(OpacityScale.subtle),
+                                Color.black.opacity(OpacityScale.ghost)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -72,8 +71,8 @@ struct UnifiedModalPanel<Content: View>: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: LayoutRules.radiusModal, style: .continuous))
-        .shadow(color: accent.opacity(OpacityScale.muted), radius: 16, x: 0, y: 6)
-        .shadow(color: .black.opacity(OpacityScale.medium), radius: 28, x: 0, y: 14)
+        .shadow(color: accent.opacity(OpacityScale.ghost), radius: 10, x: 0, y: 4)
+        .shadow(color: .black.opacity(OpacityScale.muted), radius: 24, x: 0, y: 14)
     }
 }
 
@@ -85,7 +84,7 @@ struct ModalOverlay<ModalContent: View>: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Color.black.opacity(OpacityScale.accent)
+                Color.black.opacity(OpacityScale.overlay)
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
                     .onTapGesture {}

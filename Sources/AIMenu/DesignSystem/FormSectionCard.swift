@@ -30,7 +30,7 @@ struct FormSectionCard<Content: View>: View {
                 HStack(alignment: .top, spacing: LayoutRules.spacing10) {
                     if let icon {
                         RoundedRectangle(cornerRadius: LayoutRules.radiusMedium, style: .continuous)
-                            .fill(accent.opacity(OpacityScale.subtle))
+                            .fill(accent.opacity(OpacityScale.ghost))
                             .overlay {
                                 Image(systemName: icon)
                                     .font(.system(size: 11, weight: .semibold))
@@ -59,7 +59,8 @@ struct FormSectionCard<Content: View>: View {
                     LinearGradient(
                         colors: [
                             Color(nsColor: .controlBackgroundColor).opacity(OpacityScale.opaque),
-                            accent.opacity(emphasis ? OpacityScale.faint : OpacityScale.ghost)
+                            Color.white.opacity(OpacityScale.ghost),
+                            accent.opacity(emphasis ? OpacityScale.ghost : 0.015)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -68,14 +69,16 @@ struct FormSectionCard<Content: View>: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: LayoutRules.radiusCard, style: .continuous)
                         .strokeBorder(
-                            accent.opacity(emphasis ? OpacityScale.muted : OpacityScale.subtle),
+                            emphasis
+                                ? accent.opacity(OpacityScale.subtle)
+                                : Color.primary.opacity(OpacityScale.subtle),
                             lineWidth: 1
                         )
                 )
         )
         .shadow(
-            color: accent.opacity(OpacityScale.ghost),
-            radius: emphasis ? 10 : 4,
+            color: .black.opacity(OpacityScale.ghost),
+            radius: emphasis ? 8 : 3,
             x: 0,
             y: emphasis ? 4 : 2
         )
