@@ -60,6 +60,13 @@ struct ProviderPageView: View {
                 toolBar
                     .padding(.horizontal, LayoutRules.pagePadding)
 
+                if !model.providers.isEmpty {
+                    providerSummaryPanel
+                        .padding(.horizontal, LayoutRules.pagePadding)
+                    providerSearchField
+                        .padding(.horizontal, LayoutRules.pagePadding)
+                }
+
                 if model.loading && model.providers.isEmpty {
                     ProgressView(L10n.tr("providers.loading"))
                         .frame(maxWidth: .infinity, minHeight: 120)
@@ -72,9 +79,13 @@ struct ProviderPageView: View {
                         tint: pageAccent
                     )
                     .padding(.horizontal, LayoutRules.pagePadding)
+                } else if model.filteredProviders.isEmpty {
+                    ContentUnavailableView.search(text: model.providerSearchText)
+                        .frame(maxWidth: .infinity, minHeight: 180)
+                        .padding(.horizontal, LayoutRules.pagePadding)
                 } else {
                     LazyVStack(spacing: 2) {
-                        ForEach(model.providers) { provider in
+                        ForEach(model.filteredProviders) { provider in
                             providerRow(provider)
                                 .draggable(provider.id) {
                                     // Drag preview: icon + name in a card chip
@@ -110,6 +121,100 @@ struct ProviderPageView: View {
 
     private var pageAccent: Color {
         model.selectedApp.formAccent
+    }
+
+    private var providerSummaryPanel: some View {
+        let filteredCount = model.filteredProviders.count
+        let totalCount = model.providers.count
+        let currentProvider = model.currentProvider
+        let currentModel = currentProvider.flatMap(providerModelName)
+        let currentHost = currentProvider.flatMap(providerEndpointHost)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: model.selectedApp.iconName)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(pageAccent)
+                        Text(currentProvider?.name ?? model.selectedApp.displayName)
+                            .font(.headline.weight(.semibold))
+                            .lineLimit(1)
+                    }
+
+                    if let currentModel {
+                        Text(currentModel)
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                if !model.providers.isEmpty {
+                    Button {
+                        Task { await model.speedTestAll() }
+                    } label: {
+                        Label(L10n.tr("providers.action.speed_test_all"), systemImage: "bolt.horizontal.fill")
+                            .lineLimit(1)
+                    }
+                    .aimenuActionButtonStyle(prominent: true, tint: .orange, density: .compact)
+                }
+            }
+
+            HStack(spacing: 6) {
+                UnifiedBadge(
+                    text: L10n.tr("providers.sheet.current_total_format", String(filteredCount), String(totalCount)),
+                    tint: .secondary,
+                    density: .compact
+                )
+
+                if currentProvider != nil {
+                    UnifiedBadge(text: L10n.tr("providers.badge.current"), tint: pageAccent, density: .compact)
+                }
+
+                if let currentHost {
+                    UnifiedBadge(text: currentHost, tint: .secondary, density: .compact)
+                }
+            }
+        }
+        .padding(12)
+        .cardSurface(cornerRadius: LayoutRules.radiusCard, tint: pageAccent.opacity(OpacityScale.ghost))
+    }
+
+    private var providerSearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField(L10n.tr("providers.search.providers_placeholder"), text: $model.providerSearchText)
+                .textFieldStyle(.plain)
+                .font(.subheadline)
+
+            if !model.providerSearchText.isEmpty {
+                Button {
+                    model.providerSearchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.primary.opacity(OpacityScale.ghost))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(OpacityScale.subtle), lineWidth: 1)
+                )
+        )
     }
 
     // MARK: - Provider Row

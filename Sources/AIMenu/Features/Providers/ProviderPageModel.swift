@@ -11,6 +11,7 @@ final class ProviderPageModel: ObservableObject {
 
     @Published var selectedApp: ProviderAppType = .claude
     @Published var providers: [Provider] = []
+    @Published var providerSearchText = ""
     @Published var speedTestResults: [String: SpeedTestResult] = [:]
     @Published var loading = false
     @Published var isAddingProvider = false
@@ -21,6 +22,18 @@ final class ProviderPageModel: ObservableObject {
 
     init(coordinator: ProviderCoordinator) {
         self.coordinator = coordinator
+    }
+
+    var filteredProviders: [Provider] {
+        let query = providerSearchText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard !query.isEmpty else { return providers }
+        return providers.filter { providerMatchesSearch($0, query: query) }
+    }
+
+    var currentProvider: Provider? {
+        providers.first(where: \.isCurrent) ?? providers.first
     }
 
     func load() async {
@@ -162,5 +175,32 @@ final class ProviderPageModel: ObservableObject {
         let df = DateFormatter()
         df.dateFormat = "yyyyMMdd-HHmm"
         return df.string(from: Date())
+    }
+
+    private func providerMatchesSearch(_ provider: Provider, query: String) -> Bool {
+        searchableText(for: provider).contains(query)
+    }
+
+    private func searchableText(for provider: Provider) -> String {
+        var fields: [String] = []
+        appendSearchField(provider.name, to: &fields)
+        appendSearchField(provider.settingsDescription, to: &fields)
+        appendSearchField(provider.notes, to: &fields)
+        appendSearchField(provider.claudeConfig?.baseUrl, to: &fields)
+        appendSearchField(provider.codexConfig?.baseUrl, to: &fields)
+        appendSearchField(provider.geminiConfig?.baseUrl, to: &fields)
+        appendSearchField(provider.claudeConfig?.model, to: &fields)
+        appendSearchField(provider.codexConfig?.model, to: &fields)
+        appendSearchField(provider.geminiConfig?.model, to: &fields)
+        return fields.joined(separator: " ")
+    }
+
+    private func appendSearchField(_ value: String?, to fields: inout [String]) {
+        guard let value else { return }
+        let normalized = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard !normalized.isEmpty else { return }
+        fields.append(normalized)
     }
 }
