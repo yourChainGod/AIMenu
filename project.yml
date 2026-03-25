@@ -28,8 +28,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.aimenu.app
         PRODUCT_NAME: AIMenu
         CODE_SIGN_STYLE: Automatic
-        CURRENT_PROJECT_VERSION: 1
-        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 6
+        MARKETING_VERSION: 1.0.6
   AIMenuTests:
     type: bundle.unit-test
     platform: macOS
