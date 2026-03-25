@@ -303,6 +303,23 @@ struct ToolsServicesSection: View {
                 )
             }
 
+            ToolsHelpers.workbenchStrip(tint: runtimeTint) {
+                Label(L10n.tr("common.url"), systemImage: "link")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(model.cursor2APIStatus.baseURL)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+
+                Spacer(minLength: 0)
+
+                CopyButton(text: model.cursor2APIStatus.baseURL)
+            }
+
             if let error = model.cursor2APIStatus.lastError?.trimmedNonEmpty {
                 Text(error)
                     .font(.caption2)
@@ -316,44 +333,46 @@ struct ToolsServicesSection: View {
                     Task { await model.installCursor2API() }
                 }
                 .aimenuActionButtonStyle(density: .compact)
+                .disabled(model.loading)
 
                 if model.cursor2APIStatus.running {
                     Button(L10n.tr("common.action.stop")) {
                         Task { await model.stopCursor2API() }
                     }
                     .aimenuActionButtonStyle(prominent: true, tint: .red, density: .compact)
+                    .disabled(model.loading)
                 } else {
                     Button(L10n.tr("common.action.start")) {
                         Task { await model.startCursor2API() }
                     }
                     .aimenuActionButtonStyle(prominent: true, tint: runtimeTint, density: .compact)
-                    .disabled(!model.cursor2APIStatus.installed)
+                    .disabled(!model.cursor2APIStatus.installed || model.loading)
                 }
 
                 Button(L10n.tr("tools.services.action.apply_to_claude")) {
                     Task { await model.applyCursor2APIToClaude() }
                 }
                 .aimenuActionButtonStyle(prominent: true, tint: supportTint, density: .compact)
-                .disabled(!model.cursor2APIStatus.running)
+                .disabled(!model.cursor2APIStatus.running || model.loading)
 
                 Spacer(minLength: 0)
+            }
 
-                if model.cursor2APIStatus.logPath != nil {
-                    Button(L10n.tr("tools.services.action.view_log")) {
-                        if let logPath = model.cursor2APIStatus.logPath {
-                            NSWorkspace.shared.selectFile(logPath, inFileViewerRootedAtPath: "")
-                        }
-                    }
-                    .aimenuActionButtonStyle(density: .compact)
-                }
-
-                if model.cursor2APIStatus.configPath != nil {
-                    Button(L10n.tr("tools.services.action.view_config")) {
-                        if let configPath = model.cursor2APIStatus.configPath {
+            if model.cursor2APIStatus.logPath != nil || model.cursor2APIStatus.configPath != nil {
+                ToolsHelpers.workbenchStrip(tint: supportTint) {
+                    if let configPath = model.cursor2APIStatus.configPath {
+                        Button(L10n.tr("tools.services.action.view_config")) {
                             NSWorkspace.shared.selectFile(configPath, inFileViewerRootedAtPath: "")
                         }
+                        .aimenuActionButtonStyle(density: .compact)
                     }
-                    .aimenuActionButtonStyle(density: .compact)
+
+                    if let logPath = model.cursor2APIStatus.logPath {
+                        Button(L10n.tr("tools.services.action.view_log")) {
+                            NSWorkspace.shared.selectFile(logPath, inFileViewerRootedAtPath: "")
+                        }
+                        .aimenuActionButtonStyle(density: .compact)
+                    }
                 }
             }
         }
@@ -452,15 +471,40 @@ struct ToolsServicesSection: View {
                 UnifiedBadge(text: L10n.tr("tools.services.port.default"), tint: .secondary)
             }
 
-            Text(status.command?.trimmedNonEmpty ?? L10n.tr("tools.services.port.idle"))
-                .font(.caption2)
-                .foregroundStyle(status.occupied ? .primary : .tertiary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            if let processID = status.processID, status.occupied {
+                UnifiedBadge(text: "#\(processID)", tint: .secondary, density: .compact)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(status.command?.trimmedNonEmpty ?? L10n.tr("tools.services.port.idle"))
+                    .font(.caption2)
+                    .foregroundStyle(status.occupied ? .primary : .tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                if let endpoint = status.endpoint?.trimmedNonEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "link")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Text(endpoint)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
 
             Spacer(minLength: 0)
 
             HStack(spacing: LayoutRules.spacing4) {
+                if let endpoint = status.endpoint?.trimmedNonEmpty {
+                    CopyButton(text: endpoint)
+                }
+
                 Button(L10n.tr("tools.services.action.release")) {
                     Task { await model.releaseTrackedPort(status.port) }
                 }
